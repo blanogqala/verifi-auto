@@ -163,16 +163,55 @@ export default function App() {
     setSectionTarget((current) => ({ id, nonce: (current?.nonce ?? 0) + 1, smooth: fromHome }));
   }
   useEffect(() => {
-    if (!sectionTarget || page !== 'home' || handledSection.current === sectionTarget.nonce) return;
+    if (!sectionTarget || page !== 'home') {
+      if (sectionTarget) handledSection.current = sectionTarget.nonce;
+      return;
+    }
+    if (handledSection.current === sectionTarget.nonce) return;
     const { id, nonce, smooth } = sectionTarget;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const behavior: ScrollBehavior = smooth && !reduced ? 'smooth' : 'auto';
     let cancelled = false;
     let frame = 0;
+    let timer = 0;
     let tries = 0;
-    const timers: number[] = [];
-    const images: HTMLImageElement[] = [];
 
+    const finish = () => {
+      handledSection.current = nonce;
+      stop();
+    };
+    const stop = () => {
+      if (cancelled) return;
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+      window.removeEventListener('wheel', onUserScroll, true);
+      window.removeEventListener('touchmove', onUserScroll, true);
+      window.removeEventListener('keydown', onUserKey, true);
+    };
+    const onUserScroll = () => {
+      window.scrollTo({ top: window.scrollY, behavior: 'auto' });
+      finish();
+    };
+    const onUserKey = (event: KeyboardEvent) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const target = event.target;
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName;
+        if (
+          target.isContentEditable ||
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT'
+        ) {
+          return;
+        }
+        if (event.key === ' ' && (tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY')) return;
+      }
+      if (!['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(event.key))
+        return;
+      onUserScroll();
+    };
     const align = (mode: ScrollBehavior) => {
       if (cancelled) return false;
       const el = document.getElementById(id);
@@ -180,32 +219,34 @@ export default function App() {
       el.scrollIntoView({ behavior: mode, block: 'start' });
       return true;
     };
+    const correctOnce = () => {
+      if (cancelled || behavior === 'smooth') {
+        finish();
+        return;
+      }
+      const el = document.getElementById(id);
+      const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 0;
+      const top = el?.getBoundingClientRect().top ?? 0;
+      if (el && (top < headerBottom - 2 || top > headerBottom + 48)) {
+        el.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+      finish();
+    };
     const waitForTarget = () => {
       if (cancelled) return;
-      if (!align(behavior) && tries++ < 40) frame = requestAnimationFrame(waitForTarget);
+      if (align(behavior)) {
+        timer = window.setTimeout(correctOnce, behavior === 'smooth' ? 400 : 160);
+        return;
+      }
+      if (tries++ < 24) frame = requestAnimationFrame(waitForTarget);
+      else finish();
     };
-    const correctAfterLayout = () => align('auto');
-    const onImageLoad = () => correctAfterLayout();
 
+    window.addEventListener('wheel', onUserScroll, { capture: true, passive: true });
+    window.addEventListener('touchmove', onUserScroll, { capture: true, passive: true });
+    window.addEventListener('keydown', onUserKey, true);
     frame = requestAnimationFrame(waitForTarget);
-    if (!smooth || reduced) {
-      timers.push(window.setTimeout(correctAfterLayout, 80));
-      timers.push(window.setTimeout(correctAfterLayout, 350));
-      timers.push(window.setTimeout(correctAfterLayout, 800));
-      document.querySelectorAll('img').forEach((img) => {
-        if (!img.complete) {
-          img.addEventListener('load', onImageLoad);
-          images.push(img);
-        }
-      });
-    }
-    handledSection.current = nonce;
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frame);
-      timers.forEach((timer) => window.clearTimeout(timer));
-      images.forEach((img) => img.removeEventListener('load', onImageLoad));
-    };
+    return () => stop();
   }, [page, sectionTarget]);
   function book(p: any) {
     if (role !== 'customer') {
@@ -251,23 +292,29 @@ export default function App() {
   const customerName =
     role === 'customer' && typeof data.settings?.name === 'string' ? data.settings.name.trim() : '';
   const accountLabel = customerName || 'My account';
+  const showWorkspace = page.startsWith('dashboard/') && role !== null && canVisit(role, page);
+  useEffect(() => {
+    if (showWorkspace) setMenu(false);
+  }, [showWorkspace]);
   return (
     <>
-      <PublicHeader
-        accountLabel={accountLabel}
-        anchor={anchor}
-        go={go}
-        logout={logout}
-        menu={menu}
-        page={page}
-        role={role}
-        setMenu={setMenu}
-        setTheme={setTheme}
-        theme={theme}
-      />
+      {!showWorkspace && (
+        <PublicHeader
+          accountLabel={accountLabel}
+          anchor={anchor}
+          go={go}
+          logout={logout}
+          menu={menu}
+          page={page}
+          role={role}
+          setMenu={setMenu}
+          setTheme={setTheme}
+          theme={theme}
+        />
+      )}
       {['login', 'register', 'forgot'].includes(page) ? (
         <Auth mode={page} role={role} setRole={setRole} onLogin={login} go={go} pending={pending} />
-      ) : page.startsWith('dashboard/') && role && canVisit(role, page) ? (
+      ) : showWorkspace ? (
         <Workspace
           role={role}
           tab={page.split('/')[1]}
@@ -276,6 +323,8 @@ export default function App() {
           data={data}
           update={update}
           notify={setToast}
+          theme={theme}
+          setTheme={setTheme}
         />
       ) : page === 'home' ? (
         <LandingPage

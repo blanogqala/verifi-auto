@@ -208,23 +208,77 @@ button:disabled {
 .workspace {
   display: flex;
   align-items: stretch;
-  min-height: calc(100vh - 112px);
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
 }
 .sidebar {
   width: 245px;
   flex-shrink: 0;
-  padding: 28px 18px;
+  padding: 22px 18px 18px;
   background: var(--surface);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  position: relative;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.sidebar:focus {
+  outline: none;
+}
+.sidebar-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 4px 18px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -1.1px;
+  color: var(--ink);
+}
+.sidebar-brand .brand-icon {
+  margin-right: 0;
+}
+.sidebar-brand .brand-icon img {
+  height: 36px;
+}
+.sidebar-brand i {
+  display: block;
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--purple);
+  align-self: flex-end;
+  margin-bottom: 5px;
+}
+.sidebar-close {
+  display: none;
+}
+.sidebar-backdrop {
+  display: none;
 }
 .workspace-tag {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 0 10px 30px;
+  padding: 0 10px 22px;
+  flex-shrink: 0;
+}
+.sidebar-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 2px;
 }
 .avatar {
   display: grid;
@@ -265,7 +319,7 @@ button:disabled {
   color: var(--muted);
   padding: 0 12px 17px;
 }
-.sidebar > button,
+.sidebar-scroll > button,
 .sidebar-bottom > button {
   display: flex;
   align-items: center;
@@ -278,16 +332,16 @@ button:disabled {
   margin-bottom: 5px;
   width: 100%;
 }
-.sidebar > button.selected {
+.sidebar-scroll > button.selected {
   color: var(--soft);
   background: var(--tint);
 }
-.sidebar > button:hover {
+.sidebar-scroll > button:hover {
   background: var(--surface2);
 }
 .sidebar-bottom {
-  margin-top: auto;
-  padding-top: 60px;
+  flex-shrink: 0;
+  padding-top: 18px;
 }
 .sidebar-help {
   border: 1px solid var(--line);
@@ -323,6 +377,8 @@ button:disabled {
 .workspace-main {
   min-width: 0;
   flex: 1;
+  height: 100%;
+  overflow: auto;
   background: var(--bg);
 }
 .workspace-top {
@@ -333,13 +389,23 @@ button:disabled {
   border-bottom: 1px solid var(--line);
   padding: 18px 35px;
   height: 72px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+}
+.workspace-top .theme {
+  flex-shrink: 0;
 }
 .workspace-top > span {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  overflow: hidden;
   font-size: 10px;
   color: var(--muted);
+  white-space: nowrap;
 }
 .workspace-top > div {
   display: flex;
@@ -680,6 +746,7 @@ button:disabled {
   align-items: center;
   font-size: 8px;
   color: var(--muted);
+  
 }
 .workspace-footer > span {
   margin-left: auto;
@@ -1313,7 +1380,7 @@ td .text-link {
   .sidebar {
     width: 200px;
   }
-  .sidebar > button,
+  .sidebar-scroll > button,
   .sidebar-bottom > button {
     font-size: 10px;
     gap: 9px;
@@ -1421,19 +1488,43 @@ td .text-link {
   .workspace {
     display: block;
     position: relative;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  .workspace.drawer-open .workspace-main {
+    overflow: hidden;
   }
   .sidebar {
     display: none;
   }
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: #07080cbf;
+  }
   .sidebar.expanded {
     display: flex;
-    width: 260px;
-    position: absolute;
+    width: min(280px, 86vw);
+    position: fixed;
     left: 0;
-    top: 65px;
-    z-index: 30;
-    border: 1px solid var(--line);
+    top: 0;
+    bottom: 0;
+    height: 100dvh;
+    z-index: 40;
+    border-right: 1px solid var(--line);
     box-shadow: 20px 25px 50px #0005;
+  }
+  .sidebar-close {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
   }
   .sidebar-bottom {
     padding-top: 25px;

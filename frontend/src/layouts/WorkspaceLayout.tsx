@@ -17,7 +17,7 @@ import { ReportsPage } from '../pages/admin/ReportsPage';
 import { SettingsPage } from '../pages/shared/SettingsPage';
 
 import { StatusBadge as Status } from '../components/ui/StatusBadge';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ArrowRight,
   LayoutDashboard,
@@ -38,8 +38,32 @@ import {
 } from 'lucide-react';
 import { Role, navItems, quoteTotal, transitionJob } from '../demo';
 
-export function Workspace({ role, tab, go, logout, data, update, notify }: any) {
+export type WorkspaceProps = {
+  role: Role;
+  tab: string;
+  go: (page: string) => void;
+  logout: () => void;
+  data: any;
+  update: (fn: (value: any) => any) => void;
+  notify: (message: string) => void;
+  theme?: string;
+  setTheme?: (theme: string) => void;
+};
+
+export function Workspace({
+  role,
+  tab,
+  go,
+  logout,
+  data,
+  update,
+  notify,
+  theme = 'dark',
+  setTheme = () => {},
+}: WorkspaceProps) {
   const [side, setSide] = useState(false);
+  const [drawer, setDrawer] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [dialog, setDialog] = useState<any>(null);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('All');
@@ -54,6 +78,51 @@ export function Workspace({ role, tab, go, logout, data, update, notify }: any) 
     setQuery('');
     setDialog(null);
   }, [tab, role]);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 750px)');
+    const sync = () => {
+      setDrawer(media.matches);
+      if (!media.matches) setSide(false);
+    };
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+  useEffect(() => {
+    if (!side || !drawer) return;
+    const sidebar = document.getElementById('workspace-sidebar');
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    sidebar?.querySelector<HTMLElement>('button')?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setSide(false);
+        return;
+      }
+      if (event.key !== 'Tab' || !sidebar) return;
+      const items = Array.from(
+        sidebar.querySelectorAll<HTMLElement>('button, a, input, select, textarea, [tabindex="0"]'),
+      ).filter((el) => !el.hasAttribute('disabled'));
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKey, true);
+      if (menuButtonRef.current && document.contains(menuButtonRef.current)) menuButtonRef.current.focus();
+    };
+  }, [side, drawer]);
   useEffect(() => {
     if (!dialog) return;
     const before = document.activeElement as HTMLElement;
@@ -115,6 +184,10 @@ export function Workspace({ role, tab, go, logout, data, update, notify }: any) 
   function route(t: string) {
     go('dashboard/' + t);
     setSide(false);
+  }
+  function goHome() {
+    setSide(false);
+    go('home');
   }
   function note(d: any, text: string) {
     return {
@@ -218,10 +291,15 @@ export function Workspace({ role, tab, go, logout, data, update, notify }: any) 
         <JobCard key={j.id} job={j} onView={() => setDialog({ kind: 'job', job: j })} />
       ));
   return (
-    <div className="workspace">
+    <div className={'workspace' + (drawer && side ? ' drawer-open' : '')}>
+      {drawer && side ? (
+        <button type="button" className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setSide(false)} />
+      ) : null}
       <WorkspaceSidebar
-        go={go}
+        drawer={drawer}
+        goHome={goHome}
         logout={logout}
+        onClose={() => setSide(false)}
         role={role}
         route={route}
         side={side}
@@ -231,10 +309,13 @@ export function Workspace({ role, tab, go, logout, data, update, notify }: any) 
       <main className="workspace-main">
         <WorkspaceTopbar
           heading={heading}
+          menuButtonRef={menuButtonRef}
           role={role}
           route={route}
           setSide={setSide}
+          setTheme={setTheme}
           side={side}
+          theme={theme}
           unread={unread}
         />
         <div className="workspace-body">
