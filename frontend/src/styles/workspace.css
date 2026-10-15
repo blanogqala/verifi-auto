@@ -511,8 +511,18 @@ button.workspace-identity.active:active {
   min-height: 0;
   flex: 1 1 auto;
   align-self: stretch;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--bg);
+}
+.workspace.drawer-open .workspace-main,
+.workspace.dialog-open .workspace-main,
+body:has(.modal-backdrop) .workspace-main {
+  overflow: hidden;
+}
+body:has(.workspace.drawer-open),
+body:has(.modal-backdrop) {
+  overflow: hidden;
 }
 .workspace-top {
   display: flex;
@@ -1901,16 +1911,24 @@ td .text-link {
     font-size: 9px;
   }
   .workspace {
-    display: block;
+    display: flex;
+    flex-direction: column;
     position: relative;
     height: 100vh;
     height: 100dvh;
     max-height: 100vh;
     max-height: 100dvh;
+    min-height: 0;
     overflow: hidden;
   }
-  .workspace.drawer-open .workspace-main {
-    overflow: hidden;
+  .workspace-main {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .sidebar {
     display: none;
@@ -1950,8 +1968,10 @@ td .text-link {
     display: none;
   }
   .workspace-top {
-    height: 65px;
-    padding: 14px 6%;
+    height: auto;
+    min-height: calc(65px + env(safe-area-inset-top));
+    padding: calc(14px + env(safe-area-inset-top)) calc(6% + env(safe-area-inset-right)) 14px
+      calc(6% + env(safe-area-inset-left));
     gap: 12px;
   }
   .workspace-menu {
@@ -1981,7 +2001,9 @@ td .text-link {
     flex-shrink: 0;
   }
   .workspace-body {
-    padding: 28px 6%;
+    width: 100%;
+    padding: 28px calc(6% + env(safe-area-inset-right))
+      calc(28px + env(safe-area-inset-bottom)) calc(6% + env(safe-area-inset-left));
   }
   .workspace-heading {
     display: block;

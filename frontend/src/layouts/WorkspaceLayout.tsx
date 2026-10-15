@@ -129,8 +129,6 @@ export function Workspace({
   useEffect(() => {
     if (!side || !drawer) return;
     const sidebar = document.getElementById('workspace-sidebar');
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     sidebar?.querySelector<HTMLElement>('button')?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -156,7 +154,6 @@ export function Workspace({
     };
     document.addEventListener('keydown', onKey, true);
     return () => {
-      document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', onKey, true);
       if (menuButtonRef.current && document.contains(menuButtonRef.current))
         menuButtonRef.current.focus();
@@ -165,8 +162,6 @@ export function Workspace({
   useEffect(() => {
     if (!dialog) return;
     const before = document.activeElement as HTMLElement;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     const el = document.querySelector('.workspace-dialog') as HTMLElement;
     const fs = () =>
       Array.from(
@@ -190,7 +185,6 @@ export function Workspace({
     };
     document.addEventListener('keydown', key);
     return () => {
-      document.body.style.overflow = prev;
       document.removeEventListener('keydown', key);
       before?.focus();
     };
@@ -353,7 +347,11 @@ export function Workspace({
         />
       ));
   return (
-    <div className={'workspace' + (drawer && side ? ' drawer-open' : '')}>
+    <div
+      className={
+        'workspace' + (drawer && side ? ' drawer-open' : '') + (dialog ? ' dialog-open' : '')
+      }
+    >
       {drawer && side ? (
         <button
           type="button"

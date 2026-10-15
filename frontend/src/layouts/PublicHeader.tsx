@@ -184,7 +184,12 @@ export function PublicHeader({
     roots.forEach((el) => el.setAttribute('inert', ''));
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
-      if (menuRef.current?.contains(target) || menuButtonRef.current?.contains(target)) return;
+      if (
+        menuRef.current?.contains(target) ||
+        menuButtonRef.current?.contains(target) ||
+        (target instanceof Element && target.closest('.header-theme'))
+      )
+        return;
       setMenu(false);
     }
     function onKeyDown(event: globalThis.KeyboardEvent) {
@@ -220,12 +225,9 @@ export function PublicHeader({
         </nav>
         <div className="nav-actions">
           <button
-            className="theme"
+            className="theme nav-theme"
             type="button"
-            onClick={() => {
-              setTheme(nextTheme);
-              setMenu(false);
-            }}
+            onClick={() => setTheme(nextTheme)}
             aria-label={`Switch to ${nextTheme} mode`}
             title={`Switch to ${nextTheme} mode`}
           >
@@ -268,6 +270,15 @@ export function PublicHeader({
           )}
         </div>
       </div>
+      <button
+        className="theme header-theme"
+        type="button"
+        onClick={() => setTheme(nextTheme)}
+        aria-label={`Switch to ${nextTheme} mode`}
+        title={`Switch to ${nextTheme} mode`}
+      >
+        {theme === 'dark' ? <Sun size={19} aria-hidden="true" /> : <Moon size={19} aria-hidden="true" />}
+      </button>
       <button
         ref={menuButtonRef}
         className="mobile-menu"

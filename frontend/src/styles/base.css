@@ -172,6 +172,9 @@ nav button.active {
 .mobile-menu {
   display: none;
 }
+.theme.header-theme {
+  display: none;
+}
 .hero {
   height: 540px;
   position: relative;
@@ -1005,8 +1008,10 @@ footer > div:nth-child(2) {
   border-radius: 15px;
   padding: 40px;
   width: 550px;
-  max-height: 90vh;
+  max-width: 100%;
+  max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px));
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 30px 100px #0006;
 }
 .close {
@@ -1390,7 +1395,7 @@ hr {
   }
   .modal {
     padding: 35px 23px;
-    max-height: 94vh;
+    max-height: min(94dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px));
   }
   .modal h2 {
     font-size: 27px;
@@ -1579,8 +1584,10 @@ hr {
 }
 @media (max-width: 750px) {
   header.site-header {
-    height: 72px;
-    padding: 0 5%;
+    height: auto;
+    min-height: calc(72px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) calc(5% + env(safe-area-inset-right)) 0
+      calc(5% + env(safe-area-inset-left));
   }
   .site-menu {
     display: none;
@@ -1593,7 +1600,7 @@ hr {
     left: 0;
     right: 0;
     z-index: 30;
-    max-height: calc(100dvh - 72px);
+    max-height: calc(100dvh - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
     padding: 8px 5% 18px;
     background: var(--surface);
@@ -1618,26 +1625,26 @@ hr {
     padding-top: 8px;
     border-top: 1px solid var(--line);
   }
-  .site-menu.open .nav-actions .theme {
-    width: auto;
-    height: auto;
-    border-radius: 6px;
-    display: flex;
-    justify-content: flex-start;
-    gap: 10px;
-    padding: 12px;
+  .site-header .brand {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .theme.header-theme,
+  .site-header .mobile-menu {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  .theme.header-theme {
+    display: grid;
+  }
+  .site-menu .nav-theme,
+  .site-menu.open .nav-actions .nav-theme {
+    display: none;
   }
   .site-menu.open .nav-signin svg {
     width: 15px;
     height: 15px;
-  }
-  .site-menu.open .theme-label {
-    position: static;
-    width: auto;
-    height: auto;
-    margin: 0;
-    overflow: visible;
-    clip: auto;
   }
   .site-menu.open .join,
   .site-menu.open .nav-signin,

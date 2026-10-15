@@ -23,6 +23,7 @@ import {
   photoFileError,
 } from '../src/demo';
 import { Workspace } from '../src/layouts/WorkspaceLayout';
+import { PublicHeader } from '../src/layouts/PublicHeader';
 import { AuthPage as Auth } from '../src/pages/auth/AuthPage';
 import { ProfessionalsPage } from '../src/pages/public/ProfessionalsPage';
 let count = 0;
@@ -610,6 +611,28 @@ assert.ok(!payHtml.includes('Paid to your bank'));
 const customerPay = screen('customer', 'payments', payData);
 assert.ok(customerPay.includes('Review &amp; pay'));
 assert.ok(!customerPay.includes('does not confirm a bank payout'));
+const publicHeader = renderToString(
+  <PublicHeader
+    accountLabel="Alex Morgan"
+    anchor={() => {}}
+    go={() => {}}
+    logout={() => {}}
+    menu={true}
+    page="home"
+    role={null}
+    setMenu={() => {}}
+    setTheme={() => {}}
+    theme="dark"
+  />,
+);
+const headerTheme = publicHeader.indexOf('header-theme');
+const menuButton = publicHeader.indexOf('mobile-menu');
+const menuMarkup = publicHeader.slice(publicHeader.indexOf('id="site-menu"'), headerTheme);
+assert.ok(headerTheme > -1 && menuButton > headerTheme);
+assert.ok(publicHeader.includes('aria-label="Switch to light mode"'));
+assert.ok(menuMarkup.includes('nav-theme'));
+assert.ok(!menuMarkup.includes('header-theme'));
+assert.ok(publicHeader.includes('aria-label="Close navigation"'));
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );
