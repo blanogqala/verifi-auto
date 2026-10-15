@@ -443,6 +443,7 @@ export function Workspace({
               update={update}
             />
           )}
+          <div className="workspace-grow" />
           <div className="workspace-footer">
             <ShieldCheck size={14} /> Verifi Auto · Connected design preview{' '}
             <span>Sample data · No live payments</span>

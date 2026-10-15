@@ -68,6 +68,7 @@ export function WorkspaceSidebar({
               type="button"
               className={tab === id ? 'selected' : ''}
               key={id}
+              aria-current={tab === id ? 'page' : undefined}
               onClick={() => route(id)}
             >
               <Icon size={18} />
