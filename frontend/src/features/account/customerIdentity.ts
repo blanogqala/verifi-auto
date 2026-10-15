@@ -2,7 +2,7 @@ export function customerFullName(name: unknown) {
   return typeof name === 'string' ? name.trim() : '';
 }
 
-export function customerInitials(name: unknown) {
+export function initialsFromName(name: unknown) {
   const full = customerFullName(name);
   if (!full) return '?';
   const parts = full.split(/\s+/).filter(Boolean);
@@ -10,6 +10,14 @@ export function customerInitials(name: unknown) {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
+export function customerInitials(name: unknown) {
+  return initialsFromName(name);
+}
+
 export function customerIdentityLabel(name: unknown) {
   return customerFullName(name) || 'Customer';
+}
+
+export function merchantIdentityLabel(name: unknown) {
+  return customerFullName(name) || 'Mechanic';
 }

@@ -3,7 +3,30 @@ import { Search } from 'lucide-react';
 import { EmptyState as Empty } from '../../components/ui/EmptyState';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
-export function JobsPage({ cardJobs, filter, jobs, query, setFilter, setQuery }: any) {
+export function JobsPage({
+  cardJobs,
+  emptyText = 'Try a different search or status filter.',
+  emptyTitle = 'No appointments match.',
+  filter,
+  jobs,
+  query,
+  setFilter,
+  setQuery,
+  statuses,
+}: any) {
+  const options = statuses || [
+    'All',
+    'Requested',
+    'Rejected',
+    'Confirmed',
+    'Awaiting approval',
+    'Changes requested',
+    'Approved',
+    'In progress',
+    'Awaiting payment',
+    'Completed',
+    'Cancelled',
+  ];
   return (
     <>
       <div className="table-controls">
@@ -17,21 +40,10 @@ export function JobsPage({ cardJobs, filter, jobs, query, setFilter, setQuery }:
         </div>
         <select
           aria-label="Filter job status"
-          value={filter}
+          value={options.includes(filter) ? filter : 'All'}
           onChange={(e) => setFilter(e.target.value)}
         >
-          {[
-            'All',
-            'Requested',
-            'Confirmed',
-            'Awaiting approval',
-            'Changes requested',
-            'Approved',
-            'In progress',
-            'Awaiting payment',
-            'Completed',
-            'Cancelled',
-          ].map((s) => (
+          {options.map((s: string) => (
             <option key={s}>{s}</option>
           ))}
         </select>
@@ -49,7 +61,7 @@ export function JobsPage({ cardJobs, filter, jobs, query, setFilter, setQuery }:
         (j: any) =>
           (filter === 'All' || j.status === filter) &&
           `${j.id} ${j.provider} ${j.vehicle}`.toLowerCase().includes(query.toLowerCase()),
-      ) && <Empty title="No appointments match." text="Try a different search or status filter." />}
+      ) && <Empty title={emptyTitle} text={emptyText} />}
     </>
   );
 }

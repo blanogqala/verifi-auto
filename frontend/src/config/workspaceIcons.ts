@@ -25,6 +25,8 @@ export const icons: any = {
   notifications: Bell,
   settings: Settings,
   jobs: Wrench,
+  appointments: Calendar,
+  'appointments/pending': Calendar,
   profile: UserRound,
   documents: Upload,
   application: ShieldCheck,

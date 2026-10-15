@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 
 import { Workspace } from './layouts/WorkspaceLayout';
 import { AuthPage as Auth } from './pages/auth/AuthPage';
-import { Role, roles, canVisit, canonicalPage, useDemoStore } from './demo';
+import { Role, roles, canVisit, canonicalPage, applyAccountDetails, useDemoStore } from './demo';
 
 function storedRole(): Role | null {
   try {
@@ -126,15 +126,8 @@ export default function App() {
   }, [role]);
   function login(r: Role, register = false, details: any = {}) {
     setRole(r);
-    if (r === 'customer')
-      update((d: any) => ({
-        ...d,
-        settings: {
-          ...d.settings,
-          ...(details.name ? { name: details.name } : {}),
-          ...(details.email ? { email: details.email } : {}),
-        },
-      }));
+    if (r === 'customer' || r === 'mechanic')
+      update((d: any) => applyAccountDetails(d, r, details));
     try {
       sessionStorage.setItem('verifi-demo-role', r);
     } catch {}
@@ -145,7 +138,8 @@ export default function App() {
       setStep(0);
       setPending(null);
     } else {
-      const next = register && r === 'mechanic' ? 'dashboard/profile' : 'dashboard/overview';
+      const next =
+        register && r === 'mechanic' ? 'dashboard/profile/business' : 'dashboard/overview';
       setPage(next);
       location.hash = next;
     }
@@ -319,7 +313,7 @@ export default function App() {
       ) : showWorkspace ? (
         <Workspace
           role={role}
-          tab={page.split('/')[1]}
+          tab={page.startsWith('dashboard/') ? page.slice('dashboard/'.length) : ''}
           go={go}
           logout={logout}
           data={data}

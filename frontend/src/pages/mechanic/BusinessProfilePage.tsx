@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card } from '../../components/ui/Card';
 
 import { ArrowRight, Wrench, Check } from 'lucide-react';
@@ -5,6 +6,7 @@ import { ArrowRight, Wrench, Check } from 'lucide-react';
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function BusinessProfilePage({
   filter,
+  initialEmail = '',
   name,
   notify,
   profile,
@@ -12,13 +14,22 @@ export function BusinessProfilePage({
   setProfile,
   update,
 }: any) {
+  const [email, setEmail] = useState(initialEmail);
   return (
     <Card
       as="form"
       className="dash-panel settings-form"
       onSubmit={(e) => {
         e.preventDefault();
-        update((d: any) => ({ ...d, profile, application: { ...d.application, status: 'Draft' } }));
+        update((d: any) => ({
+          ...d,
+          profile,
+          mechanicAccount: {
+            ...(d.mechanicAccount || d.merchantAccount || {}),
+            email: email.trim(),
+          },
+          application: { ...d.application, status: 'Draft' },
+        }));
         notify('Business profile saved. Changes require application review.');
       }}
     >
@@ -74,6 +85,17 @@ export function BusinessProfilePage({
         </label>
       </div>
       <label>
+        Email address
+        <input
+          name="accountEmail"
+          type="email"
+          required
+          autoComplete="off"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+      </label>
+      <label>
         About your expertise
         <textarea
           required
@@ -120,7 +142,7 @@ export function BusinessProfilePage({
         <button className="primary" type="submit">
           Save profile <Check size={17} />
         </button>
-        <button type="button" className="text-link" onClick={() => route('documents')}>
+        <button type="button" className="text-link" onClick={() => route('profile/documents')}>
           Next: documents <ArrowRight size={16} />
         </button>
       </div>

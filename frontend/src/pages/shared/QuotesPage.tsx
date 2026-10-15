@@ -17,7 +17,8 @@ export function QuotesPage({ filter, jobs, name, quoteEditor, role, setDialog }:
         {jobs
           .filter((j: any) =>
             role === 'mechanic'
-              ? !['Requested', 'Cancelled'].includes(j.status)
+              ? !['Requested', 'Rejected'].includes(j.status) &&
+                !(j.status === 'Cancelled' && j.accepted !== true)
               : j.items?.length > 0,
           )
           .map((j: any) => (

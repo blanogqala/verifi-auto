@@ -175,6 +175,7 @@ export function BookingDialog({
                         vehicle,
                         fee: modal.fee,
                         status: 'Requested',
+                        accepted: false,
                         items: [],
                         notes: '',
                         quoteApproved: false,

@@ -8,9 +8,9 @@ import { JobsPage } from '../pages/shared/JobsPage';
 import { QuotesPage } from '../pages/shared/QuotesPage';
 import { GaragePage } from '../pages/customer/GaragePage';
 import { PaymentsPage } from '../pages/customer/PaymentsPage';
-import { BusinessProfilePage } from '../pages/mechanic/BusinessProfilePage';
-import { DocumentsPage } from '../pages/mechanic/DocumentsPage';
-import { VerificationPage } from '../pages/mechanic/VerificationPage';
+import { AppointmentsPage } from '../pages/mechanic/AppointmentsPage';
+import { MechanicPaymentsPage } from '../pages/mechanic/MechanicPaymentsPage';
+import { MerchantProfilePage } from '../pages/mechanic/MerchantProfilePage';
 import { ApplicationsPage } from '../pages/admin/ApplicationsPage';
 import { NotificationsPage } from '../pages/shared/NotificationsPage';
 import { ReportsPage } from '../pages/admin/ReportsPage';
@@ -38,7 +38,15 @@ import {
   Users,
 } from 'lucide-react';
 import { customerFullName } from '../features/account/customerIdentity';
-import { Role, pageTitle, transitionJob } from '../demo';
+import {
+  Role,
+  appointmentSection,
+  isAcceptedJob,
+  merchantProfileSection,
+  merchantProfileSectionLabel,
+  pageTitle,
+  transitionJob,
+} from '../demo';
 
 export type DirectoryProps = {
   book: (professional: any) => void;
@@ -189,13 +197,17 @@ export function Workspace({
   }, [dialog?.kind]);
   const jobs = data.jobs;
   const unread = data.notifications.filter((n: any) => !n.read).length;
-  const accountName = role === 'customer' ? data.settings?.name : '';
+  const accountName =
+    role === 'customer' ? data.settings?.name : role === 'mechanic' ? data.profile?.name : '';
   const customerName = customerFullName(accountName);
+  const merchantSection = role === 'mechanic' ? merchantProfileSection(tab) : null;
+  const appointmentView = role === 'mechanic' ? appointmentSection(tab) : null;
+  const sectionLabel = merchantSection ? merchantProfileSectionLabel[merchantSection] : '';
   const name =
     role === 'customer'
       ? customerName.split(/\s+/)[0] || 'Customer'
       : role === 'mechanic'
-        ? data.profile.name
+        ? customerFullName(data.profile?.name) || 'Mechanic'
         : 'Verifi team';
   const heading = pageTitle(role, tab);
   const apps = [
@@ -317,11 +329,28 @@ export function Workspace({
     e.target.value = '';
     notify('Sample document selected. Only its name and size are saved in this browser.');
   }
+  function quoteActionFor(job: any) {
+    if (role !== 'mechanic') return null;
+    if (['Confirmed', 'Awaiting approval', 'Changes requested'].includes(job.status)) {
+      return {
+        label: job.items?.length ? 'Edit quote' : 'Create quote',
+        onClick: () => quoteEditor(job),
+      };
+    }
+    if (job.items?.length)
+      return { label: 'View quote', onClick: () => setDialog({ kind: 'job', job }) };
+    return null;
+  }
   const cardJobs = (list: any[], limit?: number) =>
     list
       .slice(0, limit || list.length)
       .map((j: any) => (
-        <JobCard key={j.id} job={j} onView={() => setDialog({ kind: 'job', job: j })} />
+        <JobCard
+          key={j.id}
+          job={j}
+          onView={() => setDialog({ kind: 'job', job: j })}
+          quoteAction={quoteActionFor(j)}
+        />
       ));
   return (
     <div className={'workspace' + (drawer && side ? ' drawer-open' : '')}>
@@ -335,6 +364,7 @@ export function Workspace({
       ) : null}
       <WorkspaceSidebar
         accountName={accountName}
+        accountPhoto={role === 'mechanic' ? data.profile?.photo : ''}
         drawer={drawer}
         goHome={goHome}
         logout={logout}
@@ -348,7 +378,9 @@ export function Workspace({
       <main className="workspace-main">
         <WorkspaceTopbar
           accountName={accountName}
+          accountPhoto={role === 'mechanic' ? data.profile?.photo : ''}
           heading={heading}
+          sectionLabel={sectionLabel}
           menuButtonRef={menuButtonRef}
           role={role}
           route={route}
@@ -360,7 +392,7 @@ export function Workspace({
           unread={unread}
         />
         <div className="workspace-body">
-          {tab !== 'find' && (
+          {tab !== 'find' && !merchantSection && (
             <div className="workspace-heading">
               <div>
                 <div className="eyebrow">
@@ -402,7 +434,16 @@ export function Workspace({
               route={route}
             />
           )}
-          {['bookings', 'jobs'].includes(tab) && (
+          {appointmentView && (
+            <AppointmentsPage
+              jobs={jobs}
+              onAccept={(job: any) => jobAction(job, 'confirm')}
+              onReject={(job: any) => setDialog({ kind: 'reject', job })}
+              route={route}
+              section={appointmentView}
+            />
+          )}
+          {tab === 'bookings' && (
             <JobsPage
               cardJobs={cardJobs}
               filter={filter}
@@ -410,6 +451,65 @@ export function Workspace({
               query={query}
               setFilter={setFilter}
               setQuery={setQuery}
+              statuses={[
+                'All',
+                'Requested',
+                'Rejected',
+                'Confirmed',
+                'Awaiting approval',
+                'Changes requested',
+                'Approved',
+                'In progress',
+                'Awaiting payment',
+                'Completed',
+                'Cancelled',
+              ]}
+            />
+          )}
+          {tab === 'jobs' && role === 'mechanic' && (
+            <JobsPage
+              cardJobs={cardJobs}
+              emptyText="Accepted appointments appear here, including work cancelled after you accepted it."
+              emptyTitle="No jobs match."
+              filter={filter}
+              jobs={jobs.filter(isAcceptedJob)}
+              query={query}
+              setFilter={setFilter}
+              setQuery={setQuery}
+              statuses={[
+                'All',
+                'Confirmed',
+                'Awaiting approval',
+                'Changes requested',
+                'Approved',
+                'In progress',
+                'Awaiting payment',
+                'Completed',
+                'Cancelled',
+              ]}
+            />
+          )}
+          {tab === 'jobs' && role === 'admin' && (
+            <JobsPage
+              cardJobs={cardJobs}
+              filter={filter}
+              jobs={jobs}
+              query={query}
+              setFilter={setFilter}
+              setQuery={setQuery}
+              statuses={[
+                'All',
+                'Requested',
+                'Rejected',
+                'Confirmed',
+                'Awaiting approval',
+                'Changes requested',
+                'Approved',
+                'In progress',
+                'Awaiting payment',
+                'Completed',
+                'Cancelled',
+              ]}
             />
           )}
           {tab === 'quotes' && (
@@ -425,8 +525,11 @@ export function Workspace({
           {tab === 'garage' && (
             <GaragePage data={data} filter={filter} go={go} setDialog={setDialog} />
           )}
-          {tab === 'payments' && (
+          {tab === 'payments' && role === 'customer' && (
             <PaymentsPage filter={filter} jobs={jobs} note={note} setDialog={setDialog} />
+          )}
+          {tab === 'payments' && role === 'mechanic' && (
+            <MechanicPaymentsPage jobs={jobs} setDialog={setDialog} />
           )}
           {tab === 'find' && role === 'customer' && (
             <ProfessionalsPage
@@ -443,39 +546,22 @@ export function Workspace({
               type={directory.type}
             />
           )}
-          {tab === 'profile' && role === 'mechanic' && (
-            <BusinessProfilePage
-              filter={filter}
-              name={name}
-              notify={notify}
-              profile={profile}
-              route={route}
-              setProfile={setProfile}
-              update={update}
-            />
-          )}
-          {tab === 'documents' && (
-            <DocumentsPage
+          {merchantSection && (
+            <MerchantProfilePage
               data={data}
               filter={filter}
-              name={name}
-              notify={notify}
-              role={role}
-              route={route}
-              update={update}
-              upload={upload}
-              uploadError={uploadError}
-            />
-          )}
-          {tab === 'application' && (
-            <VerificationPage
-              data={data}
+              logout={logout}
               name={name}
               note={note}
               notify={notify}
               profile={profile}
+              role={role}
               route={route}
+              section={merchantSection}
+              setProfile={setProfile}
               update={update}
+              upload={upload}
+              uploadError={uploadError}
             />
           )}
           {['applications', 'professionals'].includes(tab) && (
@@ -492,7 +578,7 @@ export function Workspace({
           {tab === 'notifications' && <NotificationsPage data={data} update={update} />}
           {tab === 'reports' && <ReportsPage data={data} note={note} setDialog={setDialog} />}
           {((role === 'customer' && (tab === 'profile' || tab === 'settings')) ||
-            (role !== 'customer' && tab === 'settings')) && (
+            (role === 'admin' && tab === 'settings')) && (
             <SettingsPage
               data={data}
               logout={logout}

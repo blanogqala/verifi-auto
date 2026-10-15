@@ -1,12 +1,18 @@
 import { icons } from '../config/workspaceIcons';
 import { Card } from '../components/ui/Card';
-import { customerIdentityLabel, customerInitials } from '../features/account/customerIdentity';
+import {
+  customerIdentityLabel,
+  customerInitials,
+  merchantIdentityLabel,
+} from '../features/account/customerIdentity';
+import { merchantProfileSection } from '../config/navigation';
 
 import { ArrowUpRight, ShieldCheck, LogOut, X } from 'lucide-react';
 import { Role, roleLabel, navItems } from '../demo';
 
 export type WorkspaceSidebarProps = {
   accountName?: string;
+  accountPhoto?: string;
   goHome: () => void;
   logout: () => void;
   onClose: () => void;
@@ -21,6 +27,7 @@ export type WorkspaceSidebarProps = {
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function WorkspaceSidebar({
   accountName = '',
+  accountPhoto = '',
   goHome,
   logout,
   onClose,
@@ -33,9 +40,19 @@ export function WorkspaceSidebar({
 }: WorkspaceSidebarProps) {
   const dialog = drawer && side;
   const customer = role === 'customer';
-  const identity = customerIdentityLabel(accountName);
+  const merchant = role === 'mechanic';
+  const simplified = customer || merchant;
+  const identity = merchant
+    ? merchantIdentityLabel(accountName)
+    : customerIdentityLabel(accountName);
   const initials = customerInitials(accountName);
-  const profileActive = customer && tab === 'profile';
+  const profileActive = customer
+    ? tab === 'profile'
+    : merchant
+      ? merchantProfileSection(tab) !== null
+      : false;
+  const profileTarget = merchant ? 'profile/business' : 'profile';
+  const subtitle = merchant ? 'Mechanic' : 'Customer';
   return (
     <aside
       id="workspace-sidebar"
@@ -68,24 +85,24 @@ export function WorkspaceSidebar({
         </button>
       </div>
       <div className="workspace-tag">
-        {customer ? (
+        {simplified ? (
           <button
             type="button"
             className={'workspace-identity' + (profileActive ? ' active' : '')}
             aria-current={profileActive ? 'page' : undefined}
-            onClick={() => route('profile')}
+            onClick={() => route(profileTarget)}
           >
             <span className="avatar" aria-hidden="true">
-              {initials}
+              {accountPhoto ? <img src={accountPhoto} alt="" /> : initials}
             </span>
             <span className="workspace-identity-text">
               <b title={identity}>{identity}</b>
-              <small>Customer</small>
+              <small>{subtitle}</small>
             </span>
           </button>
         ) : (
           <>
-            <span className="avatar">{role === 'mechanic' ? 'VA' : 'AD'}</span>
+            <span className="avatar">AD</span>
             <div>
               <b>{roleLabel[role]}</b>
               <small>Demo workspace</small>
@@ -97,12 +114,14 @@ export function WorkspaceSidebar({
         <div className="sidebar-label">WORKSPACE</div>
         {navItems[role].map(([id, label]) => {
           const Icon = icons[id];
+          const selected =
+            tab === id || (id.startsWith('appointments') && tab.startsWith('appointments'));
           return (
             <button
               type="button"
-              className={tab === id ? 'selected' : ''}
+              className={selected ? 'selected' : ''}
               key={id}
-              aria-current={tab === id ? 'page' : undefined}
+              aria-current={selected ? 'page' : undefined}
               onClick={() => route(id)}
             >
               <Icon size={18} />
@@ -113,14 +132,14 @@ export function WorkspaceSidebar({
         })}
       </div>
       <div className="sidebar-bottom">
-        {!customer && (
+        {!simplified && (
           <Card as="div" className="sidebar-help">
             <ShieldCheck size={22} />
             <b>Clarity at every step.</b>
             <p>Explore the journey with sample accounts and data.</p>
           </Card>
         )}
-        {!customer && (
+        {!simplified && (
           <button type="button" onClick={goHome}>
             <ArrowUpRight size={17} />
             Visit website
@@ -128,7 +147,7 @@ export function WorkspaceSidebar({
         )}
         <button type="button" onClick={logout}>
           <LogOut size={17} />
-          {customer ? 'Sign out' : 'Sign out / switch preview'}
+          {simplified ? 'Sign out' : 'Sign out / switch preview'}
         </button>
       </div>
     </aside>

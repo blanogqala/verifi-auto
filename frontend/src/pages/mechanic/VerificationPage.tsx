@@ -39,22 +39,27 @@ export function VerificationPage({ data, name, note, notify, profile, route, upd
           ),
           'Business profile',
           'Add contact details, service area, expertise, and services.',
-          'profile',
+          'profile/business',
         ],
         [
           data.documents.some((d: any) => d.kind === 'Identity evidence'),
           'Identity evidence',
           'Select a non-sensitive sample identity file.',
-          'documents',
+          'profile/documents',
         ],
         [
           data.documents.some((d: any) => d.kind === 'Qualifications / experience'),
           'Qualifications or experience',
           'Add sample evidence of professional capability.',
-          'documents',
+          'profile/documents',
         ],
       ].map(([done, t, desc, target]: any) => (
-        <button className="checklist-row" key={t} onClick={() => route(target)}>
+        <button
+          className="checklist-row"
+          key={t}
+          data-profile-target={target}
+          onClick={() => route(target)}
+        >
           <span className={done ? 'check-circle complete' : 'check-circle'}>
             {done ? <Check size={17} /> : <span />}
           </span>

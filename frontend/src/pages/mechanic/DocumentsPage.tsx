@@ -112,7 +112,7 @@ export function DocumentsPage({
               text="Select sample files or use the sample evidence button."
             />
           )}
-          <button className="text-link" onClick={() => route('application')}>
+          <button className="text-link" onClick={() => route('profile/verification')}>
             View application checklist <ArrowRight size={17} />
           </button>
         </Card>

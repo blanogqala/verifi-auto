@@ -32,17 +32,6 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
             },
           }));
           notify('Demo profile saved in this browser.');
-        } else {
-          update((d: any) => ({
-            ...d,
-            settings: {
-              ...d.settings,
-              name: f.get('name'),
-              email: f.get('email'),
-              emailUpdates: f.get('emailUpdates') === 'on',
-            },
-          }));
-          notify('Demo settings saved in this browser.');
         }
       }}
     >
@@ -76,11 +65,11 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
             This setting is illustrative and does not open public applications.
           </div>
         </>
-      ) : (
+      ) : customer ? (
         <>
           <div className="form-row">
             <label>
-              {customer ? 'Full name' : 'Display name'}
+              Full name
               <input name="name" required defaultValue={data.settings.name} />
             </label>
             <label>
@@ -97,7 +86,7 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
             Email updates preference
           </label>
         </>
-      )}
+      ) : null}
       <button className="primary" type="submit">
         {customer ? 'Save profile' : 'Save settings'} <Check size={17} />
       </button>

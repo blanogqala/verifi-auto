@@ -1,11 +1,14 @@
 import type { RefObject } from 'react';
 import { Menu, Bell, ChevronRight, Sun, Moon } from 'lucide-react';
 import { customerInitials } from '../features/account/customerIdentity';
+import { merchantProfileSection } from '../config/navigation';
 import { Role, roleLabel } from '../demo';
 
 export type WorkspaceTopbarProps = {
   accountName?: string;
+  accountPhoto?: string;
   heading: string;
+  sectionLabel?: string;
   role: Role;
   route: (tab: string) => void;
   setSide: (open: boolean) => void;
@@ -20,7 +23,9 @@ export type WorkspaceTopbarProps = {
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function WorkspaceTopbar({
   accountName = '',
+  accountPhoto = '',
   heading,
+  sectionLabel = '',
   role,
   route,
   setSide,
@@ -33,8 +38,16 @@ export function WorkspaceTopbar({
 }: WorkspaceTopbarProps) {
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
   const customer = role === 'customer';
-  const profileActive = customer && tab === 'profile';
-  const notificationsActive = customer && tab === 'notifications';
+  const merchant = role === 'mechanic';
+  const workspaceRole = merchant ? 'Mechanic' : roleLabel[role];
+  const profileActive = customer
+    ? tab === 'profile'
+    : merchant
+      ? merchantProfileSection(tab) !== null
+      : false;
+  const notificationsActive = (customer || merchant) && tab === 'notifications';
+  const notifyClass = customer ? 'customer-notify' : merchant ? 'mechanic-notify' : '';
+  const profileTarget = merchant ? 'profile/business' : 'profile';
   return (
     <div className="workspace-top">
       <button
@@ -49,7 +62,13 @@ export function WorkspaceTopbar({
         <Menu size={20} />
       </button>
       <span>
-        {roleLabel[role]} workspace <ChevronRight size={13} /> {heading}
+        {workspaceRole} workspace <ChevronRight size={13} /> {heading}
+        {sectionLabel ? (
+          <>
+            {' '}
+            <ChevronRight size={13} /> {sectionLabel}
+          </>
+        ) : null}
       </span>
       <div>
         <span className="chip">DEMO DATA</span>
@@ -64,9 +83,7 @@ export function WorkspaceTopbar({
         </button>
         <button
           type="button"
-          className={
-            customer ? 'customer-notify' + (notificationsActive ? ' active' : '') : undefined
-          }
+          className={notifyClass ? notifyClass + (notificationsActive ? ' active' : '') : undefined}
           aria-label="Notifications"
           aria-current={notificationsActive ? 'page' : undefined}
           onClick={() => (role === 'admin' ? route('reports') : route('notifications'))}
@@ -74,18 +91,18 @@ export function WorkspaceTopbar({
           <Bell size={19} />
           {unread > 0 && <i />}
         </button>
-        {customer ? (
+        {customer || merchant ? (
           <button
             type="button"
             className={'avatar small profile-link' + (profileActive ? ' active' : '')}
             aria-label="Open profile"
             aria-current={profileActive ? 'page' : undefined}
-            onClick={() => route('profile')}
+            onClick={() => route(profileTarget)}
           >
-            {customerInitials(accountName)}
+            {accountPhoto ? <img src={accountPhoto} alt="" /> : customerInitials(accountName)}
           </button>
         ) : (
-          <span className="avatar small">{role === 'admin' ? 'AD' : 'VA'}</span>
+          <span className="avatar small">AD</span>
         )}
       </div>
     </div>

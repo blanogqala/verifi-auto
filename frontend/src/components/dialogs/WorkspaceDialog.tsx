@@ -139,6 +139,11 @@ export function WorkspaceDialog({
                 </div>
               </>
             )}
+            {dialog.job.rejectionReason && (
+              <div className="notice">
+                <b>Rejection reason:</b> {dialog.job.rejectionReason}
+              </div>
+            )}
             {dialog.job.notes && <p>{dialog.job.notes}</p>}
             {dialog.job.changeRequest && (
               <div className="notice">Customer requested: {dialog.job.changeRequest}</div>
@@ -150,9 +155,17 @@ export function WorkspaceDialog({
               {role === 'mechanic' && (
                 <>
                   {dialog.job.status === 'Requested' && (
-                    <button className="primary" onClick={() => jobAction(dialog.job, 'confirm')}>
-                      Confirm demo appointment
-                    </button>
+                    <>
+                      <button className="primary" onClick={() => jobAction(dialog.job, 'confirm')}>
+                        Accept request
+                      </button>
+                      <button
+                        className="secondary"
+                        onClick={() => setDialog({ ...dialog, kind: 'reject' })}
+                      >
+                        Reject request
+                      </button>
+                    </>
                   )}
                   {['Confirmed', 'Changes requested', 'Awaiting approval'].includes(
                     dialog.job.status,
@@ -365,12 +378,38 @@ export function WorkspaceDialog({
             <button className="primary full">Complete work & create demo invoice</button>
           </form>
         )}
-        {['pay', 'receipt'].includes(dialog.kind) && (
+        {dialog.kind === 'reject' && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const reason = String(new FormData(e.currentTarget).get('reason') || '');
+              jobAction(dialog.job, 'reject', { reason });
+            }}
+          >
+            <h2>Reject this request?</h2>
+            <p>
+              {dialog.job.id} · {dialog.job.vehicle}. The customer will see this reason. Only a
+              pending request can be rejected.
+            </p>
+            <label>
+              Reason
+              <textarea name="reason" required minLength={3} maxLength={240} />
+            </label>
+            <button className="primary full">Reject request</button>
+          </form>
+        )}
+        {['pay', 'receipt', 'invoice'].includes(dialog.kind) && (
           <>
             <span className="chip">
-              {dialog.kind === 'pay' ? 'PAYMENT PREVIEW' : 'DEMO RECEIPT'}
+              {dialog.kind === 'receipt' ? 'DEMO RECEIPT' : 'PAYMENT PREVIEW'}
             </span>
-            <h2>{dialog.kind === 'pay' ? 'Your repair invoice.' : 'Payment simulated.'}</h2>
+            <h2>
+              {dialog.kind === 'receipt'
+                ? 'Payment simulated.'
+                : dialog.kind === 'invoice'
+                  ? 'Repair invoice.'
+                  : 'Your repair invoice.'}
+            </h2>
             <p>
               {dialog.job.id}
               <br />
@@ -390,7 +429,12 @@ export function WorkspaceDialog({
               No real payment processor is connected. No card details are requested and no money is
               transferred. Assessment fee is separate.
             </div>
-            {dialog.kind === 'pay' ? (
+            {dialog.kind === 'invoice' ? (
+              <div className="notice">
+                Customer payment has not been recorded. This preview does not confirm a bank payout.
+              </div>
+            ) : null}
+            {dialog.kind === 'pay' && role === 'customer' ? (
               <button
                 className="primary full"
                 onClick={() =>
@@ -399,12 +443,12 @@ export function WorkspaceDialog({
               >
                 Simulate payment <Wallet size={17} />
               </button>
-            ) : (
+            ) : dialog.kind === 'receipt' ? (
               <div className="success-note">
                 <CheckCircle2 size={20} />
                 Demo payment recorded. Your service history has been updated.
               </div>
-            )}
+            ) : null}
           </>
         )}
         {dialog.kind === 'cancel' && (

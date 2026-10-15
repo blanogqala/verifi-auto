@@ -95,5 +95,18 @@ export const initialData = {
     city: 'East London',
     emailUpdates: true,
   },
+  mechanicAccount: {
+    name: 'Sam Okonkwo',
+    email: 'sam@example.com',
+    emailUpdates: true,
+  },
+  mechanicBanking: {
+    bankName: '',
+    accountHolder: '',
+    accountType: 'Cheque',
+    branchCode: '',
+    maskedAccount: '',
+    configured: false,
+  },
   platform: { pilot: 'Undecided', applicationsOpen: false },
 };

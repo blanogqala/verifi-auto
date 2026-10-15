@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
+import { isPendingRequest } from '../../features/jobs/jobViews';
 import { MetricCard as Metric } from '../../components/ui/MetricCard';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
@@ -63,7 +64,7 @@ export function OverviewPage({
                 role === 'customer'
                   ? 'quotes'
                   : role === 'mechanic'
-                    ? 'application'
+                    ? 'profile/verification'
                     : 'applications',
               )
             }
@@ -173,11 +174,23 @@ export function OverviewPage({
       <div className="dashboard-columns">
         <Card as="section" className="dash-panel">
           <div className="panel-title">
-            <h2>{role === 'admin' ? 'Application queue' : 'Recent appointments'}</h2>
+            <h2>
+              {role === 'admin'
+                ? 'Application queue'
+                : role === 'mechanic'
+                  ? 'Pending requests'
+                  : 'Recent appointments'}
+            </h2>
             <button
               className="text-link"
               onClick={() =>
-                route(role === 'admin' ? 'applications' : role === 'mechanic' ? 'jobs' : 'bookings')
+                route(
+                  role === 'admin'
+                    ? 'applications'
+                    : role === 'mechanic'
+                      ? 'appointments/pending'
+                      : 'bookings',
+                )
               }
             >
               View all <ArrowRight size={15} />
@@ -199,7 +212,17 @@ export function OverviewPage({
               </button>
             ))
           ) : (
-            <div className="mini-jobs">{cardJobs(jobs, 2)}</div>
+            <div className="mini-jobs">
+              {role === 'mechanic' ? (
+                jobs.some(isPendingRequest) ? (
+                  cardJobs(jobs.filter(isPendingRequest), 2)
+                ) : (
+                  <p className="muted">No pending requests. Accepted work is under Jobs.</p>
+                )
+              ) : (
+                cardJobs(jobs, 2)
+              )}
+            </div>
           )}
         </Card>
         <Card as="section" className="dash-panel quick-actions">
@@ -212,12 +235,12 @@ export function OverviewPage({
             : role === 'mechanic'
               ? [
                   [
-                    'profile',
+                    'profile/business',
                     'Build your profile',
                     'Tell customers about your expertise',
                     UserRound,
                   ],
-                  ['documents', 'Add your evidence', 'Prepare your application', Upload],
+                  ['profile/documents', 'Add your evidence', 'Prepare your application', Upload],
                 ]
               : [
                   ['professionals', 'Professional directory', 'Manage credential status', Users],

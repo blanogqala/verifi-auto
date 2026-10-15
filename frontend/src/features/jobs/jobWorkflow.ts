@@ -5,7 +5,7 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
   switch (action) {
     case 'confirm':
       if (job.status !== 'Requested') throw Error('Only a new request can be confirmed.');
-      return { ...job, status: 'Confirmed' };
+      return { ...job, status: 'Confirmed', accepted: true, quoteApproved: false };
     case 'quote':
       if (!['Confirmed', 'Awaiting approval', 'Changes requested'].includes(job.status))
         throw Error('Confirm the assessment before creating a quote.');
@@ -36,10 +36,23 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
       if (job.status !== 'Awaiting payment' || !job.quoteApproved)
         throw Error('Only completed approved work can be paid.');
       return { ...job, status: 'Completed', paid: true };
+    case 'reject':
+      if (job.status !== 'Requested') throw Error('Only a pending request can be rejected.');
+      if (!extra.reason?.trim()) throw Error('Add a short reason for rejecting this request.');
+      return {
+        ...job,
+        status: 'Rejected',
+        accepted: false,
+        rejectionReason: extra.reason.trim(),
+      };
     case 'cancel':
       if (!['Requested', 'Confirmed'].includes(job.status))
         throw Error('This request cannot be cancelled at this stage.');
-      return { ...job, status: 'Cancelled' };
+      return {
+        ...job,
+        status: 'Cancelled',
+        accepted: job.status === 'Confirmed' ? true : job.accepted === true,
+      };
     default:
       throw Error('Unknown action');
   }

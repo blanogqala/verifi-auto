@@ -16,6 +16,46 @@ export const publicSections: PublicSection[] = [
 
 export const roles: Role[] = ['customer', 'mechanic', 'admin'];
 export const roleLabel = { customer: 'Customer', mechanic: 'Mechanic', admin: 'Platform admin' };
+export const merchantProfileSections = [
+  'business',
+  'documents',
+  'banking',
+  'verification',
+] as const;
+export type MerchantProfileSection = (typeof merchantProfileSections)[number];
+export const merchantProfileSectionLabel: Record<MerchantProfileSection, string> = {
+  business: 'Business profile',
+  documents: 'Documents',
+  banking: 'Banking details',
+  verification: 'Verification status',
+};
+
+const legacyMerchantSections: Record<string, MerchantProfileSection> = {
+  profile: 'business',
+  'profile/account': 'business',
+  'profile/business': 'business',
+  'profile/documents': 'documents',
+  'profile/banking': 'banking',
+  'profile/verification': 'verification',
+  settings: 'business',
+  documents: 'documents',
+  application: 'verification',
+};
+
+export const appointmentSections = ['pending', 'rejected', 'cancelled'] as const;
+export type AppointmentSection = (typeof appointmentSections)[number];
+
+export function appointmentSection(tab: string): AppointmentSection | null {
+  if (tab === 'appointments' || tab === 'appointments/pending') return 'pending';
+  if (tab === 'appointments/rejected') return 'rejected';
+  if (tab === 'appointments/cancelled') return 'cancelled';
+  return null;
+}
+
+export function merchantProfileSection(tab: string): MerchantProfileSection | null {
+  return legacyMerchantSections[tab] ?? null;
+}
+
 export const navItems = {
   customer: [
     ['overview', 'Overview'],
@@ -26,13 +66,9 @@ export const navItems = {
   ],
   mechanic: [
     ['overview', 'Overview'],
-    ['jobs', 'Appointments & jobs'],
-    ['quotes', 'Quotes & invoices'],
-    ['profile', 'Business profile'],
-    ['documents', 'Documents'],
-    ['application', 'Verification status'],
-    ['notifications', 'Notifications'],
-    ['settings', 'Account settings'],
+    ['appointments/pending', 'Appointments'],
+    ['jobs', 'Jobs'],
+    ['payments', 'Payments'],
   ],
   admin: [
     ['overview', 'Overview'],
@@ -56,7 +92,20 @@ export const allowedDashboardPages: Record<Role, string[]> = {
     'notifications',
     'profile',
   ],
-  mechanic: navItems.mechanic.map(([id]) => id),
+  mechanic: [
+    'overview',
+    'appointments/pending',
+    'appointments/rejected',
+    'appointments/cancelled',
+    'jobs',
+    'payments',
+    'quotes',
+    'notifications',
+    'profile/business',
+    'profile/documents',
+    'profile/banking',
+    'profile/verification',
+  ],
   admin: navItems.admin.map(([id]) => id),
 };
 
@@ -67,10 +116,21 @@ const hiddenPageTitles: Partial<Record<Role, Record<string, string>>> = {
     profile: 'Profile',
     settings: 'Profile',
   },
+  mechanic: {
+    quotes: 'Quotes & invoices',
+    notifications: 'Notifications',
+    profile: 'Profile',
+    settings: 'Profile',
+    documents: 'Profile',
+    application: 'Profile',
+    appointments: 'Appointments',
+  },
 };
 
 export function pageTitle(role: Role, tab: string) {
   const visible = navItems[role].find(([id]) => id === tab);
   if (visible) return visible[1];
+  if (role === 'mechanic' && (tab.startsWith('profile/') || tab === 'profile')) return 'Profile';
+  if (role === 'mechanic' && tab.startsWith('appointments')) return 'Appointments';
   return hiddenPageTitles[role]?.[tab] ?? 'Overview';
 }
