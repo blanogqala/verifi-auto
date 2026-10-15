@@ -9,7 +9,16 @@ import { useState, useEffect, useRef } from 'react';
 
 import { Workspace } from './layouts/WorkspaceLayout';
 import { AuthPage as Auth } from './pages/auth/AuthPage';
-import { Role, roles, canVisit, useDemoStore } from './demo';
+import { Role, roles, canVisit, canonicalPage, useDemoStore } from './demo';
+
+function storedRole(): Role | null {
+  try {
+    const saved = sessionStorage.getItem('verifi-demo-role');
+    return roles.includes(saved as Role) ? (saved as Role) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function App() {
   const [theme, setTheme] = useState(() => {
@@ -19,15 +28,10 @@ export default function App() {
       return 'dark';
     }
   });
-  const [page, setPage] = useState(() => location.hash.slice(1) || 'home');
-  const [role, setRole] = useState<Role | null>(() => {
-    try {
-      const r = sessionStorage.getItem('verifi-demo-role');
-      return roles.includes(r as Role) ? (r as Role) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [page, setPage] = useState(() =>
+    canonicalPage(storedRole(), location.hash.slice(1) || 'home'),
+  );
+  const [role, setRole] = useState<Role | null>(storedRole);
   const [data, update] = useDemoStore();
   const [pending, setPending] = useState<any>(null);
   const [menu, setMenu] = useState(false);
@@ -94,6 +98,7 @@ export default function App() {
   }, [modal, step]);
   function go(p: string) {
     if (p === 'garage') p = 'dashboard/garage';
+    p = canonicalPage(role, p);
     if (p.startsWith('dashboard/') && !role) p = 'login';
     if (p.startsWith('dashboard/') && role && !canVisit(role, p)) p = 'dashboard/overview';
     setPage(p);
@@ -103,7 +108,8 @@ export default function App() {
   }
   useEffect(() => {
     const change = () => {
-      let p = location.hash.slice(1) || 'home';
+      const raw = location.hash.slice(1) || 'home';
+      let p = canonicalPage(role, raw);
       if (p.startsWith('dashboard/') && !role) p = 'login';
       else if (p.startsWith('dashboard/') && role && !canVisit(role, p)) p = 'dashboard/overview';
       if (
@@ -112,6 +118,7 @@ export default function App() {
       )
         p = 'home';
       setPage(p);
+      if (canonicalPage(role, raw) !== raw) location.hash = p;
     };
     window.addEventListener('hashchange', change);
     change();
@@ -198,12 +205,7 @@ export default function App() {
       const target = event.target;
       if (target instanceof HTMLElement) {
         const tag = target.tagName;
-        if (
-          target.isContentEditable ||
-          tag === 'INPUT' ||
-          tag === 'TEXTAREA' ||
-          tag === 'SELECT'
-        ) {
+        if (target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
           return;
         }
         if (event.key === ' ' && (tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY')) return;
@@ -325,6 +327,18 @@ export default function App() {
           notify={setToast}
           theme={theme}
           setTheme={setTheme}
+          directory={{
+            book,
+            city,
+            results,
+            service,
+            setCity,
+            setModal,
+            setService,
+            setStep,
+            setType,
+            type,
+          }}
         />
       ) : page === 'home' ? (
         <LandingPage

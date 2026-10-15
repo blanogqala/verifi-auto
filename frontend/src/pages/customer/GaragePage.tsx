@@ -46,7 +46,7 @@ export function GaragePage({ data, filter, go, setDialog }: any) {
                 </strong>
               </span>
             </div>
-            <button className="text-link" onClick={() => go('find')}>
+            <button className="text-link" onClick={() => go('dashboard/find')}>
               Find care for this vehicle <ArrowUpRight size={16} />
             </button>
           </Card>

@@ -1,10 +1,12 @@
 import { icons } from '../config/workspaceIcons';
 import { Card } from '../components/ui/Card';
+import { customerIdentityLabel, customerInitials } from '../features/account/customerIdentity';
 
 import { ArrowUpRight, ShieldCheck, LogOut, X } from 'lucide-react';
 import { Role, roleLabel, navItems } from '../demo';
 
 export type WorkspaceSidebarProps = {
+  accountName?: string;
   goHome: () => void;
   logout: () => void;
   onClose: () => void;
@@ -18,6 +20,7 @@ export type WorkspaceSidebarProps = {
 
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function WorkspaceSidebar({
+  accountName = '',
   goHome,
   logout,
   onClose,
@@ -29,6 +32,10 @@ export function WorkspaceSidebar({
   drawer,
 }: WorkspaceSidebarProps) {
   const dialog = drawer && side;
+  const customer = role === 'customer';
+  const identity = customerIdentityLabel(accountName);
+  const initials = customerInitials(accountName);
+  const profileActive = customer && tab === 'profile';
   return (
     <aside
       id="workspace-sidebar"
@@ -39,25 +46,52 @@ export function WorkspaceSidebar({
       tabIndex={dialog ? -1 : undefined}
     >
       <div className="sidebar-head">
-        <button type="button" className="sidebar-brand" onClick={goHome} aria-label="Verifi Auto home">
+        <button
+          type="button"
+          className="sidebar-brand"
+          onClick={goHome}
+          aria-label="Verifi Auto home"
+        >
           <span className="brand-icon">
             <img src="/logo.png" alt="" />
           </span>
           verifi<span className="brand-auto">auto</span>
           <i />
         </button>
-        <button type="button" className="sidebar-close" onClick={onClose} aria-label="Close navigation">
+        <button
+          type="button"
+          className="sidebar-close"
+          onClick={onClose}
+          aria-label="Close navigation"
+        >
           <X size={18} />
         </button>
       </div>
       <div className="workspace-tag">
-        <span className="avatar">
-          {role === 'customer' ? 'AM' : role === 'mechanic' ? 'VA' : 'AD'}
-        </span>
-        <div>
-          <b>{roleLabel[role]}</b>
-          <small>Demo workspace</small>
-        </div>
+        {customer ? (
+          <button
+            type="button"
+            className={'workspace-identity' + (profileActive ? ' active' : '')}
+            aria-current={profileActive ? 'page' : undefined}
+            onClick={() => route('profile')}
+          >
+            <span className="avatar" aria-hidden="true">
+              {initials}
+            </span>
+            <span className="workspace-identity-text">
+              <b title={identity}>{identity}</b>
+              <small>Customer</small>
+            </span>
+          </button>
+        ) : (
+          <>
+            <span className="avatar">{role === 'mechanic' ? 'VA' : 'AD'}</span>
+            <div>
+              <b>{roleLabel[role]}</b>
+              <small>Demo workspace</small>
+            </div>
+          </>
+        )}
       </div>
       <div className="sidebar-scroll">
         <div className="sidebar-label">WORKSPACE</div>
@@ -79,18 +113,22 @@ export function WorkspaceSidebar({
         })}
       </div>
       <div className="sidebar-bottom">
-        <Card as="div" className="sidebar-help">
-          <ShieldCheck size={22} />
-          <b>Clarity at every step.</b>
-          <p>Explore the journey with sample accounts and data.</p>
-        </Card>
-        <button type="button" onClick={goHome}>
-          <ArrowUpRight size={17} />
-          Visit website
-        </button>
+        {!customer && (
+          <Card as="div" className="sidebar-help">
+            <ShieldCheck size={22} />
+            <b>Clarity at every step.</b>
+            <p>Explore the journey with sample accounts and data.</p>
+          </Card>
+        )}
+        {!customer && (
+          <button type="button" onClick={goHome}>
+            <ArrowUpRight size={17} />
+            Visit website
+          </button>
+        )}
         <button type="button" onClick={logout}>
           <LogOut size={17} />
-          Sign out / switch preview
+          {customer ? 'Sign out' : 'Sign out / switch preview'}
         </button>
       </div>
     </aside>

@@ -13,9 +13,11 @@ import {
   ClipboardCheck,
   Users,
   AlertCircle,
+  Search,
 } from 'lucide-react';
 export const icons: any = {
   overview: LayoutDashboard,
+  find: Search,
   bookings: Calendar,
   quotes: FileText,
   garage: Car,

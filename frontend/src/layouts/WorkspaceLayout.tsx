@@ -15,6 +15,7 @@ import { ApplicationsPage } from '../pages/admin/ApplicationsPage';
 import { NotificationsPage } from '../pages/shared/NotificationsPage';
 import { ReportsPage } from '../pages/admin/ReportsPage';
 import { SettingsPage } from '../pages/shared/SettingsPage';
+import { ProfessionalsPage } from '../pages/public/ProfessionalsPage';
 
 import { StatusBadge as Status } from '../components/ui/StatusBadge';
 import { useState, useEffect, useRef } from 'react';
@@ -36,7 +37,34 @@ import {
   AlertCircle,
   Users,
 } from 'lucide-react';
-import { Role, navItems, quoteTotal, transitionJob } from '../demo';
+import { customerFullName } from '../features/account/customerIdentity';
+import { Role, pageTitle, transitionJob } from '../demo';
+
+export type DirectoryProps = {
+  book: (professional: any) => void;
+  city: string;
+  results: any[];
+  service: string;
+  setCity: (value: string) => void;
+  setModal: (value: any) => void;
+  setService: (value: string) => void;
+  setStep: (value: number) => void;
+  setType: (value: string) => void;
+  type: string;
+};
+
+const emptyDirectory: DirectoryProps = {
+  book: () => {},
+  city: 'All locations',
+  results: [],
+  service: 'All services',
+  setCity: () => {},
+  setModal: () => {},
+  setService: () => {},
+  setStep: () => {},
+  setType: () => {},
+  type: 'Either',
+};
 
 export type WorkspaceProps = {
   role: Role;
@@ -48,6 +76,7 @@ export type WorkspaceProps = {
   notify: (message: string) => void;
   theme?: string;
   setTheme?: (theme: string) => void;
+  directory?: DirectoryProps;
 };
 
 export function Workspace({
@@ -60,6 +89,7 @@ export function Workspace({
   notify,
   theme = 'dark',
   setTheme = () => {},
+  directory = emptyDirectory,
 }: WorkspaceProps) {
   const [side, setSide] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -120,7 +150,8 @@ export function Workspace({
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', onKey, true);
-      if (menuButtonRef.current && document.contains(menuButtonRef.current)) menuButtonRef.current.focus();
+      if (menuButtonRef.current && document.contains(menuButtonRef.current))
+        menuButtonRef.current.focus();
     };
   }, [side, drawer]);
   useEffect(() => {
@@ -158,13 +189,15 @@ export function Workspace({
   }, [dialog?.kind]);
   const jobs = data.jobs;
   const unread = data.notifications.filter((n: any) => !n.read).length;
+  const accountName = role === 'customer' ? data.settings?.name : '';
+  const customerName = customerFullName(accountName);
   const name =
     role === 'customer'
-      ? data.settings.name.split(' ')[0]
+      ? customerName.split(/\s+/)[0] || 'Customer'
       : role === 'mechanic'
         ? data.profile.name
         : 'Verifi team';
-  const heading = (navItems[role as Role].find(([id]) => id === tab) || ['', 'Overview'])[1];
+  const heading = pageTitle(role, tab);
   const apps = [
     ...(data.application.status !== 'Draft'
       ? [
@@ -293,9 +326,15 @@ export function Workspace({
   return (
     <div className={'workspace' + (drawer && side ? ' drawer-open' : '')}>
       {drawer && side ? (
-        <button type="button" className="sidebar-backdrop" aria-label="Close navigation" onClick={() => setSide(false)} />
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setSide(false)}
+        />
       ) : null}
       <WorkspaceSidebar
+        accountName={accountName}
         drawer={drawer}
         goHome={goHome}
         logout={logout}
@@ -308,6 +347,7 @@ export function Workspace({
       />
       <main className="workspace-main">
         <WorkspaceTopbar
+          accountName={accountName}
           heading={heading}
           menuButtonRef={menuButtonRef}
           role={role}
@@ -315,36 +355,39 @@ export function Workspace({
           setSide={setSide}
           setTheme={setTheme}
           side={side}
+          tab={tab}
           theme={theme}
           unread={unread}
         />
         <div className="workspace-body">
-          <div className="workspace-heading">
-            <div>
-              <div className="eyebrow">
-                {role === 'customer'
-                  ? 'YOUR JOURNEY, SIMPLIFIED'
-                  : role === 'mechanic'
-                    ? 'KEEP GOOD WORK MOVING'
-                    : 'A CLEARER STANDARD OF CARE'}
+          {tab !== 'find' && (
+            <div className="workspace-heading">
+              <div>
+                <div className="eyebrow">
+                  {role === 'customer'
+                    ? 'YOUR JOURNEY, SIMPLIFIED'
+                    : role === 'mechanic'
+                      ? 'KEEP GOOD WORK MOVING'
+                      : 'A CLEARER STANDARD OF CARE'}
+                </div>
+                <h1>
+                  {tab === 'overview'
+                    ? `Welcome${role === 'customer' ? ' back' : ''}, ${name}.`
+                    : heading}
+                </h1>
+                <p>
+                  {tab === 'overview'
+                    ? 'Here’s what needs your attention today.'
+                    : 'Manage everything you need, in one place.'}
+                </p>
               </div>
-              <h1>
-                {tab === 'overview'
-                  ? `Welcome${role === 'customer' ? ' back' : ''}, ${name}.`
-                  : heading}
-              </h1>
-              <p>
-                {tab === 'overview'
-                  ? 'Here’s what needs your attention today.'
-                  : 'Manage everything you need, in one place.'}
-              </p>
+              {role === 'customer' && (
+                <button className="primary" onClick={() => go('dashboard/find')}>
+                  Find a professional <Plus size={17} />
+                </button>
+              )}
             </div>
-            {role === 'customer' && (
-              <button className="primary" onClick={() => go('find')}>
-                Find a professional <Plus size={17} />
-              </button>
-            )}
-          </div>
+          )}
           {tab === 'overview' && (
             <OverviewPage
               apps={apps}
@@ -385,7 +428,22 @@ export function Workspace({
           {tab === 'payments' && (
             <PaymentsPage filter={filter} jobs={jobs} note={note} setDialog={setDialog} />
           )}
-          {tab === 'profile' && (
+          {tab === 'find' && role === 'customer' && (
+            <ProfessionalsPage
+              embedded
+              book={directory.book}
+              city={directory.city}
+              results={directory.results}
+              service={directory.service}
+              setCity={directory.setCity}
+              setModal={directory.setModal}
+              setService={directory.setService}
+              setStep={directory.setStep}
+              setType={directory.setType}
+              type={directory.type}
+            />
+          )}
+          {tab === 'profile' && role === 'mechanic' && (
             <BusinessProfilePage
               filter={filter}
               name={name}
@@ -433,7 +491,8 @@ export function Workspace({
           )}
           {tab === 'notifications' && <NotificationsPage data={data} update={update} />}
           {tab === 'reports' && <ReportsPage data={data} note={note} setDialog={setDialog} />}
-          {tab === 'settings' && (
+          {((role === 'customer' && (tab === 'profile' || tab === 'settings')) ||
+            (role !== 'customer' && tab === 'settings')) && (
             <SettingsPage
               data={data}
               logout={logout}

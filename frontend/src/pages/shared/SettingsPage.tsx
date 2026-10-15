@@ -4,6 +4,7 @@ import { Check, LogOut } from 'lucide-react';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function SettingsPage({ data, logout, name, notify, role, update }: any) {
+  const customer = role === 'customer';
   return (
     <Card
       as="form"
@@ -19,6 +20,18 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
               applicationsOpen: f.get('applicationsOpen') === 'on',
             },
           }));
+          notify('Demo settings saved in this browser.');
+        } else if (customer) {
+          update((d: any) => ({
+            ...d,
+            settings: {
+              ...d.settings,
+              name: String(f.get('name') || '').trim(),
+              email: String(f.get('email') || '').trim(),
+              emailUpdates: f.get('emailUpdates') === 'on',
+            },
+          }));
+          notify('Demo profile saved in this browser.');
         } else {
           update((d: any) => ({
             ...d,
@@ -29,13 +42,17 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
               emailUpdates: f.get('emailUpdates') === 'on',
             },
           }));
+          notify('Demo settings saved in this browser.');
         }
-        notify('Demo settings saved in this browser.');
       }}
     >
-      <h2>{role === 'admin' ? 'Pilot configuration' : 'Your account details'}</h2>
+      <h2>
+        {role === 'admin' ? 'Pilot configuration' : customer ? 'Profile' : 'Your account details'}
+      </h2>
       <p className="muted">
-        Use sample details. Settings do not create a real account or send notifications.
+        {customer
+          ? 'Use sample details. This profile stays in this browser and does not create a real account or send notifications.'
+          : 'Use sample details. Settings do not create a real account or send notifications.'}
       </p>
       {role === 'admin' ? (
         <>
@@ -63,7 +80,7 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
         <>
           <div className="form-row">
             <label>
-              Display name
+              {customer ? 'Full name' : 'Display name'}
               <input name="name" required defaultValue={data.settings.name} />
             </label>
             <label>
@@ -82,7 +99,7 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
         </>
       )}
       <button className="primary" type="submit">
-        Save settings <Check size={17} />
+        {customer ? 'Save profile' : 'Save settings'} <Check size={17} />
       </button>
       <div className="settings-divider">
         <h3>Explore another workspace</h3>

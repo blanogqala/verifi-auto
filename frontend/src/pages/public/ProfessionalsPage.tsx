@@ -7,6 +7,7 @@ import { ArrowUpRight, ShieldCheck, MapPin, Wrench, Search } from 'lucide-react'
 export function ProfessionalsPage({
   book,
   city,
+  embedded = false,
   results,
   service,
   setCity,
@@ -16,8 +17,9 @@ export function ProfessionalsPage({
   setType,
   type,
 }: any) {
+  const Tag = embedded ? 'div' : 'main';
   return (
-    <main className="section app-page">
+    <Tag className={'section app-page' + (embedded ? ' directory-embedded' : '')}>
       <div className="eyebrow">FIND YOUR NEXT PROFESSIONAL</div>
       <h1>
         Good hands.
@@ -95,6 +97,6 @@ export function ProfessionalsPage({
           </button>
         </Card>
       )}
-    </main>
+    </Tag>
   );
 }

@@ -19,12 +19,10 @@ export const roleLabel = { customer: 'Customer', mechanic: 'Mechanic', admin: 'P
 export const navItems = {
   customer: [
     ['overview', 'Overview'],
+    ['find', 'Find a Professional'],
     ['bookings', 'My bookings'],
-    ['quotes', 'Quotes & approvals'],
     ['garage', 'My Garage'],
     ['payments', 'Payments'],
-    ['notifications', 'Notifications'],
-    ['settings', 'Account settings'],
   ],
   mechanic: [
     ['overview', 'Overview'],
@@ -45,3 +43,34 @@ export const navItems = {
     ['settings', 'Platform settings'],
   ],
 };
+
+/** Dashboard routes a role may open. This is separate from the visible sidebar. */
+export const allowedDashboardPages: Record<Role, string[]> = {
+  customer: [
+    'overview',
+    'find',
+    'bookings',
+    'garage',
+    'payments',
+    'quotes',
+    'notifications',
+    'profile',
+  ],
+  mechanic: navItems.mechanic.map(([id]) => id),
+  admin: navItems.admin.map(([id]) => id),
+};
+
+const hiddenPageTitles: Partial<Record<Role, Record<string, string>>> = {
+  customer: {
+    quotes: 'Quotes & approvals',
+    notifications: 'Notifications',
+    profile: 'Profile',
+    settings: 'Profile',
+  },
+};
+
+export function pageTitle(role: Role, tab: string) {
+  const visible = navItems[role].find(([id]) => id === tab);
+  if (visible) return visible[1];
+  return hiddenPageTitles[role]?.[tab] ?? 'Overview';
+}

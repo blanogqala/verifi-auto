@@ -1,13 +1,16 @@
 import type { RefObject } from 'react';
 import { Menu, Bell, ChevronRight, Sun, Moon } from 'lucide-react';
+import { customerInitials } from '../features/account/customerIdentity';
 import { Role, roleLabel } from '../demo';
 
 export type WorkspaceTopbarProps = {
+  accountName?: string;
   heading: string;
   role: Role;
   route: (tab: string) => void;
   setSide: (open: boolean) => void;
   side: boolean;
+  tab: string;
   unread: number;
   theme: string;
   setTheme: (theme: string) => void;
@@ -16,17 +19,22 @@ export type WorkspaceTopbarProps = {
 
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function WorkspaceTopbar({
+  accountName = '',
   heading,
   role,
   route,
   setSide,
   side,
+  tab,
   unread,
   theme,
   setTheme,
   menuButtonRef,
 }: WorkspaceTopbarProps) {
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
+  const customer = role === 'customer';
+  const profileActive = customer && tab === 'profile';
+  const notificationsActive = customer && tab === 'notifications';
   return (
     <div className="workspace-top">
       <button
@@ -56,13 +64,29 @@ export function WorkspaceTopbar({
         </button>
         <button
           type="button"
+          className={
+            customer ? 'customer-notify' + (notificationsActive ? ' active' : '') : undefined
+          }
           aria-label="Notifications"
+          aria-current={notificationsActive ? 'page' : undefined}
           onClick={() => (role === 'admin' ? route('reports') : route('notifications'))}
         >
           <Bell size={19} />
           {unread > 0 && <i />}
         </button>
-        <span className="avatar small">{role === 'admin' ? 'AD' : role === 'mechanic' ? 'VA' : 'AM'}</span>
+        {customer ? (
+          <button
+            type="button"
+            className={'avatar small profile-link' + (profileActive ? ' active' : '')}
+            aria-label="Open profile"
+            aria-current={profileActive ? 'page' : undefined}
+            onClick={() => route('profile')}
+          >
+            {customerInitials(accountName)}
+          </button>
+        ) : (
+          <span className="avatar small">{role === 'admin' ? 'AD' : 'VA'}</span>
+        )}
       </div>
     </div>
   );
