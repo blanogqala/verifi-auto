@@ -824,7 +824,7 @@ body:has(.modal-backdrop) {
   flex: 1 0 auto;
   width: 100%;
   box-sizing: border-box;
-  padding: 36px;
+  padding: 36px 36px 0 36px;
   max-width: 1450px;
   margin: 0 auto;
 }
@@ -1707,6 +1707,7 @@ td .text-link {
 @media (min-width: 1600px) {
   .workspace-body {
     padding: 45px;
+    height: 100%;
   }
 }
 @media (max-width: 1200px) {
@@ -1715,7 +1716,7 @@ td .text-link {
     padding: 14px 12px 12px;
   }
   .workspace-body {
-    padding: 28px;
+    padding: 28px 28px 0 28px;
   }
   .workspace-top {
     padding: 18px 28px;
@@ -1812,7 +1813,7 @@ td .text-link {
     padding: 11px 9px;
   }
   .workspace-body {
-    padding: 25px;
+    padding: 25px 25px 0 25px;
   }
   .workspace-top {
     padding: 18px 25px;
@@ -2002,8 +2003,8 @@ td .text-link {
   }
   .workspace-body {
     width: 100%;
-    padding: 28px calc(6% + env(safe-area-inset-right))
-      calc(28px + env(safe-area-inset-bottom)) calc(6% + env(safe-area-inset-left));
+
+    padding: 28px 28px 0 28px;
   }
   .workspace-heading {
     display: block;
