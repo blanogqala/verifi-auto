@@ -18,9 +18,15 @@ const mechanicLegacyPages: Record<string, string> = {
   'dashboard/appointments': 'dashboard/appointments/pending',
 };
 
+const adminLegacyPages: Record<string, string> = {
+  'dashboard/settings': 'dashboard/profile/platform',
+  'dashboard/profile': 'dashboard/profile/account',
+};
+
 /** Keep older dashboard links usable without treating them as separate pages. */
 export function canonicalPage(role: Role | null, page: string) {
   if (role === 'customer' && page === 'dashboard/settings') return 'dashboard/profile';
   if (role === 'mechanic' && mechanicLegacyPages[page]) return mechanicLegacyPages[page];
+  if (role === 'admin' && adminLegacyPages[page]) return adminLegacyPages[page];
   return page;
 }

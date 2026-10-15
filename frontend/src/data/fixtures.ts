@@ -9,7 +9,7 @@ export const initialData = {
     fee: 450,
   },
   documents: [] as any[],
-  application: { status: 'Draft', submittedAt: '', note: '' },
+  application: { status: 'Draft', submittedAt: '', note: '', previouslyApproved: false },
   vehicles: [
     {
       id: 'v1',
@@ -36,6 +36,7 @@ export const initialData = {
       notes: 'Replace worn front brake pads and inspect the braking system.',
       quoteApproved: false,
       paid: false,
+      customerId: 'cust-01',
     },
   ],
   records: [
@@ -67,6 +68,7 @@ export const initialData = {
       status: 'Pending review',
       date: '2026-10-13',
       note: '',
+      previouslyApproved: false,
     },
     {
       id: 'app-03',
@@ -76,6 +78,7 @@ export const initialData = {
       status: 'Approved',
       date: '2026-10-10',
       note: 'Sample review completed.',
+      previouslyApproved: true,
     },
   ],
   notifications: [
@@ -90,11 +93,22 @@ export const initialData = {
     },
   ],
   settings: {
+    id: 'cust-01',
     name: 'Alex Morgan',
     email: 'alex@example.com',
     city: 'East London',
     emailUpdates: true,
   },
+  customers: [
+    {
+      id: 'cust-01',
+      name: 'Alex Morgan',
+      email: 'alex@example.com',
+      city: 'East London',
+      phone: '',
+      sample: true,
+    },
+  ],
   mechanicAccount: {
     name: 'Sam Okonkwo',
     email: 'sam@example.com',
@@ -109,4 +123,8 @@ export const initialData = {
     configured: false,
   },
   platform: { pilot: 'Undecided', applicationsOpen: false },
+  adminAccount: {
+    name: 'Naledi Khumalo',
+    email: 'admin@example.com',
+  },
 };

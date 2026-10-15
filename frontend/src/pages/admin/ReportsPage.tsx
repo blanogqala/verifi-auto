@@ -5,10 +5,10 @@ import { ArrowRight } from 'lucide-react';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
-export function ReportsPage({ data, note, setDialog }: any) {
+export function ReportsPage({ data, setDialog }: any) {
   return (
     <Card as="section" className="dash-panel">
-      <h2>Reports & support</h2>
+      <h2>Support cases</h2>
       <p className="muted">
         Illustrative support cases. No messages are sent outside this preview.
       </p>

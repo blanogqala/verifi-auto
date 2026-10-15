@@ -1,14 +1,14 @@
+import { useEffect, useState } from 'react';
 import { icons } from '../config/workspaceIcons';
-import { Card } from '../components/ui/Card';
 import {
+  adminIdentityLabel,
   customerIdentityLabel,
   customerInitials,
   merchantIdentityLabel,
 } from '../features/account/customerIdentity';
-import { merchantProfileSection } from '../config/navigation';
-
-import { ArrowUpRight, ShieldCheck, LogOut, X } from 'lucide-react';
-import { Role, roleLabel, navItems } from '../demo';
+import { adminProfileSection, isNavGroup, merchantProfileSection, navItems } from '../config/navigation';
+import { ChevronRight, LogOut, X } from 'lucide-react';
+import { Role } from '../demo';
 
 export type WorkspaceSidebarProps = {
   accountName?: string;
@@ -23,6 +23,92 @@ export type WorkspaceSidebarProps = {
   unread: number;
   drawer: boolean;
 };
+
+function itemSelected(id: string, tab: string) {
+  if (tab === id) return true;
+  if (id === 'applications' && tab.startsWith('applications/')) return true;
+  if (id === 'reports' && (tab === 'reports' || tab.startsWith('reports/'))) return true;
+  if (id.startsWith('appointments') && tab.startsWith('appointments')) return true;
+  return false;
+}
+
+function NavButton({
+  id,
+  label,
+  onClick,
+  selected,
+  tabIndex,
+  unread,
+}: {
+  id: string;
+  label: string;
+  onClick: () => void;
+  selected: boolean;
+  tabIndex?: number;
+  unread: number;
+}) {
+  const Icon = icons[id];
+  return (
+    <button
+      type="button"
+      className={'nav-item' + (selected ? ' selected' : '')}
+      aria-current={selected ? 'page' : undefined}
+      tabIndex={tabIndex}
+      onClick={onClick}
+    >
+      {Icon ? <Icon size={18} /> : null}
+      {label}
+      {id === 'notifications' && unread > 0 && <span className="nav-count">{unread}</span>}
+    </button>
+  );
+}
+
+function UsersGroup({
+  items,
+  route,
+  tab,
+  unread,
+}: {
+  items: [string, string][];
+  route: (tab: string) => void;
+  tab: string;
+  unread: number;
+}) {
+  const activeChild = items.some(([id]) => tab === id);
+  const [open, setOpen] = useState(activeChild);
+  const UsersIcon = icons.users;
+  useEffect(() => {
+    if (activeChild) setOpen(true);
+  }, [tab, activeChild]);
+  return (
+    <div className="nav-group">
+      <button
+        type="button"
+        className={'nav-item nav-parent' + (activeChild ? ' nav-parent-active' : '')}
+        aria-expanded={open}
+        aria-controls="nav-users-items"
+        onClick={() => setOpen((current) => !current)}
+      >
+        {UsersIcon ? <UsersIcon size={18} /> : null}
+        Users
+        <ChevronRight className="nav-chevron" size={16} aria-hidden="true" />
+      </button>
+      <div id="nav-users-items" className="nav-children" hidden={!open} inert={!open ? true : undefined}>
+        {items.map(([id, label]) => (
+          <NavButton
+            key={id}
+            id={id}
+            label={label}
+            selected={tab === id}
+            tabIndex={open ? undefined : -1}
+            unread={unread}
+            onClick={() => route(id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function WorkspaceSidebar({
@@ -41,18 +127,20 @@ export function WorkspaceSidebar({
   const dialog = drawer && side;
   const customer = role === 'customer';
   const merchant = role === 'mechanic';
-  const simplified = customer || merchant;
+  const admin = role === 'admin';
   const identity = merchant
     ? merchantIdentityLabel(accountName)
-    : customerIdentityLabel(accountName);
+    : admin
+      ? adminIdentityLabel(accountName)
+      : customerIdentityLabel(accountName);
   const initials = customerInitials(accountName);
   const profileActive = customer
     ? tab === 'profile'
     : merchant
       ? merchantProfileSection(tab) !== null
-      : false;
-  const profileTarget = merchant ? 'profile/business' : 'profile';
-  const subtitle = merchant ? 'Mechanic' : 'Customer';
+      : adminProfileSection(tab) !== null;
+  const profileTarget = merchant ? 'profile/business' : admin ? 'profile/account' : 'profile';
+  const subtitle = merchant ? 'Mechanic' : admin ? 'Platform admin' : 'Customer';
   return (
     <aside
       id="workspace-sidebar"
@@ -85,69 +173,52 @@ export function WorkspaceSidebar({
         </button>
       </div>
       <div className="workspace-tag">
-        {simplified ? (
-          <button
-            type="button"
-            className={'workspace-identity' + (profileActive ? ' active' : '')}
-            aria-current={profileActive ? 'page' : undefined}
-            onClick={() => route(profileTarget)}
-          >
-            <span className="avatar" aria-hidden="true">
-              {accountPhoto ? <img src={accountPhoto} alt="" /> : initials}
-            </span>
-            <span className="workspace-identity-text">
-              <b title={identity}>{identity}</b>
-              <small>{subtitle}</small>
-            </span>
-          </button>
-        ) : (
-          <>
-            <span className="avatar">AD</span>
-            <div>
-              <b>{roleLabel[role]}</b>
-              <small>Demo workspace</small>
-            </div>
-          </>
-        )}
+        <button
+          type="button"
+          className={'workspace-identity' + (profileActive ? ' active' : '')}
+          aria-current={profileActive ? 'page' : undefined}
+          onClick={() => route(profileTarget)}
+        >
+          <span className="avatar" aria-hidden="true">
+            {accountPhoto ? <img src={accountPhoto} alt="" /> : initials}
+          </span>
+          <span className="workspace-identity-text">
+            <b title={identity}>{identity}</b>
+            <small>{subtitle}</small>
+          </span>
+        </button>
       </div>
       <div className="sidebar-scroll">
         <div className="sidebar-label">WORKSPACE</div>
-        {navItems[role].map(([id, label]) => {
-          const Icon = icons[id];
-          const selected =
-            tab === id || (id.startsWith('appointments') && tab.startsWith('appointments'));
+        {navItems[role].map((entry) => {
+          if (isNavGroup(entry)) {
+            return (
+              <UsersGroup
+                key={entry.id}
+                route={route}
+                tab={tab}
+                unread={unread}
+                items={entry.children}
+              />
+            );
+          }
+          const [id, label] = entry;
           return (
-            <button
-              type="button"
-              className={selected ? 'selected' : ''}
+            <NavButton
               key={id}
-              aria-current={selected ? 'page' : undefined}
+              id={id}
+              label={label}
+              selected={itemSelected(id, tab)}
+              unread={unread}
               onClick={() => route(id)}
-            >
-              <Icon size={18} />
-              {label}
-              {id === 'notifications' && unread > 0 && <span className="nav-count">{unread}</span>}
-            </button>
+            />
           );
         })}
       </div>
       <div className="sidebar-bottom">
-        {!simplified && (
-          <Card as="div" className="sidebar-help">
-            <ShieldCheck size={22} />
-            <b>Clarity at every step.</b>
-            <p>Explore the journey with sample accounts and data.</p>
-          </Card>
-        )}
-        {!simplified && (
-          <button type="button" onClick={goHome}>
-            <ArrowUpRight size={17} />
-            Visit website
-          </button>
-        )}
         <button type="button" onClick={logout}>
           <LogOut size={17} />
-          {simplified ? 'Sign out' : 'Sign out / switch preview'}
+          Sign out
         </button>
       </div>
     </aside>

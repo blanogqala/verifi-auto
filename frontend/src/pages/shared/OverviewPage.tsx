@@ -197,7 +197,11 @@ export function OverviewPage({
             </button>
           </div>
           {role === 'admin' ? (
-            apps.slice(0, 3).map((a: any) => (
+            apps.filter((item: any) => item.status === 'Pending review').slice(0, 3).length ? (
+            apps
+              .filter((item: any) => item.status === 'Pending review')
+              .slice(0, 3)
+              .map((a: any) => (
               <button className="queue-row" onClick={() => openReview(a)} key={a.id}>
                 <span className="avatar">
                   <Wrench size={19} />
@@ -211,6 +215,9 @@ export function OverviewPage({
                 <Status value={a.status} />
               </button>
             ))
+            ) : (
+              <p className="muted">No applications are waiting for review.</p>
+            )
           ) : (
             <div className="mini-jobs">
               {role === 'mechanic' ? (
@@ -243,8 +250,8 @@ export function OverviewPage({
                   ['profile/documents', 'Add your evidence', 'Prepare your application', Upload],
                 ]
               : [
-                  ['professionals', 'Professional directory', 'Manage credential status', Users],
-                  ['reports', 'Reports & support', 'Resolve outstanding questions', AlertCircle],
+                  ['professionals', 'Professionals', 'Approved and suspended profiles', Users],
+                  ['reports/support', 'Analytics & support', 'Resolve outstanding questions', AlertCircle],
                 ]
           ).map(([t, a, b, I]: any) => (
             <button key={t} onClick={() => route(t)}>

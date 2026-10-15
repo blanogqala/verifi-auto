@@ -21,3 +21,7 @@ export function customerIdentityLabel(name: unknown) {
 export function merchantIdentityLabel(name: unknown) {
   return customerFullName(name) || 'Mechanic';
 }
+
+export function adminIdentityLabel(name: unknown) {
+  return customerFullName(name) || 'Admin';
+}

@@ -1,5 +1,17 @@
 import { Role } from '../types/roles';
 
+export type NavLeaf = [string, string];
+export type NavGroup = {
+  id: string;
+  label: string;
+  children: NavLeaf[];
+};
+export type NavEntry = NavLeaf | NavGroup;
+
+export function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return !Array.isArray(entry);
+}
+
 export type PublicSection = {
   id: string;
   label: string;
@@ -56,7 +68,7 @@ export function merchantProfileSection(tab: string): MerchantProfileSection | nu
   return legacyMerchantSections[tab] ?? null;
 }
 
-export const navItems = {
+export const navItems: Record<Role, NavEntry[]> = {
   customer: [
     ['overview', 'Overview'],
     ['find', 'Find a Professional'],
@@ -73,12 +85,23 @@ export const navItems = {
   admin: [
     ['overview', 'Overview'],
     ['applications', 'Applications'],
-    ['professionals', 'Professionals'],
+    {
+      id: 'users',
+      label: 'Users',
+      children: [
+        ['professionals', 'Professionals'],
+        ['customers', 'Customers'],
+      ],
+    },
     ['jobs', 'Jobs & activity'],
-    ['reports', 'Reports & support'],
-    ['settings', 'Platform settings'],
+    ['reports', 'Analytics & support'],
+    ['finance', 'Finance'],
   ],
 };
+
+export function navLeaves(role: Role): NavLeaf[] {
+  return navItems[role].flatMap((entry) => (isNavGroup(entry) ? entry.children : [entry]));
+}
 
 /** Dashboard routes a role may open. This is separate from the visible sidebar. */
 export const allowedDashboardPages: Record<Role, string[]> = {
@@ -106,8 +129,43 @@ export const allowedDashboardPages: Record<Role, string[]> = {
     'profile/banking',
     'profile/verification',
   ],
-  admin: navItems.admin.map(([id]) => id),
+  admin: [
+    'overview',
+    'applications',
+    'applications/history',
+    'professionals',
+    'customers',
+    'jobs',
+    'reports',
+    'reports/analytics',
+    'reports/support',
+    'finance',
+    'profile/account',
+    'profile/platform',
+  ],
 };
+
+export const adminProfileSections = ['account', 'platform'] as const;
+export type AdminProfileSection = (typeof adminProfileSections)[number];
+export const adminProfileSectionLabel: Record<AdminProfileSection, string> = {
+  account: 'Profile',
+  platform: 'Platform settings',
+};
+
+export function adminProfileSection(tab: string): AdminProfileSection | null {
+  if (tab === 'profile/platform' || tab === 'settings') return 'platform';
+  if (tab === 'profile' || tab === 'profile/account') return 'account';
+  return null;
+}
+
+export const analyticsSections = ['analytics', 'support'] as const;
+export type AnalyticsSection = (typeof analyticsSections)[number];
+
+export function analyticsSection(tab: string): AnalyticsSection | null {
+  if (tab === 'reports/support') return 'support';
+  if (tab === 'reports' || tab === 'reports/analytics') return 'analytics';
+  return null;
+}
 
 const hiddenPageTitles: Partial<Record<Role, Record<string, string>>> = {
   customer: {
@@ -125,12 +183,25 @@ const hiddenPageTitles: Partial<Record<Role, Record<string, string>>> = {
     application: 'Profile',
     appointments: 'Appointments',
   },
+  admin: {
+    settings: 'Admin profile',
+    profile: 'Admin profile',
+    'profile/account': 'Admin profile',
+    'profile/platform': 'Admin profile',
+    'applications/history': 'Applications',
+    'reports/analytics': 'Analytics & support',
+    'reports/support': 'Analytics & support',
+  },
 };
 
 export function pageTitle(role: Role, tab: string) {
-  const visible = navItems[role].find(([id]) => id === tab);
+  const visible = navLeaves(role).find(([id]) => id === tab);
   if (visible) return visible[1];
   if (role === 'mechanic' && (tab.startsWith('profile/') || tab === 'profile')) return 'Profile';
   if (role === 'mechanic' && tab.startsWith('appointments')) return 'Appointments';
+  if (role === 'admin' && (tab === 'profile' || tab.startsWith('profile/') || tab === 'settings'))
+    return 'Admin profile';
+  if (role === 'admin' && tab.startsWith('reports')) return 'Analytics & support';
+  if (role === 'admin' && tab.startsWith('applications')) return 'Applications';
   return hiddenPageTitles[role]?.[tab] ?? 'Overview';
 }

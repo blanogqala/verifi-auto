@@ -1,7 +1,7 @@
 import type { RefObject } from 'react';
 import { Menu, Bell, ChevronRight, Sun, Moon } from 'lucide-react';
 import { customerInitials } from '../features/account/customerIdentity';
-import { merchantProfileSection } from '../config/navigation';
+import { adminProfileSection, analyticsSection, merchantProfileSection } from '../config/navigation';
 import { Role, roleLabel } from '../demo';
 
 export type WorkspaceTopbarProps = {
@@ -39,15 +39,24 @@ export function WorkspaceTopbar({
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
   const customer = role === 'customer';
   const merchant = role === 'mechanic';
+  const admin = role === 'admin';
   const workspaceRole = merchant ? 'Mechanic' : roleLabel[role];
   const profileActive = customer
     ? tab === 'profile'
     : merchant
       ? merchantProfileSection(tab) !== null
-      : false;
-  const notificationsActive = (customer || merchant) && tab === 'notifications';
-  const notifyClass = customer ? 'customer-notify' : merchant ? 'mechanic-notify' : '';
-  const profileTarget = merchant ? 'profile/business' : 'profile';
+      : adminProfileSection(tab) !== null;
+  const notificationsActive = admin
+    ? analyticsSection(tab) === 'support'
+    : (customer || merchant) && tab === 'notifications';
+  const notifyClass = customer
+    ? 'customer-notify'
+    : merchant
+      ? 'mechanic-notify'
+      : admin
+        ? 'admin-notify'
+        : '';
+  const profileTarget = merchant ? 'profile/business' : admin ? 'profile/account' : 'profile';
   return (
     <div className="workspace-top">
       <button
@@ -61,7 +70,7 @@ export function WorkspaceTopbar({
       >
         <Menu size={20} />
       </button>
-      <span>
+      <span className="workspace-crumb">
         {workspaceRole} workspace <ChevronRight size={13} /> {heading}
         {sectionLabel ? (
           <>
@@ -86,24 +95,20 @@ export function WorkspaceTopbar({
           className={notifyClass ? notifyClass + (notificationsActive ? ' active' : '') : undefined}
           aria-label="Notifications"
           aria-current={notificationsActive ? 'page' : undefined}
-          onClick={() => (role === 'admin' ? route('reports') : route('notifications'))}
+          onClick={() => (admin ? route('reports/support') : route('notifications'))}
         >
           <Bell size={19} />
           {unread > 0 && <i />}
         </button>
-        {customer || merchant ? (
-          <button
-            type="button"
-            className={'avatar small profile-link' + (profileActive ? ' active' : '')}
-            aria-label="Open profile"
-            aria-current={profileActive ? 'page' : undefined}
-            onClick={() => route(profileTarget)}
-          >
-            {accountPhoto ? <img src={accountPhoto} alt="" /> : customerInitials(accountName)}
-          </button>
-        ) : (
-          <span className="avatar small">AD</span>
-        )}
+        <button
+          type="button"
+          className={'avatar small profile-link' + (profileActive ? ' active' : '')}
+          aria-label="Open profile"
+          aria-current={profileActive ? 'page' : undefined}
+          onClick={() => route(profileTarget)}
+        >
+          {accountPhoto ? <img src={accountPhoto} alt="" /> : customerInitials(accountName)}
+        </button>
       </div>
     </div>
   );

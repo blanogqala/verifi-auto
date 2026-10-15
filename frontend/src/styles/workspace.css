@@ -439,7 +439,7 @@ button.workspace-identity.active:active {
   color: var(--sidebar-muted);
   padding: 2px 12px 10px;
 }
-.sidebar-scroll > button,
+.sidebar-scroll .nav-item,
 .sidebar-bottom > button {
   display: flex;
   align-items: center;
@@ -452,14 +452,38 @@ button.workspace-identity.active:active {
   margin-bottom: 4px;
   width: 100%;
 }
-.sidebar-scroll > button:not(.selected):hover,
+.sidebar-scroll .nav-item:not(.selected):hover,
 .sidebar-bottom > button:hover {
   background: var(--sidebar-hover);
 }
-.sidebar-scroll > button.selected,
-.sidebar-scroll > button.selected:hover {
+.sidebar-scroll .nav-item.selected,
+.sidebar-scroll .nav-item.selected:hover {
   color: #fff;
   background: var(--sidebar-active);
+}
+.nav-chevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+.nav-parent[aria-expanded='true'] .nav-chevron {
+  transform: rotate(90deg);
+}
+.nav-children:not([hidden]) {
+  display: grid;
+  margin: 0 0 4px 14px;
+  padding-left: 8px;
+  border-left: 1px solid var(--sidebar-divider);
+}
+.nav-children[hidden] {
+  display: none !important;
+}
+.sidebar-scroll .nav-item.nav-parent-active {
+  background: rgb(123 54 204 / 22%);
+  box-shadow: inset 3px 0 0 rgb(214 184 255 / 85%);
+}
+.sidebar-scroll .nav-item.nav-parent-active:hover {
+  background: rgb(123 54 204 / 34%);
 }
 .sidebar-bottom {
   margin-top: auto;
@@ -500,7 +524,7 @@ button.workspace-identity.active:active {
   padding: 2px;
   font-size: 9px;
 }
-.sidebar-scroll > button.selected .nav-count {
+.sidebar-scroll .nav-item.selected .nav-count {
   background: #fff;
   color: #5b249e;
 }
@@ -541,7 +565,7 @@ body:has(.modal-backdrop) {
 .workspace-top .theme {
   flex-shrink: 0;
 }
-.workspace-top > span {
+.workspace-crumb {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -572,7 +596,8 @@ body:has(.modal-backdrop) {
 }
 .workspace-top button.profile-link,
 .workspace-top button.customer-notify,
-.workspace-top button.mechanic-notify {
+.workspace-top button.mechanic-notify,
+.workspace-top button.admin-notify {
   flex-shrink: 0;
   filter: none;
 }
@@ -580,27 +605,31 @@ body:has(.modal-backdrop) {
   border-radius: 50%;
 }
 .workspace-top button.customer-notify,
-.workspace-top button.mechanic-notify {
+.workspace-top button.mechanic-notify,
+.workspace-top button.admin-notify {
   width: 36px;
   height: 36px;
   border-radius: 10px;
 }
 .workspace-top button.profile-link:hover,
 .workspace-top button.customer-notify:hover,
-.workspace-top button.mechanic-notify:hover {
+.workspace-top button.mechanic-notify:hover,
+.workspace-top button.admin-notify:hover {
   background: rgb(150 88 232 / 18%);
   box-shadow: 0 0 0 3px rgb(150 88 232 / 20%);
   filter: none;
 }
 .workspace-top button.profile-link:focus-visible,
 .workspace-top button.customer-notify:focus-visible,
-.workspace-top button.mechanic-notify:focus-visible {
+.workspace-top button.mechanic-notify:focus-visible,
+.workspace-top button.admin-notify:focus-visible {
   outline: 3px solid var(--purple);
   outline-offset: 3px;
 }
 .workspace-top button.profile-link.active,
 .workspace-top button.customer-notify.active,
-.workspace-top button.mechanic-notify.active {
+.workspace-top button.mechanic-notify.active,
+.workspace-top button.admin-notify.active {
   background: rgb(150 88 232 / 24%);
   box-shadow:
     0 0 0 2px var(--purple),
@@ -609,12 +638,14 @@ body:has(.modal-backdrop) {
 }
 .workspace-top button.profile-link.active:hover,
 .workspace-top button.customer-notify.active:hover,
-.workspace-top button.mechanic-notify.active:hover {
+.workspace-top button.mechanic-notify.active:hover,
+.workspace-top button.admin-notify.active:hover {
   background: rgb(150 88 232 / 34%);
 }
 .workspace-top button.profile-link:active,
 .workspace-top button.customer-notify:active,
-.workspace-top button.mechanic-notify:active {
+.workspace-top button.mechanic-notify:active,
+.workspace-top button.admin-notify:active {
   background: rgb(150 88 232 / 42%);
   transform: scale(0.96);
   filter: none;
@@ -1806,7 +1837,7 @@ td .text-link {
   .sidebar-brand .brand-icon img {
     height: 32px;
   }
-  .sidebar-scroll > button,
+  .sidebar-scroll .nav-item,
   .sidebar-bottom > button {
     font-size: 10px;
     gap: 9px;
@@ -1978,10 +2009,8 @@ td .text-link {
   .workspace-menu {
     display: grid !important;
   }
-  .workspace-top > span {
-    font-size: 9px;
-    margin-right: auto;
-    gap: 6px;
+  .workspace-top .workspace-crumb {
+    display: none;
   }
   .workspace-top > div {
     gap: 10px;
@@ -1997,7 +2026,8 @@ td .text-link {
     flex-shrink: 0;
   }
   .workspace-top button.customer-notify,
-  .workspace-top button.mechanic-notify {
+  .workspace-top button.mechanic-notify,
+  .workspace-top button.admin-notify {
     display: grid;
     flex-shrink: 0;
   }
@@ -2191,12 +2221,6 @@ td .text-link {
   .notification-row p {
     font-size: 11px;
   }
-  .workspace-top > span {
-    max-width: 200px;
-  }
-  .workspace-top > span svg {
-    flex-shrink: 0;
-  }
 }
 @media (max-width: 380px) {
   header {
@@ -2223,9 +2247,6 @@ td .text-link {
   .metric > span {
     font-size: 8px;
   }
-  .workspace-top > span {
-    font-size: 8px;
-  }
   .workspace .panel-title .primary {
     font-size: 9px;
     padding: 11px;
@@ -2233,6 +2254,22 @@ td .text-link {
   .check-grid {
     grid-template-columns: 1fr;
   }
+}
+.status-counts {
+  display: grid;
+  gap: 0;
+  margin: 8px 0 14px;
+}
+.status-counts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+.status-counts span {
+  color: var(--muted);
 }
 .provider-actions {
   display: flex;

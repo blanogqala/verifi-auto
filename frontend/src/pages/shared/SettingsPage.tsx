@@ -12,16 +12,7 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
       onSubmit={(e) => {
         e.preventDefault();
         const f = new FormData(e.currentTarget as HTMLFormElement);
-        if (role === 'admin') {
-          update((d: any) => ({
-            ...d,
-            platform: {
-              pilot: f.get('pilot'),
-              applicationsOpen: f.get('applicationsOpen') === 'on',
-            },
-          }));
-          notify('Demo settings saved in this browser.');
-        } else if (customer) {
+        if (customer) {
           update((d: any) => ({
             ...d,
             settings: {
@@ -35,37 +26,13 @@ export function SettingsPage({ data, logout, name, notify, role, update }: any) 
         }
       }}
     >
-      <h2>
-        {role === 'admin' ? 'Pilot configuration' : customer ? 'Profile' : 'Your account details'}
-      </h2>
+      <h2>{customer ? 'Profile' : 'Your account details'}</h2>
       <p className="muted">
         {customer
           ? 'Use sample details. This profile stays in this browser and does not create a real account or send notifications.'
           : 'Use sample details. Settings do not create a real account or send notifications.'}
       </p>
-      {role === 'admin' ? (
-        <>
-          <label>
-            Pilot city
-            <select name="pilot" defaultValue={data.platform.pilot}>
-              <option>Undecided</option>
-              <option>East London</option>
-              <option>Johannesburg</option>
-            </select>
-          </label>
-          <label className="check-label">
-            <input
-              name="applicationsOpen"
-              type="checkbox"
-              defaultChecked={data.platform.applicationsOpen}
-            />
-            Mark applications open in the demo configuration
-          </label>
-          <div className="notice">
-            This setting is illustrative and does not open public applications.
-          </div>
-        </>
-      ) : customer ? (
+      {customer ? (
         <>
           <div className="form-row">
             <label>

@@ -560,6 +560,36 @@ export function WorkspaceDialog({
             </div>
           </>
         )}
+        {dialog.kind === 'customer' && (
+          <>
+            <span className="chip">SAMPLE CUSTOMER · DEMO</span>
+            <h2>{dialog.customer.name || 'Name not recorded'}</h2>
+            <p>
+              {dialog.customer.email || 'Email not recorded'}
+              <br />
+              {dialog.customer.phone || 'Phone not recorded'}
+              {dialog.customer.city ? ` · ${dialog.customer.city}` : ''}
+            </p>
+            <h3>Bookings</h3>
+            {dialog.bookings?.length ? (
+              dialog.bookings.map((job: any) => (
+                <div className="document-row" key={job.id}>
+                  <div>
+                    <b>{job.id}</b>
+                    <small>
+                      {job.vehicle} · {job.provider || 'Mechanic not recorded'} · {job.status}
+                    </small>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="muted">No demo bookings are linked to this customer.</p>
+            )}
+            <div className="notice">
+              This is a read-only sample record. It does not change the customer account.
+            </div>
+          </>
+        )}
         {dialog.kind === 'report' && (
           <form
             onSubmit={(e) => {

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import {
   initialData,
   roles,
   navItems,
+  navLeaves,
   canSubmit,
   canVisit,
   canonicalPage,
@@ -21,14 +23,26 @@ import {
   isPendingRequest,
   bankingRecord,
   photoFileError,
+  decideApplication,
+  directoryEntries,
+  isPendingApplication,
+  isManagedProfessional,
+  isReviewHistory,
+  applicationRecords,
+  customerRecords,
+  recordedCustomerPayments,
+  awaitingCustomerPayments,
+  paymentRecordTotal,
 } from '../src/demo';
+import { providers } from '../src/data/professionals';
 import { Workspace } from '../src/layouts/WorkspaceLayout';
+import { WorkspaceDialog } from '../src/components/dialogs/WorkspaceDialog';
 import { PublicHeader } from '../src/layouts/PublicHeader';
 import { AuthPage as Auth } from '../src/pages/auth/AuthPage';
 import { ProfessionalsPage } from '../src/pages/public/ProfessionalsPage';
 let count = 0;
 for (const role of roles) {
-  for (const [tab] of navItems[role]) {
+  for (const [tab] of navLeaves(role)) {
     const html = renderToString(
       <Workspace
         role={role}
@@ -68,8 +82,23 @@ assert.equal(canVisit('customer', 'dashboard/jobs'), false);
 assert.equal(canVisit('customer', 'dashboard/settings'), false);
 assert.equal(canVisit('customer', 'dashboard/nope'), false);
 assert.equal(canVisit('admin', 'dashboard/applications'), true);
+assert.equal(canVisit('admin', 'dashboard/applications/history'), true);
+assert.equal(canVisit('admin', 'dashboard/professionals'), true);
+assert.equal(canVisit('admin', 'dashboard/customers'), true);
+assert.equal(canVisit('admin', 'dashboard/finance'), true);
+assert.equal(canVisit('admin', 'dashboard/reports'), true);
+assert.equal(canVisit('admin', 'dashboard/reports/support'), true);
+assert.equal(canVisit('admin', 'dashboard/reports/analytics'), true);
+assert.equal(canVisit('admin', 'dashboard/profile/account'), true);
+assert.equal(canVisit('admin', 'dashboard/profile/platform'), true);
 assert.equal(canVisit('admin', 'dashboard/find'), false);
-assert.equal(canVisit('admin', 'dashboard/settings'), true);
+assert.equal(canVisit('admin', 'dashboard/settings'), false);
+assert.equal(canVisit('admin', 'dashboard/profile'), false);
+assert.equal(canVisit('customer', 'dashboard/finance'), false);
+assert.equal(canVisit('customer', 'dashboard/customers'), false);
+assert.equal(canVisit('customer', 'dashboard/professionals'), false);
+assert.equal(canVisit('mechanic', 'dashboard/finance'), false);
+assert.equal(canVisit('mechanic', 'dashboard/reports/support'), false);
 assert.equal(canVisit('customer', 'dashboard/garage'), true);
 assert.equal(canVisit('customer', 'dashboard/find'), true);
 assert.equal(canVisit('customer', 'dashboard/profile'), true);
@@ -106,10 +135,13 @@ assert.equal(canonicalPage('mechanic', 'dashboard/application'), 'dashboard/prof
 assert.equal(canonicalPage('mechanic', 'dashboard/profile/account'), 'dashboard/profile/business');
 assert.equal(canonicalPage('mechanic', 'dashboard/appointments'), 'dashboard/appointments/pending');
 assert.equal(canonicalPage('customer', 'dashboard/payments'), 'dashboard/payments');
-assert.equal(canonicalPage('admin', 'dashboard/settings'), 'dashboard/settings');
+assert.equal(canonicalPage('admin', 'dashboard/settings'), 'dashboard/profile/platform');
+assert.equal(canonicalPage('admin', 'dashboard/profile'), 'dashboard/profile/account');
+assert.equal(canonicalPage('admin', 'dashboard/reports'), 'dashboard/reports');
+assert.equal(canonicalPage('admin', 'dashboard/reports/support'), 'dashboard/reports/support');
 assert.equal(canonicalPage(null, 'dashboard/settings'), 'dashboard/settings');
 assert.deepEqual(
-  navItems.customer.map(([id, label]) => `${id}:${label}`),
+  navLeaves('customer').map(([id, label]) => `${id}:${label}`),
   [
     'overview:Overview',
     'find:Find a Professional',
@@ -119,7 +151,7 @@ assert.deepEqual(
   ],
 );
 assert.deepEqual(
-  navItems.mechanic.map(([id, label]) => `${id}:${label}`),
+  navLeaves('mechanic').map(([id, label]) => `${id}:${label}`),
   [
     'overview:Overview',
     'appointments/pending:Appointments',
@@ -128,9 +160,17 @@ assert.deepEqual(
   ],
 );
 assert.deepEqual(
-  navItems.admin.map(([id]) => id),
-  ['overview', 'applications', 'professionals', 'jobs', 'reports', 'settings'],
+  navItems.admin.map((entry) => (Array.isArray(entry) ? entry[0] : entry.id)),
+  ['overview', 'applications', 'users', 'jobs', 'reports', 'finance'],
 );
+const usersNav = navItems.admin.find((entry) => !Array.isArray(entry) && entry.id === 'users');
+assert.ok(usersNav && !Array.isArray(usersNav));
+if (usersNav && !Array.isArray(usersNav)) {
+  assert.deepEqual(
+    usersNav.children.map(([id, label]) => `${id}:${label}`),
+    ['professionals:Professionals', 'customers:Customers'],
+  );
+}
 assert.equal(pageTitle('customer', 'profile'), 'Profile');
 assert.equal(pageTitle('customer', 'notifications'), 'Notifications');
 assert.equal(pageTitle('customer', 'quotes'), 'Quotes & approvals');
@@ -148,7 +188,15 @@ assert.equal(pageTitle('mechanic', 'payments'), 'Payments');
 assert.equal(pageTitle('mechanic', 'appointments/rejected'), 'Appointments');
 assert.equal(pageTitle('mechanic', 'jobs'), 'Jobs');
 assert.equal(pageTitle('mechanic', 'unknown'), 'Overview');
-assert.equal(pageTitle('admin', 'settings'), 'Platform settings');
+assert.equal(pageTitle('admin', 'settings'), 'Admin profile');
+assert.equal(pageTitle('admin', 'profile/account'), 'Admin profile');
+assert.equal(pageTitle('admin', 'profile/platform'), 'Admin profile');
+assert.equal(pageTitle('admin', 'reports'), 'Analytics & support');
+assert.equal(pageTitle('admin', 'reports/support'), 'Analytics & support');
+assert.equal(pageTitle('admin', 'finance'), 'Finance');
+assert.equal(pageTitle('admin', 'customers'), 'Customers');
+assert.equal(pageTitle('admin', 'professionals'), 'Professionals');
+assert.equal(pageTitle('admin', 'applications'), 'Applications');
 assert.equal(pageTitle('customer', 'unknown'), 'Overview');
 assert.equal(customerInitials('Alex Morgan'), 'AM');
 assert.equal(customerInitials('Jordan Blake'), 'JB');
@@ -420,19 +468,76 @@ assert.ok(!mechanicPayments.includes('Simulate payment'));
 assert.ok(!mechanicPayments.includes('Paid to your bank'));
 assert.ok(!mechanicPayments.includes('Available to withdraw'));
 const adminOverview = screen('admin', 'overview');
-assert.ok(adminOverview.includes('Visit website'));
-assert.ok(adminOverview.includes('Clarity at every step'));
-assert.ok(adminOverview.includes('Demo workspace'));
-assert.ok(adminOverview.includes('Sign out / switch preview'));
-assert.ok(!adminOverview.includes('Open profile'));
+assert.ok(!adminOverview.includes('Visit website'));
+assert.ok(!adminOverview.includes('Clarity at every step'));
+assert.ok(!adminOverview.includes('Demo workspace'));
+assert.ok(!adminOverview.includes('Sign out / switch preview'));
+assert.ok(adminOverview.includes('Sign out'));
+assert.ok(adminOverview.includes('Open profile'));
+assert.ok(adminOverview.includes('Naledi Khumalo'));
+assert.ok(adminOverview.includes('Platform admin'));
+assert.ok(/>\s*NK\s*</.test(adminOverview));
+assert.ok(adminOverview.includes('workspace-crumb'));
+assert.ok(!adminOverview.includes('profile-link active'));
+assert.ok(!adminOverview.includes('workspace-identity active'));
+assert.ok(adminOverview.includes('aria-controls="nav-users-items"'));
+assert.ok(adminOverview.includes('aria-expanded="false"'));
+const collapsedUsers = adminOverview.match(/<div[^>]*id="nav-users-items"[^>]*>/);
+assert.ok(collapsedUsers);
+assert.ok(collapsedUsers[0].includes('hidden'));
+assert.ok(adminOverview.includes('tabindex="-1"'));
+assert.ok(adminOverview.includes('Urban Auto Care'));
+assert.ok(!adminOverview.includes('Driveway Diagnostics'));
 assert.ok(!adminOverview.includes('merchant-notify'));
 assert.ok(!adminOverview.includes('mechanic-notify'));
 assert.ok(!adminOverview.includes('customer-notify'));
+assert.ok(adminOverview.includes('admin-notify'));
+for (const label of [
+  'Overview',
+  'Applications',
+  'Users',
+  'Professionals',
+  'Customers',
+  'Jobs &amp; activity',
+  'Analytics &amp; support',
+  'Finance',
+]) {
+  assert.ok(adminOverview.includes(label), label);
+}
+const adminOrder = [
+  'Overview',
+  'Applications',
+  'aria-controls="nav-users-items"',
+  'Professionals',
+  'Customers',
+  'Jobs &amp; activity',
+  'Analytics &amp; support',
+  'Finance',
+  'Sign out',
+];
+let adminAt = -1;
+for (const token of adminOrder) {
+  const at = adminOverview.indexOf(token);
+  assert.ok(at > adminAt, token);
+  adminAt = at;
+}
+assert.ok(!adminOverview.includes('Platform settings'));
 const adminSettings = screen('admin', 'settings');
 assert.ok(adminSettings.includes('Platform settings'));
 assert.ok(adminSettings.includes('Pilot configuration'));
+assert.ok(adminSettings.includes('does not open public applications'));
 assert.ok(!adminSettings.includes('Full name'));
-assert.ok(!adminSettings.includes('Open profile'));
+assert.ok(adminSettings.includes('Open profile'));
+assert.ok(adminSettings.includes('workspace-identity active'));
+assert.ok(adminSettings.includes('profile-link active'));
+assert.ok(adminSettings.includes('id="admin-tab-platform"'));
+const adminProfile = screen('admin', 'profile/account');
+assert.ok(adminProfile.includes('Full name'));
+assert.ok(adminProfile.includes('admin@example.com'));
+assert.ok(adminProfile.includes('separate from customer and mechanic'));
+assert.ok(!adminProfile.includes('Pilot city'));
+assert.ok(!adminProfile.includes('alex@example.com'));
+assert.ok(!adminProfile.includes('sam@example.com'));
 const stored = structuredClone(initialData);
 delete (stored as any).mechanicAccount;
 delete (stored as any).merchantAccount;
@@ -532,6 +637,7 @@ const request = {
   quoteApproved: false,
   paid: false,
   accepted: false,
+  customerId: 'cust-01',
 };
 const acceptedSame = transitionJob(request, 'confirm');
 assert.equal(acceptedSame.id, request.id);
@@ -611,6 +717,194 @@ assert.ok(!payHtml.includes('Paid to your bank'));
 const customerPay = screen('customer', 'payments', payData);
 assert.ok(customerPay.includes('Review &amp; pay'));
 assert.ok(!customerPay.includes('does not confirm a bank payout'));
+assert.ok(customerOverview.includes('class="workspace-crumb"'));
+assert.ok(mechanicOverview.includes('class="workspace-crumb"'));
+assert.ok(!customerOverview.includes('aria-controls="nav-users-items"'));
+assert.ok(!mechanicOverview.includes('aria-controls="nav-users-items"'));
+const workspaceCss = readFileSync('src/styles/workspace.css', 'utf8');
+const crumbStart = workspaceCss.indexOf('.workspace-crumb {');
+assert.ok(crumbStart > -1);
+assert.ok(workspaceCss.slice(crumbStart, crumbStart + 160).includes('display: flex'));
+const mobileCss = workspaceCss.slice(workspaceCss.indexOf('@media (max-width: 750px)'));
+const crumbHide = mobileCss.indexOf('.workspace-top .workspace-crumb');
+assert.ok(crumbHide > -1);
+assert.ok(mobileCss.slice(crumbHide, crumbHide + 80).includes('display: none'));
+assert.equal(applicationRecords(initialData).filter(isPendingApplication).map((item) => item.id).join(), 'app-02');
+assert.equal(applicationRecords(initialData).filter(isManagedProfessional).map((item) => item.id).join(), 'app-03');
+assert.ok(!directoryEntries(providers, initialData).some((item) => item.name === 'Urban Auto Care'));
+assert.ok(directoryEntries(providers, initialData).some((item) => item.name === 'Driveway Diagnostics'));
+const approvedData = structuredClone(initialData);
+approvedData.reviews = approvedData.reviews.map((item) =>
+  item.id === 'app-02' ? decideApplication(item, 'Approved', 'Evidence complete') : item,
+);
+assert.equal(
+  applicationRecords(approvedData).filter((item) => item.id === 'app-02').length,
+  1,
+);
+assert.equal(isPendingApplication(approvedData.reviews.find((item) => item.id === 'app-02')), false);
+assert.equal(isManagedProfessional(approvedData.reviews.find((item) => item.id === 'app-02')), true);
+assert.ok(!screen('admin', 'applications', approvedData).includes('Urban Auto Care'));
+assert.ok(screen('admin', 'professionals', approvedData).includes('Urban Auto Care'));
+assert.ok(screen('admin', 'professionals', approvedData).includes('Driveway Diagnostics'));
+assert.ok(directoryEntries(providers, approvedData).some((item) => item.name === 'Urban Auto Care'));
+const reviewRejected = structuredClone(initialData);
+reviewRejected.reviews = reviewRejected.reviews.map((item) =>
+  item.id === 'app-02' ? decideApplication(item, 'Rejected', 'Missing workshop photos') : item,
+);
+assert.equal(reviewRejected.reviews.find((item) => item.id === 'app-02').previouslyApproved, false);
+assert.equal(isReviewHistory(reviewRejected.reviews.find((item) => item.id === 'app-02')), true);
+assert.ok(!screen('admin', 'applications', reviewRejected).includes('Urban Auto Care'));
+assert.ok(screen('admin', 'applications/history', reviewRejected).includes('Missing workshop photos'));
+assert.ok(!screen('admin', 'professionals', reviewRejected).includes('Urban Auto Care'));
+const changesData = structuredClone(initialData);
+changesData.reviews = changesData.reviews.map((item) =>
+  item.id === 'app-02' ? decideApplication(item, 'Changes requested', 'Add experience evidence') : item,
+);
+assert.ok(screen('admin', 'applications/history', changesData).includes('Add experience evidence'));
+assert.ok(!screen('admin', 'applications', changesData).includes('Urban Auto Care'));
+const resubmitted = structuredClone(changesData);
+resubmitted.reviews = resubmitted.reviews.map((item) =>
+  item.id === 'app-02' ? { ...item, status: 'Pending review', note: '' } : item,
+);
+assert.ok(screen('admin', 'applications', resubmitted).includes('Urban Auto Care'));
+assert.ok(!screen('admin', 'applications/history', resubmitted).includes('Urban Auto Care'));
+const suspendedData = structuredClone(initialData);
+suspendedData.reviews = suspendedData.reviews.map((item) =>
+  item.id === 'app-03' ? decideApplication(item, 'Suspended', 'Sample suspension') : item,
+);
+assert.equal(suspendedData.reviews.find((item) => item.id === 'app-03').previouslyApproved, true);
+assert.equal(suspendedData.reviews.find((item) => item.id === 'app-03').id, 'app-03');
+assert.ok(screen('admin', 'professionals', suspendedData).includes('Driveway Diagnostics'));
+assert.ok(screen('admin', 'professionals', suspendedData).includes('Suspended'));
+assert.ok(!screen('admin', 'applications', suspendedData).includes('Driveway Diagnostics'));
+assert.ok(!directoryEntries(providers, suspendedData).some((item) => item.name === 'Driveway Diagnostics'));
+const queueHtml = screen('admin', 'applications');
+assert.ok(queueHtml.includes('Urban Auto Care'));
+assert.ok(!queueHtml.includes('Driveway Diagnostics'));
+assert.ok(!queueHtml.includes('<select'));
+assert.ok(queueHtml.includes('Review history'));
+const historyHtml = screen('admin', 'applications/history');
+assert.ok(historyHtml.includes('No review history yet.'));
+const professionalsHtml = screen('admin', 'professionals');
+assert.ok(professionalsHtml.includes('aria-expanded="true"'));
+assert.ok(professionalsHtml.includes('nav-parent-active'));
+const openUsers = professionalsHtml.match(/<div[^>]*id="nav-users-items"[^>]*>/);
+assert.ok(openUsers);
+assert.ok(!openUsers[0].includes('hidden'));
+assert.ok(professionalsHtml.includes('View profile'));
+assert.ok(professionalsHtml.includes('Not recorded'));
+assert.ok(!professionalsHtml.includes('tabindex="-1"'));
+const customersHtml = screen('admin', 'customers');
+assert.ok(customersHtml.includes('aria-expanded="true"'));
+assert.ok(customersHtml.includes('Alex Morgan'));
+assert.ok(customersHtml.includes('alex@example.com'));
+assert.ok(customersHtml.includes('Sample record'));
+assert.ok(customersHtml.includes('View details'));
+const noCustomers = structuredClone(initialData);
+noCustomers.customers = [];
+noCustomers.settings = { ...noCustomers.settings, name: ' ', email: ' ' };
+assert.equal(customerRecords(noCustomers).length, 0);
+assert.ok(screen('admin', 'customers', noCustomers).includes('No customer records.'));
+assert.ok(!screen('admin', 'customers', noCustomers).includes('Precision Motorworks'));
+const separated = structuredClone(initialData);
+delete separated.adminAccount;
+separated.settings.name = 'Alex Morgan';
+separated.profile.name = 'Harbour Workshop';
+const separatedData = normalizeDemoData(separated);
+assert.equal(separatedData.adminAccount.name, 'Naledi Khumalo');
+assert.equal(separatedData.adminAccount.email, 'admin@example.com');
+assert.equal(separatedData.settings.name, 'Alex Morgan');
+assert.notEqual(separatedData.adminAccount.name, separatedData.settings.name);
+assert.notEqual(separatedData.adminAccount.email, separatedData.mechanicAccount.email);
+assert.equal(separatedData.customers[0].id, 'cust-01');
+assert.equal(separatedData.customers[0].name, 'Alex Morgan');
+const renamedAdmin = structuredClone(initialData);
+renamedAdmin.adminAccount = { name: 'Thabo Ndlovu', email: 'thabo@example.com' };
+const renamedAdminHtml = screen('admin', 'overview', renamedAdmin);
+assert.ok(renamedAdminHtml.includes('Thabo Ndlovu'));
+assert.ok(/>\s*TN\s*</.test(renamedAdminHtml));
+assert.ok(!renamedAdminHtml.includes('Alex Morgan'));
+const blankAdmin = structuredClone(initialData);
+blankAdmin.adminAccount = { name: '   ', email: 'admin@example.com' };
+const blankAdminHtml = screen('admin', 'overview', blankAdmin);
+assert.ok(blankAdminHtml.includes('>Admin<'));
+assert.ok(/>\s*\?\s*</.test(blankAdminHtml));
+const customerDetail = renderToString(
+  <WorkspaceDialog
+    dialog={{
+      kind: 'customer',
+      customer: customerRecords(initialData)[0],
+      bookings: initialData.jobs,
+    }}
+    setDialog={() => {}}
+  />,
+);
+assert.ok(customerDetail.includes('Alex Morgan'));
+assert.ok(customerDetail.includes('VA-2026-1042'));
+assert.ok(customerDetail.includes('read-only sample record'));
+assert.ok(!customerDetail.includes('Simulate payment'));
+const financeJobs = [
+  {
+    ...initialData.jobs[0],
+    id: 'VA-AWAIT',
+    status: 'Awaiting payment',
+    paid: false,
+    quoteApproved: true,
+    customerId: 'cust-01',
+    provider: 'Precision Motorworks',
+  },
+  {
+    ...initialData.jobs[0],
+    id: 'VA-PAID',
+    status: 'Completed',
+    paid: true,
+    quoteApproved: true,
+    paidAt: '2026-10-12',
+    paymentReference: 'DEMO-100',
+    customerId: 'cust-01',
+    provider: 'On the Move Auto',
+  },
+  {
+    ...initialData.jobs[0],
+    id: 'VA-PAID',
+    status: 'Completed',
+    paid: true,
+    quoteApproved: true,
+    customerId: 'cust-01',
+  },
+];
+assert.equal(recordedCustomerPayments(financeJobs).length, 1);
+assert.equal(awaitingCustomerPayments(financeJobs).length, 1);
+assert.equal(paymentRecordTotal(recordedCustomerPayments(financeJobs)), quoteTotal(financeJobs[1]));
+assert.equal(paymentRecordTotal(awaitingCustomerPayments(financeJobs)), quoteTotal(financeJobs[0]));
+const financeData = structuredClone(initialData);
+financeData.jobs = financeJobs;
+const financeHtml = screen('admin', 'finance', financeData);
+assert.ok(financeHtml.includes('R' + paymentRecordTotal(recordedCustomerPayments(financeJobs)).toLocaleString()));
+assert.ok(financeHtml.includes('R' + paymentRecordTotal(awaitingCustomerPayments(financeJobs)).toLocaleString()));
+assert.ok(financeHtml.includes('Alex Morgan'));
+assert.ok(financeHtml.includes('Precision Motorworks'));
+assert.ok(financeHtml.includes('On the Move Auto'));
+assert.ok(financeHtml.includes('2026-10-12'));
+assert.ok(financeHtml.includes('DEMO-100'));
+assert.ok(financeHtml.includes('does not confirm a bank payout'));
+assert.equal((financeHtml.match(/VA-PAID/g) || []).length, 1);
+assert.ok(!financeHtml.includes('Review &amp; pay'));
+assert.ok(!financeHtml.includes('Simulate payment'));
+assert.ok(!financeHtml.includes('commission'));
+assert.ok(!financeHtml.includes('Paid to your bank'));
+assert.ok(!financeHtml.includes('Available to withdraw'));
+const analyticsHtml = screen('admin', 'reports');
+assert.ok(analyticsHtml.includes('id="analytics-tab-analytics"'));
+assert.ok(analyticsHtml.includes('Jobs by status'));
+assert.ok(analyticsHtml.includes('Pending applications'));
+assert.ok(analyticsHtml.includes('not trends'));
+const supportHtml = screen('admin', 'reports/support');
+assert.ok(supportHtml.includes('Support cases'));
+assert.ok(supportHtml.includes('Clarification requested on sample quote'));
+assert.ok(supportHtml.includes('Review case'));
+assert.ok(supportHtml.includes('admin-notify active'));
+assert.equal(migrated.jobs[0].customerId, 'cust-01');
 const publicHeader = renderToString(
   <PublicHeader
     accountLabel="Alex Morgan"

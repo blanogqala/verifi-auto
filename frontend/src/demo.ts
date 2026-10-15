@@ -16,6 +16,7 @@ export { photoFileError } from './features/account/profilePhoto';
 export { canSubmit } from './features/onboarding/applicationRules';
 export { applyAccountDetails } from './features/account/accountDetails';
 export {
+  adminIdentityLabel,
   customerFullName,
   customerIdentityLabel,
   customerInitials,
@@ -23,9 +24,37 @@ export {
   merchantIdentityLabel,
 } from './features/account/customerIdentity';
 export {
+  applicationRecords,
+  contactLine,
+  decideApplication,
+  directoryEntries,
+  isManagedProfessional,
+  isPendingApplication,
+  isReviewHistory,
+  rememberApproval,
+} from './features/admin/applicationRecords';
+export {
+  bookingsForCustomer,
+  customerNameForJob,
+  customerRecords,
+  demoCustomerId,
+} from './features/admin/customerRecords';
+export {
+  awaitingCustomerPayments,
+  money,
+  paymentRecordTotal,
+  recordedCustomerPayments,
+  uniqueJobs,
+} from './features/admin/paymentRecords';
+export {
+  adminProfileSection,
+  adminProfileSectionLabel,
+  analyticsSection,
   appointmentSection,
+  isNavGroup,
   merchantProfileSection,
   merchantProfileSectionLabel,
+  navLeaves,
   pageTitle,
 } from './config/navigation';
 export { canVisit, canonicalPage } from './routes/access';

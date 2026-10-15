@@ -31,6 +31,9 @@ export const icons: any = {
   documents: Upload,
   application: ShieldCheck,
   applications: ClipboardCheck,
-  professionals: Users,
+  professionals: ShieldCheck,
+  customers: UserRound,
+  users: Users,
+  finance: Wallet,
   reports: AlertCircle,
 };

@@ -1,3 +1,5 @@
+import { rememberApproval } from '../features/admin/applicationRecords';
+import { demoCustomerId } from '../features/admin/customerRecords';
 import { migrateJob } from '../features/jobs/jobViews';
 import { initialData } from './fixtures';
 
@@ -11,7 +13,58 @@ function accountFrom(value: any, fallback: any) {
   };
 }
 
-/** Fill mechanic defaults without replacing customer settings or other saved demo data. */
+function text(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeAdminAccount(value: any) {
+  const fallback = initialData.adminAccount;
+  if (!value || typeof value !== 'object') return { ...fallback };
+  return {
+    name: typeof value.name === 'string' ? value.name : fallback.name,
+    email: typeof value.email === 'string' ? value.email : fallback.email,
+  };
+}
+
+function normalizeCustomers(base: any) {
+  const settings = base.settings && typeof base.settings === 'object' ? base.settings : {};
+  const linkedId = text(settings.id) || demoCustomerId;
+  const source = Array.isArray(base.customers) ? base.customers : [];
+  const existing = source.find((item: any) => item && item.id === linkedId);
+  const settingsName = text(settings.name);
+  const existingName = text(existing?.name);
+  const settingsEmail = text(settings.email);
+  const existingEmail = text(existing?.email);
+  const linked = {
+    id: linkedId,
+    name: settingsName || existingName || initialData.customers[0].name,
+    email: settingsEmail || existingEmail || initialData.customers[0].email,
+    city: text(settings.city) || text(existing?.city) || initialData.customers[0].city,
+    phone: text(existing?.phone),
+    sample: true,
+  };
+  const others = source
+    .filter((item: any) => item && typeof item.id === 'string' && item.id && item.id !== linkedId)
+    .map((item: any) => ({
+      id: item.id,
+      name: text(item.name),
+      email: text(item.email),
+      city: text(item.city),
+      phone: text(item.phone),
+      sample: item.sample !== false,
+    }))
+    .filter((item: any) => item.name || item.email);
+  return [linked, ...others];
+}
+
+function normalizeSettings(base: any, linkedId: string) {
+  if (!base.settings || typeof base.settings !== 'object') {
+    return { ...initialData.settings, id: linkedId };
+  }
+  return { ...base.settings, id: text(base.settings.id) || linkedId };
+}
+
+/** Fill missing demo defaults without replacing customer, mechanic, or admin identity. */
 export function normalizeDemoData(saved: any) {
   const base = saved && typeof saved === 'object' ? saved : {};
   const fallback = initialData.mechanicAccount;
@@ -28,10 +81,28 @@ export function normalizeDemoData(saved: any) {
           configured: banking.configured === true,
         }
       : { ...initialData.mechanicBanking };
+  const adminAccount = normalizeAdminAccount(base.adminAccount);
+  const customers = normalizeCustomers(base);
+  const settings = normalizeSettings(base, customers[0].id);
   return {
     ...base,
+    settings,
+    customers,
+    adminAccount,
     mechanicAccount,
     mechanicBanking,
-    jobs: Array.isArray(base.jobs) ? base.jobs.map(migrateJob) : base.jobs,
+    application:
+      base.application && typeof base.application === 'object'
+        ? rememberApproval(base.application)
+        : base.application,
+    reviews: Array.isArray(base.reviews) ? base.reviews.map(rememberApproval) : base.reviews,
+    jobs: Array.isArray(base.jobs)
+      ? base.jobs.map((job: any) => {
+          const next = migrateJob(job);
+          if (!next || typeof next !== 'object') return next;
+          if (typeof next.customerId === 'string' && next.customerId) return next;
+          return { ...next, customerId: demoCustomerId };
+        })
+      : base.jobs,
   };
 }

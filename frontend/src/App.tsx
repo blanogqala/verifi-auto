@@ -9,7 +9,15 @@ import { useState, useEffect, useRef } from 'react';
 
 import { Workspace } from './layouts/WorkspaceLayout';
 import { AuthPage as Auth } from './pages/auth/AuthPage';
-import { Role, roles, canVisit, canonicalPage, applyAccountDetails, useDemoStore } from './demo';
+import {
+  Role,
+  roles,
+  canVisit,
+  canonicalPage,
+  applyAccountDetails,
+  directoryEntries,
+  useDemoStore,
+} from './demo';
 
 function storedRole(): Role | null {
   try {
@@ -263,22 +271,7 @@ export default function App() {
     setDate('');
     setVehicle('');
   }
-  const directory = [
-    ...providers.filter(
-      (p) => !data.reviews.some((a: any) => a.name === p.name && a.status !== 'Approved'),
-    ),
-    ...(data.application.status === 'Approved'
-      ? [
-          {
-            name: data.profile.name,
-            type: data.profile.type,
-            area: data.profile.city,
-            special: data.profile.services.join(' · '),
-            fee: data.profile.fee,
-          },
-        ]
-      : []),
-  ];
+  const directory = directoryEntries(providers, data);
   const results = directory.filter(
     (p) =>
       (city === 'All locations' || p.area === city) &&

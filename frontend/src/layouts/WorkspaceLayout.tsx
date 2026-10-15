@@ -12,8 +12,12 @@ import { AppointmentsPage } from '../pages/mechanic/AppointmentsPage';
 import { MechanicPaymentsPage } from '../pages/mechanic/MechanicPaymentsPage';
 import { MerchantProfilePage } from '../pages/mechanic/MerchantProfilePage';
 import { ApplicationsPage } from '../pages/admin/ApplicationsPage';
+import { ProfessionalsAdminPage } from '../pages/admin/ProfessionalsAdminPage';
+import { CustomersPage } from '../pages/admin/CustomersPage';
+import { AnalyticsPage } from '../pages/admin/AnalyticsPage';
+import { FinancePage } from '../pages/admin/FinancePage';
+import { AdminProfilePage } from '../pages/admin/AdminProfilePage';
 import { NotificationsPage } from '../pages/shared/NotificationsPage';
-import { ReportsPage } from '../pages/admin/ReportsPage';
 import { SettingsPage } from '../pages/shared/SettingsPage';
 import { ProfessionalsPage } from '../pages/public/ProfessionalsPage';
 
@@ -40,8 +44,17 @@ import {
 import { customerFullName } from '../features/account/customerIdentity';
 import {
   Role,
+  adminProfileSection,
+  adminProfileSectionLabel,
+  analyticsSection,
+  applicationRecords,
   appointmentSection,
+  customerRecords,
+  decideApplication,
   isAcceptedJob,
+  isManagedProfessional,
+  isPendingApplication,
+  isReviewHistory,
   merchantProfileSection,
   merchantProfileSectionLabel,
   pageTitle,
@@ -140,7 +153,9 @@ export function Workspace({
       if (event.key !== 'Tab' || !sidebar) return;
       const items = Array.from(
         sidebar.querySelectorAll<HTMLElement>('button, a, input, select, textarea, [tabindex="0"]'),
-      ).filter((el) => !el.hasAttribute('disabled'));
+      ).filter(
+        (el) => !el.hasAttribute('disabled') && !el.closest('[hidden], [inert]'),
+      );
       const first = items[0];
       const last = items[items.length - 1];
       if (!first || !last) return;
@@ -192,34 +207,36 @@ export function Workspace({
   const jobs = data.jobs;
   const unread = data.notifications.filter((n: any) => !n.read).length;
   const accountName =
-    role === 'customer' ? data.settings?.name : role === 'mechanic' ? data.profile?.name : '';
-  const customerName = customerFullName(accountName);
+    role === 'customer'
+      ? data.settings?.name
+      : role === 'mechanic'
+        ? data.profile?.name
+        : data.adminAccount?.name;
+  const customerName = customerFullName(role === 'customer' ? accountName : data.settings?.name);
   const merchantSection = role === 'mechanic' ? merchantProfileSection(tab) : null;
+  const adminSection = role === 'admin' ? adminProfileSection(tab) : null;
+  const analyticsView = role === 'admin' ? analyticsSection(tab) : null;
   const appointmentView = role === 'mechanic' ? appointmentSection(tab) : null;
-  const sectionLabel = merchantSection ? merchantProfileSectionLabel[merchantSection] : '';
+  const sectionLabel = merchantSection
+    ? merchantProfileSectionLabel[merchantSection]
+    : adminSection
+      ? adminProfileSectionLabel[adminSection]
+      : analyticsView === 'support'
+        ? 'Support cases'
+        : analyticsView === 'analytics'
+          ? 'Analytics'
+          : tab === 'applications/history'
+            ? 'Review history'
+            : '';
   const name =
     role === 'customer'
       ? customerName.split(/\s+/)[0] || 'Customer'
       : role === 'mechanic'
         ? customerFullName(data.profile?.name) || 'Mechanic'
-        : 'Verifi team';
+        : customerFullName(data.adminAccount?.name).split(/\s+/)[0] || 'Admin';
   const heading = pageTitle(role, tab);
-  const apps = [
-    ...(data.application.status !== 'Draft'
-      ? [
-          {
-            ...data.application,
-            id: 'my-application',
-            name: data.profile.name,
-            type: data.profile.type,
-            city: data.profile.city,
-            date: data.application.submittedAt,
-            own: true,
-          },
-        ]
-      : []),
-    ...data.reviews,
-  ];
+  const apps = applicationRecords(data);
+  const customers = customerRecords(data);
   function route(t: string) {
     go('dashboard/' + t);
     setSide(false);
@@ -269,14 +286,30 @@ export function Workspace({
       notify('Add a reason or requested changes first.');
       return;
     }
+    const decision = decideApplication(app, status, reviewNote);
     update((d: any) =>
       note(
         app.own
-          ? { ...d, application: { ...d.application, status, note: reviewNote } }
+          ? {
+              ...d,
+              application: {
+                ...d.application,
+                status: decision.status,
+                note: decision.note,
+                previouslyApproved: decision.previouslyApproved,
+              },
+            }
           : {
               ...d,
               reviews: d.reviews.map((a: any) =>
-                a.id === app.id ? { ...a, status, note: reviewNote } : a,
+                a.id === app.id
+                  ? {
+                      ...a,
+                      status: decision.status,
+                      note: decision.note,
+                      previouslyApproved: decision.previouslyApproved,
+                    }
+                  : a,
               ),
             },
         `${app.name}: application ${status.toLowerCase()}.`,
@@ -562,21 +595,73 @@ export function Workspace({
               uploadError={uploadError}
             />
           )}
-          {['applications', 'professionals'].includes(tab) && (
+          {(tab === 'applications' || tab === 'applications/history') && (
             <ApplicationsPage
-              apps={apps}
+              apps={
+                tab === 'applications/history'
+                  ? apps.filter(isReviewHistory)
+                  : apps.filter(isPendingApplication)
+              }
+              history={tab === 'applications/history'}
+              openReview={openReview}
+              query={query}
+              route={route}
+              setQuery={setQuery}
+            />
+          )}
+          {tab === 'professionals' && role === 'admin' && (
+            <ProfessionalsAdminPage
+              apps={apps.filter(isManagedProfessional)}
               filter={filter}
-              name={name}
               openReview={openReview}
               query={query}
               setFilter={setFilter}
               setQuery={setQuery}
             />
           )}
+          {tab === 'customers' && role === 'admin' && (
+            <CustomersPage
+              customers={customers}
+              jobs={jobs}
+              query={query}
+              setDialog={setDialog}
+              setQuery={setQuery}
+            />
+          )}
+          {analyticsView && (
+            <AnalyticsPage
+              apps={apps}
+              customers={customers}
+              data={data}
+              jobs={jobs}
+              route={route}
+              section={analyticsView}
+              setDialog={setDialog}
+            />
+          )}
+          {tab === 'finance' && role === 'admin' && (
+            <FinancePage
+              customers={customers}
+              filter={filter}
+              jobs={jobs}
+              query={query}
+              setDialog={setDialog}
+              setFilter={setFilter}
+              setQuery={setQuery}
+            />
+          )}
           {tab === 'notifications' && <NotificationsPage data={data} update={update} />}
-          {tab === 'reports' && <ReportsPage data={data} note={note} setDialog={setDialog} />}
-          {((role === 'customer' && (tab === 'profile' || tab === 'settings')) ||
-            (role === 'admin' && tab === 'settings')) && (
+          {adminSection && (
+            <AdminProfilePage
+              data={data}
+              logout={logout}
+              notify={notify}
+              route={route}
+              section={adminSection}
+              update={update}
+            />
+          )}
+          {role === 'customer' && (tab === 'profile' || tab === 'settings') && (
             <SettingsPage
               data={data}
               logout={logout}
