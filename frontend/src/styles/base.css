@@ -19,7 +19,7 @@
 }
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 100px;
+  scroll-padding-top: 96px;
 }
 body {
   margin: 0;
@@ -89,21 +89,6 @@ em {
   font-style: normal;
   color: var(--soft);
 }
-.preview {
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  text-align: center;
-  padding: 7px;
-  background: var(--tint);
-  color: var(--soft);
-  font-weight: 700;
-}
-.preview span {
-  font-weight: 400;
-  letter-spacing: 0.025em;
-  margin-left: 12px;
-  color: var(--muted);
-}
 header {
   height: 85px;
   display: flex;
@@ -167,6 +152,7 @@ nav button.active {
   gap: 17px;
 }
 .theme {
+  position: relative;
   height: 36px;
   width: 36px;
   border: 1px solid var(--line);
@@ -1163,9 +1149,6 @@ hr {
   nav {
     gap: 16px;
   }
-  .join {
-    display: none;
-  }
   .floating-credential {
     right: 4%;
     top: 70px;
@@ -1214,40 +1197,8 @@ hr {
   footer .brand img {
     height: 32px;
   }
-  .preview {
-    font-size: 8px;
-    padding: 8px;
-  }
-  .preview span {
-    font-size: 8px;
-    letter-spacing: 0;
-    margin-left: 7px;
-  }
-  .mobile-menu {
-    display: block;
-  }
   .nav-actions {
     gap: 12px;
-  }
-  nav {
-    display: none;
-    position: absolute;
-    top: 72px;
-    left: 0;
-    right: 0;
-    background: var(--surface);
-    border-bottom: 1px solid var(--line);
-    padding: 20px 6%;
-    align-items: stretch;
-  }
-  nav.open {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
-  nav button {
-    text-align: left;
-    padding: 12px;
   }
   .hero {
     height: 600px;
@@ -1459,6 +1410,255 @@ hr {
   }
   .hero-points {
     font-size: 10px;
+  }
+}
+.site-menu {
+  display: contents;
+}
+.site-header {
+  overflow: visible;
+}
+.site-header nav {
+  flex: 1;
+  justify-content: center;
+  gap: 16px;
+  min-width: 0;
+}
+.site-header nav button {
+  white-space: nowrap;
+}
+.site-header .nav-actions {
+  flex-shrink: 0;
+}
+.site-header .join {
+  white-space: nowrap;
+}
+.site-header .join.active {
+  border-color: var(--purple);
+  color: var(--soft);
+}
+.theme-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.account {
+  position: relative;
+}
+.account-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  max-width: 220px;
+  background: var(--purple);
+  color: #140b22;
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-weight: 700;
+  font-size: 11px;
+}
+.account-id {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.account-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 9rem;
+}
+.account-trigger .chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+.account-trigger[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  min-width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--purple);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.account-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.account-menu button:hover,
+.account-menu button:focus-visible {
+  background: var(--tint);
+  color: var(--soft);
+}
+#services,
+#trust,
+#service-options,
+#vehicle-history,
+#how,
+#faq {
+  scroll-margin-top: 16px;
+}
+@media (max-width: 1230px) {
+  header.site-header {
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 4%;
+  }
+  .site-header .brand {
+    margin-right: auto;
+    min-width: 0;
+  }
+  .site-header .mobile-menu {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+  }
+  .site-header nav {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    flex: none;
+    justify-content: flex-start;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    margin: 0;
+    padding: 10px 4% 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  header.site-header:has(.site-menu.open) nav {
+    display: flex;
+  }
+  header.site-header:has(.site-menu.open) nav button {
+    text-align: left;
+    font-size: 14px;
+    min-height: 44px;
+    padding: 10px 4px;
+  }
+  .site-header .join {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .site-header .account-label {
+    max-width: 7rem;
+  }
+}
+@media (max-width: 750px) {
+  header.site-header {
+    height: 72px;
+    padding: 0 5%;
+  }
+  .site-menu {
+    display: none;
+  }
+  .site-menu.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    max-height: calc(100dvh - 72px);
+    overflow-y: auto;
+    padding: 8px 5% 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    gap: 4px;
+  }
+  .site-menu.open nav {
+    display: flex;
+    position: static;
+    flex: none;
+    box-shadow: none;
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+  .site-menu.open .nav-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+  .site-menu.open .nav-actions .theme {
+    width: auto;
+    height: auto;
+    border-radius: 6px;
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 12px;
+  }
+  .site-menu.open .nav-signin svg {
+    width: 15px;
+    height: 15px;
+  }
+  .site-menu.open .theme-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+  }
+  .site-menu.open .join,
+  .site-menu.open .nav-signin,
+  .site-menu.open .account-trigger {
+    width: 100%;
+    max-width: none;
+    font-size: 13px;
+    padding: 12px 14px;
+  }
+  .site-menu.open .account-trigger {
+    justify-content: space-between;
+  }
+  .site-menu.open .account-menu {
+    position: static;
+    width: 100%;
+    min-width: 0;
+    margin-top: 4px;
+    box-shadow: none;
+  }
+  .site-menu.open .account-label {
+    max-width: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {

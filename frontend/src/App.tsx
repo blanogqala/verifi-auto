@@ -5,7 +5,7 @@ import { LandingPage } from './pages/public/LandingPage';
 import { ProfessionalsPage } from './pages/public/ProfessionalsPage';
 import { PublicFooter } from './layouts/PublicFooter';
 import { BookingDialog } from './components/booking/BookingDialog';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import { Workspace } from './layouts/WorkspaceLayout';
 import { AuthPage as Auth } from './pages/auth/AuthPage';
@@ -41,6 +41,12 @@ export default function App() {
   const [time, setTime] = useState('09:00');
   const [vehicle, setVehicle] = useState('');
   const [toast, setToast] = useState('');
+  const [sectionTarget, setSectionTarget] = useState<{
+    id: string;
+    nonce: number;
+    smooth: boolean;
+  } | null>(null);
+  const handledSection = useRef(0);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     try {
@@ -150,11 +156,57 @@ export default function App() {
     window.scrollTo(0, 0);
   }
   function anchor(id: string) {
-    setPage('home');
-    location.hash = 'home';
+    const fromHome = page === 'home';
     setMenu(false);
-    setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' }), 60);
+    if ((location.hash.slice(1) || 'home') !== 'home') location.hash = 'home';
+    setPage('home');
+    setSectionTarget((current) => ({ id, nonce: (current?.nonce ?? 0) + 1, smooth: fromHome }));
   }
+  useEffect(() => {
+    if (!sectionTarget || page !== 'home' || handledSection.current === sectionTarget.nonce) return;
+    const { id, nonce, smooth } = sectionTarget;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior: ScrollBehavior = smooth && !reduced ? 'smooth' : 'auto';
+    let cancelled = false;
+    let frame = 0;
+    let tries = 0;
+    const timers: number[] = [];
+    const images: HTMLImageElement[] = [];
+
+    const align = (mode: ScrollBehavior) => {
+      if (cancelled) return false;
+      const el = document.getElementById(id);
+      if (!el) return false;
+      el.scrollIntoView({ behavior: mode, block: 'start' });
+      return true;
+    };
+    const waitForTarget = () => {
+      if (cancelled) return;
+      if (!align(behavior) && tries++ < 40) frame = requestAnimationFrame(waitForTarget);
+    };
+    const correctAfterLayout = () => align('auto');
+    const onImageLoad = () => correctAfterLayout();
+
+    frame = requestAnimationFrame(waitForTarget);
+    if (!smooth || reduced) {
+      timers.push(window.setTimeout(correctAfterLayout, 80));
+      timers.push(window.setTimeout(correctAfterLayout, 350));
+      timers.push(window.setTimeout(correctAfterLayout, 800));
+      document.querySelectorAll('img').forEach((img) => {
+        if (!img.complete) {
+          img.addEventListener('load', onImageLoad);
+          images.push(img);
+        }
+      });
+    }
+    handledSection.current = nonce;
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      timers.forEach((timer) => window.clearTimeout(timer));
+      images.forEach((img) => img.removeEventListener('load', onImageLoad));
+    };
+  }, [page, sectionTarget]);
   function book(p: any) {
     if (role !== 'customer') {
       setModal(null);
@@ -196,14 +248,16 @@ export default function App() {
       (type === 'Either' || p.type === type) &&
       (service === 'All services' || service === 'Not sure yet' || p.special.includes(service)),
   );
+  const customerName =
+    role === 'customer' && typeof data.settings?.name === 'string' ? data.settings.name.trim() : '';
+  const accountLabel = customerName || 'My account';
   return (
     <>
-      <div className="preview">
-        DESIGN PREVIEW <span>Explore with sample data. No real bookings or payments.</span>
-      </div>
       <PublicHeader
+        accountLabel={accountLabel}
         anchor={anchor}
         go={go}
+        logout={logout}
         menu={menu}
         page={page}
         role={role}

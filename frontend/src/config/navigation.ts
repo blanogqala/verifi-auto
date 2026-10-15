@@ -1,4 +1,19 @@
 import { Role } from '../types/roles';
+
+export type PublicSection = {
+  id: string;
+  label: string;
+};
+
+export const publicSections: PublicSection[] = [
+  { id: 'services', label: 'Services' },
+  { id: 'trust', label: 'Our standard' },
+  { id: 'service-options', label: 'Service options' },
+  { id: 'vehicle-history', label: 'Vehicle history' },
+  { id: 'how', label: 'How it works' },
+  { id: 'faq', label: 'FAQs' },
+];
+
 export const roles: Role[] = ['customer', 'mechanic', 'admin'];
 export const roleLabel = { customer: 'Customer', mechanic: 'Mechanic', admin: 'Platform admin' };
 export const navItems = {

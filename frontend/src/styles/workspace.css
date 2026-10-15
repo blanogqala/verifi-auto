@@ -1269,9 +1269,6 @@ td .text-link {
     gap: 40px;
     padding: 50px 6%;
   }
-  .nav-actions .join {
-    display: none;
-  }
   .payment-row {
     flex-wrap: wrap;
   }

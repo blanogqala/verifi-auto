@@ -144,7 +144,7 @@ export function LandingPage({
         </form>
         <p className="pilot-note">Sample locations for the preview · Pilot city to be confirmed</p>
       </div>
-      <section className="section services">
+      <section className="section services" id="services">
         <div className="section-top">
           <div>
             <div className="eyebrow">CARE FOR EVERY JOURNEY</div>
@@ -244,7 +244,7 @@ export function LandingPage({
           </small>
         </div>
       </section>
-      <section className="section ways">
+      <section className="section ways" id="service-options">
         <div className="eyebrow">YOUR CAR. YOUR CHOICE.</div>
         <h2>Great care, wherever suits you.</h2>
         <div className="ways-grid">
@@ -291,7 +291,7 @@ export function LandingPage({
           </button>
         </div>
       </section>
-      <section className="garage-feature section">
+      <section className="garage-feature section" id="vehicle-history">
         <div>
           <div className="eyebrow">INTRODUCING MY GARAGE</div>
           <h2>
@@ -360,7 +360,7 @@ export function LandingPage({
           ))}
         </div>
       </section>
-      <section className="section faq">
+      <section className="section faq" id="faq">
         <div>
           <div className="eyebrow">A LITTLE MORE CLARITY</div>
           <h2>
