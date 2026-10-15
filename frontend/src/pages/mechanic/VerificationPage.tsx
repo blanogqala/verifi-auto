@@ -1,0 +1,116 @@
+import { Card } from '../../components/ui/Card';
+
+import { ArrowRight, ShieldCheck, Check } from 'lucide-react';
+import { canSubmit } from '../../demo';
+import { StatusBadge as Status } from '../../components/ui/StatusBadge';
+
+/** Presentational view. State and actions are supplied by the owning layout. */
+export function VerificationPage({ data, name, note, notify, profile, route, update }: any) {
+  return (
+    <Card as="section" className="dash-panel application-panel">
+      <div className="panel-title">
+        <h2>Your verification journey</h2>
+        <Status value={data.application.status} />
+      </div>
+      <p className="muted">
+        Your profile stays out of the live directory until review and approval. This is a simulated
+        application process.
+      </p>
+      <div className="application-steps">
+        {[
+          ['1', 'Profile'],
+          ['2', 'Evidence'],
+          ['3', 'Review'],
+          ['4', 'Decision'],
+        ].map(([n, t]) => (
+          <div key={n}>
+            <span>{n}</span>
+            <b>{t}</b>
+          </div>
+        ))}
+      </div>
+      {[
+        [
+          !!(
+            data.profile.phone &&
+            data.profile.bio &&
+            data.profile.name &&
+            data.profile.services.length
+          ),
+          'Business profile',
+          'Add contact details, service area, expertise, and services.',
+          'profile',
+        ],
+        [
+          data.documents.some((d: any) => d.kind === 'Identity evidence'),
+          'Identity evidence',
+          'Select a non-sensitive sample identity file.',
+          'documents',
+        ],
+        [
+          data.documents.some((d: any) => d.kind === 'Qualifications / experience'),
+          'Qualifications or experience',
+          'Add sample evidence of professional capability.',
+          'documents',
+        ],
+      ].map(([done, t, desc, target]: any) => (
+        <button className="checklist-row" key={t} onClick={() => route(target)}>
+          <span className={done ? 'check-circle complete' : 'check-circle'}>
+            {done ? <Check size={17} /> : <span />}
+          </span>
+          <div>
+            <b>{t}</b>
+            <small>{desc}</small>
+          </div>
+          <ArrowRight size={17} />
+        </button>
+      ))}
+      {data.application.note && (
+        <div className="notice">
+          <b>Reviewer feedback:</b> {data.application.note}
+        </div>
+      )}
+      {['Draft', 'Changes requested', 'Rejected'].includes(data.application.status) ? (
+        <>
+          <button
+            className="primary"
+            disabled={!canSubmit(data)}
+            onClick={() => {
+              update((d: any) =>
+                note(
+                  {
+                    ...d,
+                    application: {
+                      ...d.application,
+                      status: 'Pending review',
+                      submittedAt: new Date().toISOString().split('T')[0],
+                      note: '',
+                    },
+                  },
+                  'Your sample application has been submitted for review.',
+                ),
+              );
+              notify('Submitted. Switch to the admin preview to review this application.');
+            }}
+          >
+            Submit for demo review <ArrowRight size={17} />
+          </button>
+          {!canSubmit(data) && (
+            <p className="muted">Complete all three checklist items to submit.</p>
+          )}
+        </>
+      ) : data.application.status === 'Approved' ? (
+        <div className="success-note">
+          <ShieldCheck />
+          Your sample application is approved. Credential preview: VA-DEMO-001.
+        </div>
+      ) : (
+        <div className="notice">
+          {data.application.status === 'Pending review'
+            ? 'Your application is awaiting review. Switch to the admin preview and open Applications to continue the demo.'
+            : 'Your sample credential is suspended. Contact the review team through the support process before resubmitting.'}
+        </div>
+      )}
+    </Card>
+  );
+}

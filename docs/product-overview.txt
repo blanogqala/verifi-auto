@@ -1,0 +1,36 @@
+VERIFI AUTO
+Verified Professionals. Trusted Repairs.
+A clear and simple explanation
+What is Verifi Auto?
+Verifi Auto is a digital platform that helps vehicle owners in South Africa find trustworthy automotive mechanics and workshops. It also creates a clear digital record of the work done on each vehicle.
+It is not just another online list of mechanics. Verifi independently checks and verifies professionals so that owners can have more confidence in who they choose.
+What is the purpose?
+The main purpose is to solve a common problem:
+When a car needs a service or repair, it is often hard to know who is properly qualified and reliable. People usually rely on recommendations from friends, WhatsApp groups or social media. This can lead to uncertainty, poor workmanship and lost service records.
+Verifi Auto aims to make it easier and safer to find verified professionals and to keep a proper digital history of every service and repair.
+How does it work?
+The process is straightforward:
+1.	Mechanics and workshops apply to be verified. They submit their details, qualifications and supporting documents.
+2.	Verifi reviews the application. Only those who meet the required standards are approved.
+3.	Approved professionals receive a Verifi Score and a Digital Credential (with a unique ID and QR code).
+4.	Vehicle owners can search for verified mechanics and workshops by location, vehicle brand or type of service.
+5.	Owners can request help or book a service and follow the progress of the job.
+6.	When the job is finished, a digital service record is created and stored against the vehicle. This builds a lasting history that the owner can keep and use later.
+Who benefits and how?
+Vehicle Owners
+•	Easier to find mechanics and workshops that have been independently checked.
+•	More confidence that the person working on the car is qualified.
+•	A clear digital history of services and repairs that stays with the vehicle.
+•	Useful proof of maintenance when selling the car or dealing with warranties.
+Mechanics and Workshops
+•	A way to prove their skills and professionalism through independent verification.
+•	A Verifi Score and Digital Credential that help them stand out from unverified competitors.
+•	Access to vehicle owners who are looking for trusted professionals.
+•	Support for both formal workshops and independent or mobile mechanics.
+The Broader Market (future potential)
+•	Insurers and warranty providers may later use the structured service records to reduce risk and improve claims handling.
+•	Dealerships and manufacturers may use the platform to recognise competent independent technicians.
+In short
+Verifi Auto connects vehicle owners with verified automotive professionals and builds a reliable digital history of the work done on each vehicle.
+It creates trust where there is currently mostly hope and informal recommendations.
+Live platform: verifi-auto.vercel.app
