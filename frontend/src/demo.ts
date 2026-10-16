@@ -83,6 +83,7 @@ export {
   saveCustomerReview,
 } from './features/reviews/customerReviews';
 export { catalogueModel, modelForVehicle, resolveVehicleAsset } from './features/garage/vehicleModels';
+export { selectVehicleId, vehicleCardImage, vehicleCardLabel } from './features/garage/garageSelection';
 export { createLoadGeneration } from './features/garage/assetResolution';
 export { recolorBodyPaint } from './features/garage/vehicleCatalogue';
 export { resolveProfessional, safeWebsite } from './features/professionals/professionalProfile';

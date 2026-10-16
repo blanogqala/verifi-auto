@@ -49,6 +49,9 @@ import {
   resolveVehicleAsset,
   createLoadGeneration,
   recolorBodyPaint,
+  selectVehicleId,
+  vehicleCardImage,
+  vehicleCardLabel,
   commitUpdate,
   resolveHistoryVehicle,
   safeRouteId,
@@ -957,12 +960,23 @@ assert.ok(!customerProfile.includes('Explore another workspace'));
 assert.ok(!customerProfile.includes('Find a professional'));
 const garageHtml = screen('customer', 'garage');
 assert.ok(garageHtml.includes('Add vehicle'));
+assert.ok(garageHtml.includes('My Garage'));
 assert.ok(garageHtml.includes('View details'));
+assert.ok(garageHtml.includes('aria-label="Previous vehicle"'));
+assert.ok(garageHtml.includes('aria-label="Next vehicle"'));
 assert.ok(garageHtml.includes('Illustrative model — not an exact match'));
+assert.ok(garageHtml.includes('Credits'));
 assert.ok(garageHtml.includes('CC BY 4.0'));
-assert.ok(!garageHtml.includes('Previous vehicle'));
+assert.ok(garageHtml.includes('Volkswagen Polo'));
+assert.ok(!garageHtml.includes('car-concept-thumb'));
 assert.ok(!garageHtml.includes('Find a professional'));
 assert.ok(!garageHtml.includes('360'));
+assert.ok(!garageHtml.includes('Model details'));
+assert.ok(!garageHtml.includes('Rotate left'));
+assert.ok(!garageHtml.includes('Reset to original colour'));
+assert.ok(!garageHtml.includes('Body colour'));
+assert.ok(!garageHtml.includes('Manage everything you need'));
+assert.equal(garageHtml.split('View details').length - 1, 1);
 const bookingHtml = screen('customer', 'bookings/VA-2026-1042');
 assert.ok(bookingHtml.includes('Front brake pads'));
 assert.ok(bookingHtml.includes('No dated timeline was stored'));
@@ -1472,6 +1486,21 @@ assert.equal(
   false,
 );
 assert.equal((unsavedColour.vehicles[0] as any).paintColor, undefined);
+assert.equal(vehicleCardImage(poloHatch), '');
+assert.equal(vehicleCardImage(conceptExact), '/models/car-concept-thumb.jpg');
+assert.equal(vehicleCardLabel({ make: 'Volkswagen', model: 'Polo', registration: 'DEMO 001' }, [{ make: 'Volkswagen', model: 'Polo' }]), 'Volkswagen Polo');
+assert.equal(
+  vehicleCardLabel({ make: 'Volkswagen', model: 'Polo', registration: 'DEMO 001' }, [
+    { make: 'Volkswagen', model: 'Polo' },
+    { make: 'Volkswagen', model: 'Polo' },
+  ]),
+  'Volkswagen Polo, DEMO 001',
+);
+assert.equal(selectVehicleId([{ id: 'v1' }], 'v1', 1), 'v1');
+assert.equal(selectVehicleId([{ id: 'v1' }, { id: 'v2' }], 'v1', 1), 'v2');
+assert.equal(selectVehicleId([{ id: 'v1' }, { id: 'v2' }], 'v2', -1), 'v1');
+assert.equal(selectVehicleId([{ id: 'v1' }, { id: 'v2' }], 'archived', 1), 'v2');
+assert.equal(selectVehicleId([], 'v1', 1), '');
 const loads = createLoadGeneration();
 const olderLoad = loads.begin();
 const newerLoad = loads.begin();

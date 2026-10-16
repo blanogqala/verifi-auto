@@ -446,25 +446,29 @@ export function Workspace({
         />
         <div className="workspace-body">
           {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && (
-            <div className="workspace-heading">
+            <div className={'workspace-heading' + (role === 'customer' && tab === 'garage' ? ' workspace-heading-garage' : '')}>
               <div>
-                <div className="eyebrow">
-                  {role === 'customer'
-                    ? 'YOUR JOURNEY, SIMPLIFIED'
-                    : role === 'mechanic'
-                      ? 'KEEP GOOD WORK MOVING'
-                      : 'A CLEARER STANDARD OF CARE'}
-                </div>
+                {role === 'customer' && tab === 'garage' ? null : (
+                  <div className="eyebrow">
+                    {role === 'customer'
+                      ? 'YOUR JOURNEY, SIMPLIFIED'
+                      : role === 'mechanic'
+                        ? 'KEEP GOOD WORK MOVING'
+                        : 'A CLEARER STANDARD OF CARE'}
+                  </div>
+                )}
                 <h1>
                   {tab === 'overview'
                     ? `Welcome${role === 'customer' ? ' back' : ''}, ${name}.`
                     : heading}
                 </h1>
-                <p>
-                  {tab === 'overview'
-                    ? 'Here’s what needs your attention today.'
-                    : 'Manage everything you need, in one place.'}
-                </p>
+                {role === 'customer' && tab === 'garage' ? null : (
+                  <p>
+                    {tab === 'overview'
+                      ? 'Here’s what needs your attention today.'
+                      : 'Manage everything you need, in one place.'}
+                  </p>
+                )}
               </div>
               {role === 'customer' && tab === 'garage' ? (
                 <button className="primary" type="button" onClick={() => setDialog({ kind: 'vehicle' })}>

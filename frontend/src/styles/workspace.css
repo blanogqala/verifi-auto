@@ -2039,6 +2039,17 @@ td .text-link {
   .workspace-heading {
     display: block;
   }
+  .workspace-heading-garage {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .workspace-heading-garage .primary {
+    margin-top: 0;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
   .workspace-heading h1 {
     font-size: 27px;
   }
@@ -2050,6 +2061,9 @@ td .text-link {
     max-width: none;
     padding: 12px 16px;
     font-size: 10px;
+  }
+  .workspace-heading-garage .primary {
+    margin-top: 0;
   }
   .dashboard-banner {
     padding: 24px;

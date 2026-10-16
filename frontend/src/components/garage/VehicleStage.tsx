@@ -5,16 +5,6 @@ import { RoadLoader } from '../ui/RoadLoader';
 const VehicleModelViewer = lazy(() => import('./VehicleModelViewer'));
 const emptyPaint: string[] = [];
 
-const swatches = [
-  { name: 'White', value: '#f2f2f2' },
-  { name: 'Silver', value: '#c5c8ce' },
-  { name: 'Grey', value: '#6d727a' },
-  { name: 'Black', value: '#1b1d21' },
-  { name: 'Blue', value: '#1d4e89' },
-  { name: 'Red', value: '#8e1d2c' },
-  { name: 'Green', value: '#1f6b45' },
-];
-
 function webglAvailable() {
   try {
     const canvas = document.createElement('canvas');
@@ -44,17 +34,7 @@ function FallbackArt({ onRetry }: { onRetry?: () => void }) {
   );
 }
 
-export function VehicleStage({
-  vehicle,
-  compact = false,
-  onPaint,
-  onBodyStyle,
-}: {
-  vehicle: any;
-  compact?: boolean;
-  onPaint?: (color: string) => void;
-  onBodyStyle?: (bodyStyle: string, variant: string) => void;
-}) {
+export function VehicleStage({ vehicle, compact = false }: { vehicle: any; compact?: boolean }) {
   const resolution = resolveVehicleAsset(vehicle);
   const [failed, setFailed] = useState(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
@@ -63,33 +43,26 @@ export function VehicleStage({
     setFailed(false);
     setWebgl(webglAvailable());
   }, [vehicle?.id, asset?.id]);
-  const canPaint = !!asset?.paintMaterials.length && !!onPaint && resolution.status !== 'ambiguous';
+  const paintColor = typeof vehicle?.paintColor === 'string' ? vehicle.paintColor : '';
   let view = <RoadLoader label="Loading vehicle model" />;
   if (resolution.status === 'ambiguous') {
     view = (
       <div className="vehicle-choice">
-        <p>{resolution.reason}</p>
-        <div className="viewer-controls">
-          {resolution.choices.map((choice) => (
-            <button
-              key={choice.id}
-              type="button"
-              className="secondary"
-              onClick={() => onBodyStyle?.(choice.bodyStyle, choice.variant)}
-            >
-              {choice.bodyStyle} · {choice.yearFrom}–{choice.yearTo}
-            </button>
-          ))}
-        </div>
+        <FallbackArt />
+        <p className="model-caption">Choose a body style when you edit this vehicle.</p>
       </div>
     );
   } else if (webgl === false || failed || !asset?.src) {
     view = (
       <FallbackArt
-        onRetry={() => {
-          setFailed(false);
-          setWebgl(webglAvailable());
-        }}
+        onRetry={
+          asset?.src
+            ? () => {
+                setFailed(false);
+                setWebgl(webglAvailable());
+              }
+            : undefined
+        }
       />
     );
   } else if (webgl && asset) {
@@ -97,9 +70,9 @@ export function VehicleStage({
       <Suspense fallback={<RoadLoader label="Loading vehicle model" />}>
         <VehicleModelViewer
           src={asset.src}
-          paintColor={typeof vehicle?.paintColor === 'string' ? vehicle.paintColor : ''}
+          paintColor={paintColor}
           paintMaterials={asset.paintMaterials || emptyPaint}
-          label={resolution.label || vehicle?.model || 'Vehicle'}
+          label={resolution.label || `${vehicle?.make || ''} ${vehicle?.model || 'Vehicle'}`.trim()}
           onFail={() => setFailed(true)}
         />
       </Suspense>
@@ -109,41 +82,14 @@ export function VehicleStage({
   return (
     <div className={'vehicle-stage' + (compact ? ' vehicle-stage-compact' : '')}>
       {view}
-      {resolution.label ? <p className="model-caption">{resolution.label}</p> : null}
-      {asset && resolution.status !== 'ambiguous' ? <p className="model-attribution">{asset.attribution}</p> : null}
-      {canPaint ? (
-        <div className="paint-panel">
-          <p className="muted">Colour is a visual approximation of the real paint finish.</p>
-          <div className="paint-swatches" role="group" aria-label="Body colour">
-            {swatches.map((swatch) => (
-              <button
-                key={swatch.value}
-                type="button"
-                className="paint-swatch"
-                style={{ background: swatch.value }}
-                aria-label={swatch.name}
-                aria-pressed={vehicle?.paintColor === swatch.value}
-                onClick={() => onPaint?.(swatch.value)}
-              />
-            ))}
-            <label className="paint-custom">
-              Custom
-              <input
-                type="color"
-                value={vehicle?.paintColor || '#f2f2f2'}
-                aria-label="Custom body colour"
-                onChange={(event) => onPaint?.(event.target.value)}
-              />
-            </label>
-            <button type="button" className="secondary" onClick={() => onPaint?.('')}>
-              Reset to original colour
-            </button>
-          </div>
-        </div>
-      ) : null}
-      {asset && !asset.paintMaterials.length ? (
-        <p className="muted">This model cannot be recolored without tinting glass, tyres, or trim.</p>
-      ) : null}
+      <div className="vehicle-stage-meta">
+        {resolution.label ? <p className="model-caption">{resolution.label}</p> : null}
+        {asset ? (
+          <a className="model-credits" href={asset.source} target="_blank" rel="noreferrer" aria-label={asset.attribution}>
+            Credits
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }

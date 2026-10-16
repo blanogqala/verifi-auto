@@ -1,20 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { VehicleStage } from '../../components/garage/VehicleStage';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
+import { selectVehicleId, vehicleCardImage, vehicleCardLabel } from '../../features/garage/garageSelection';
 import { activeVehicles, unresolvedHistory } from '../../features/demo/links';
-import { commitUpdate } from '../../features/demo/commitUpdate';
-import { saveVehicle } from '../../features/demo/demoActions';
 
-export function GaragePage({ data, go, notify, setDialog, update }: any) {
+function VehicleSilhouette() {
+  return (
+    <svg className="garage-card-silhouette" viewBox="0 0 200 96" aria-hidden="true">
+      <path d="M34 58h132c6 0 10 4 10 8v2H24v-2c0-4 4-8 10-8z" />
+      <path d="M52 58 70 38c2-3 6-6 10-6h48c5 0 9 2 12 6l16 20" />
+      <circle cx="68" cy="70" r="8" />
+      <circle cx="138" cy="70" r="8" />
+    </svg>
+  );
+}
+
+export function GaragePage({ data, go, setDialog }: any) {
   const vehicles = activeVehicles(data.vehicles || []);
   const [selectedId, setSelectedId] = useState(vehicles[0]?.id || '');
-  const selected = vehicles.find((vehicle) => vehicle.id === selectedId) || vehicles[0];
+  const resolvedId = vehicles.some((vehicle) => vehicle.id === selectedId) ? selectedId : vehicles[0]?.id || '';
+  const selected = vehicles.find((vehicle) => vehicle.id === resolvedId);
   const unresolved = unresolvedHistory(data);
+  const single = vehicles.length < 2;
 
-  function persist(vehicle: any, patch: any) {
-    commitUpdate(update, (current: any) => saveVehicle(current, { ...vehicle, ...patch }), notify, '');
-  }
+  useEffect(() => {
+    if (resolvedId !== selectedId) setSelectedId(resolvedId);
+  }, [resolvedId, selectedId]);
 
   return (
     <>
@@ -26,59 +39,55 @@ export function GaragePage({ data, go, notify, setDialog, update }: any) {
       ) : (
         <>
           <section className="showroom" aria-label="Garage showroom">
-            <VehicleStage
-              vehicle={selected}
-              onBodyStyle={(bodyStyle, variant) => persist(selected, { bodyStyle, variant })}
-              onPaint={(paintColor) => persist(selected, { paintColor })}
-            />
-            <details className="model-details">
-              <summary>Model details</summary>
-              <p>
-                Lookup uses the local approved catalogue. It does not search the internet, and a demonstration model
-                is not a remote match for this vehicle.
-              </p>
-              <p>
-                Future asset search belongs on the server. A candidate has to be checked for accuracy, permitted use,
-                attribution, file safety, and phone performance before it is published.
-              </p>
-            </details>
+            <VehicleStage vehicle={selected} />
+            <div className="showroom-nav">
+              <button
+                type="button"
+                className="showroom-arrow"
+                aria-label="Previous vehicle"
+                disabled={single}
+                onClick={() => setSelectedId(selectVehicleId(vehicles, resolvedId, -1))}
+              >
+                <ChevronLeft size={18} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => go('dashboard/garage/' + encodeURIComponent(selected.id))}
+              >
+                View details
+              </button>
+              <button
+                type="button"
+                className="showroom-arrow"
+                aria-label="Next vehicle"
+                disabled={single}
+                onClick={() => setSelectedId(selectVehicleId(vehicles, resolvedId, 1))}
+              >
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
+            </div>
           </section>
           <div className="garage-cards" aria-label="Your vehicles">
             {vehicles.map((vehicle) => {
-              const match = resolveVehicleAsset(vehicle);
               const selectedCard = vehicle.id === selected.id;
+              const image = vehicleCardImage(resolveVehicleAsset(vehicle));
+              const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ');
               return (
-                <article key={vehicle.id} className={'garage-card' + (selectedCard ? ' selected' : '')}>
-                  <button
-                    type="button"
-                    className="garage-card-select"
-                    aria-pressed={selectedCard}
-                    onClick={() => setSelectedId(vehicle.id)}
-                  >
-                    {match.accuracy === 'exact' && match.asset?.thumbnail ? (
-                      <img src={match.asset.thumbnail} alt="" />
-                    ) : (
-                      <span className="garage-card-thumb" aria-hidden="true" />
-                    )}
-                    <b>
-                      {vehicle.make} {vehicle.model}
-                    </b>
-                    <span>{vehicle.year}</span>
-                    <span>{vehicle.registration}</span>
-                    <span>{Number(vehicle.mileage || 0).toLocaleString()} km</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => go('dashboard/garage/' + encodeURIComponent(vehicle.id))}
-                  >
-                    View details
-                  </button>
-                </article>
+                <button
+                  key={vehicle.id}
+                  type="button"
+                  className={'garage-card' + (selectedCard ? ' selected' : '')}
+                  aria-pressed={selectedCard}
+                  aria-label={vehicleCardLabel(vehicle, vehicles)}
+                  onClick={() => setSelectedId(vehicle.id)}
+                >
+                  {image ? <img src={image} alt="" /> : <VehicleSilhouette />}
+                  <span>{name}</span>
+                </button>
               );
             })}
           </div>
-          {vehicles.length === 1 ? <p className="muted">This is the only vehicle in your garage.</p> : null}
         </>
       )}
       {unresolved.length ? (
