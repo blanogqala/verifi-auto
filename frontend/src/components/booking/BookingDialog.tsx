@@ -117,6 +117,9 @@ export function BookingDialog({
                     year: form.get('year'),
                     registration: form.get('registration'),
                     mileage: form.get('mileage'),
+                    bodyStyle: form.get('bodyStyle'),
+                    variant: form.get('variant'),
+                    paintColor: form.get('usePaint') ? form.get('paintColor') : '',
                     licenceDiscSource: 'owner',
                     nextServiceSource: 'owner',
                   });
@@ -158,6 +161,33 @@ export function BookingDialog({
               Registration
               <input name="registration" required defaultValue="DEMO 002" />
             </label>
+            <div className="form-row">
+              <label>
+                Body style
+                <select name="bodyStyle" defaultValue="">
+                  <option value="">Not specified</option>
+                  <option value="hatchback">hatchback</option>
+                  <option value="sedan">sedan</option>
+                  <option value="estate">estate</option>
+                  <option value="coupe">coupe</option>
+                  <option value="suv">suv</option>
+                  <option value="van">van</option>
+                </select>
+              </label>
+              <label>
+                Variant
+                <input name="variant" />
+              </label>
+            </div>
+            <label className="check-label">
+              <input name="usePaint" type="checkbox" />
+              Set a body colour
+            </label>
+            <label>
+              Paint colour
+              <input name="paintColor" type="color" defaultValue="#f2f2f2" />
+            </label>
+            <p className="muted">The vehicle is saved even when no matching 3D model is published.</p>
             {error ? (
               <p className="form-error" role="alert">
                 {error}

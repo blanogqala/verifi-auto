@@ -1,0 +1,13 @@
+Car Concept
+Source: Khronos glTF Sample Assets
+https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept
+
+Author: Eric Chadwick, Darmstadt Graphics Group GmbH
+Licence: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/legalcode
+
+The sample started from a public-domain concept car by Unity Fan.
+Khronos and 3D Commerce logos in the file are Khronos trademarks. They do not mean Khronos endorses Verifi Auto.
+
+Local file: car-concept.glb
+This is a concept car. It is not a Volkswagen Polo and not an exact match for a production vehicle.

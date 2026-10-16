@@ -1,97 +1,129 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoadLoader } from '../ui/RoadLoader';
+import { createLoadGeneration } from '../../features/garage/assetResolution';
+import { isBodyPaintMaterial } from '../../features/garage/vehicleCatalogue';
 
-const homeOffset = new THREE.Vector3(3.15, 1.42, 3.25);
-const lookTarget = new THREE.Vector3(0, 0.46, 0);
+const lookTarget = new THREE.Vector3(0, 0.72, 0);
+const baseOffset = new THREE.Vector3(3.35, 1.28, 4.05);
+const homeYaw = 0.55;
 
-function addMesh(
-  parent: THREE.Object3D,
-  geometry: THREE.BufferGeometry,
-  material: THREE.Material,
-  position: [number, number, number],
-  rotation?: [number, number, number],
-  shadow = false,
-) {
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(...position);
-  if (rotation) mesh.rotation.set(...rotation);
-  mesh.castShadow = shadow;
-  mesh.receiveShadow = true;
-  parent.add(mesh);
-  return mesh;
+function disposeObject(root: THREE.Object3D) {
+  const textures = new Set<THREE.Texture>();
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.geometry?.dispose();
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    materials.forEach((material) => {
+      if (!material) return;
+      Object.values(material).forEach((value) => {
+        if (value && (value as THREE.Texture).isTexture) textures.add(value as THREE.Texture);
+      });
+      material.dispose();
+    });
+  });
+  textures.forEach((texture) => texture.dispose());
 }
 
-function buildScene(theme: string) {
-  const scene = new THREE.Scene();
+function buildGarage(theme: string) {
   const light = theme === 'light';
-  const body = new THREE.MeshStandardMaterial({ color: light ? '#c9c2d4' : '#b7adc6', roughness: 0.45, metalness: 0.08 });
-  const cabin = new THREE.MeshStandardMaterial({ color: light ? '#2d2740' : '#1c1728', roughness: 0.35, metalness: 0.05 });
-  const glass = new THREE.MeshStandardMaterial({
-    color: '#9fd0ea',
-    roughness: 0.08,
-    metalness: 0.05,
-    transparent: true,
-    opacity: 0.45,
+  const group = new THREE.Group();
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(16, 0.08, 10),
+    new THREE.MeshStandardMaterial({ color: light ? '#d7d1e2' : '#221b2e', roughness: 0.95 }),
+  );
+  floor.position.y = -0.04;
+  floor.receiveShadow = true;
+  const wall = new THREE.Mesh(
+    new THREE.BoxGeometry(16, 3.2, 0.08),
+    new THREE.MeshStandardMaterial({ color: light ? '#ebe6f2' : '#16111f', roughness: 1 }),
+  );
+  wall.position.set(0, 1.56, -3.4);
+  const rubber = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.92 });
+  const tyreA = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.09, 12, 20), rubber);
+  tyreA.position.set(-4.4, 0.36, 2.15);
+  tyreA.rotation.x = Math.PI / 2;
+  const tyreB = tyreA.clone();
+  tyreB.position.y = 0.58;
+  const tool = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, 0.24, 0.32),
+    new THREE.MeshStandardMaterial({ color: '#7a5842', roughness: 0.85 }),
+  );
+  tool.position.set(4.3, 0.14, 2.05);
+  group.add(floor, wall, tyreA, tyreB, tool);
+  return group;
+}
+
+function frameVehicle(model: THREE.Object3D) {
+  model.position.set(0, 0, 0);
+  model.scale.set(1, 1, 1);
+  model.updateMatrixWorld(true);
+  const measured = new THREE.Box3().setFromObject(model);
+  const size = measured.getSize(new THREE.Vector3());
+  const span = Math.max(size.x, size.y, size.z, 0.001);
+  model.scale.setScalar(3.25 / span);
+  model.updateMatrixWorld(true);
+  const fitted = new THREE.Box3().setFromObject(model);
+  const center = fitted.getCenter(new THREE.Vector3());
+  model.position.x -= center.x;
+  model.position.z -= center.z;
+  model.position.y -= fitted.min.y;
+}
+
+function paintVehicle(root: THREE.Object3D, color: string, allowed: string[]) {
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    list.forEach((material) => {
+      const paint = material as THREE.MeshStandardMaterial;
+      if (!paint || !isBodyPaintMaterial(paint.name, allowed) || !paint.color) return;
+      if (!paint.userData.bodyPaint) return;
+      if (!color && paint.userData.originalColor) paint.color.copy(paint.userData.originalColor);
+      else if (color) paint.color.set(color);
+    });
   });
-  const trim = new THREE.MeshStandardMaterial({ color: light ? '#6d587f' : '#8d78a4', roughness: 0.4 });
-  const rubber = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.9 });
-  const lamp = new THREE.MeshStandardMaterial({ color: '#f6edd2', roughness: 0.3, emissive: '#f6edd2', emissiveIntensity: 0.25 });
-  const floor = new THREE.MeshStandardMaterial({ color: light ? '#d9d3e4' : '#241c30', roughness: 1 });
-  const wall = new THREE.MeshStandardMaterial({ color: light ? '#ece7f3' : '#171221', roughness: 1 });
-  const tool = new THREE.MeshStandardMaterial({ color: '#7d5a45', roughness: 0.8 });
+}
 
-  const car = new THREE.Group();
-  addMesh(car, new THREE.BoxGeometry(2.15, 0.42, 0.92), body, [0, 0.42, 0], undefined, true);
-  addMesh(car, new THREE.BoxGeometry(1.05, 0.38, 0.82), cabin, [-0.05, 0.78, 0], undefined, true);
-  addMesh(car, new THREE.BoxGeometry(0.72, 0.28, 0.74), glass, [-0.02, 0.8, 0]);
-  addMesh(car, new THREE.BoxGeometry(0.55, 0.12, 0.9), body, [0.85, 0.48, 0], undefined, true);
-  addMesh(car, new THREE.BoxGeometry(0.16, 0.1, 0.16), lamp, [1.08, 0.48, 0.28]);
-  addMesh(car, new THREE.BoxGeometry(0.16, 0.1, 0.16), lamp, [1.08, 0.48, -0.28]);
-  addMesh(car, new THREE.BoxGeometry(0.08, 0.08, 0.7), trim, [-1.08, 0.5, 0]);
-  for (const x of [-0.68, 0.72]) {
-    for (const z of [-0.42, 0.42]) {
-      addMesh(car, new THREE.CylinderGeometry(0.2, 0.2, 0.16, 18), rubber, [x, 0.2, z], [Math.PI / 2, 0, 0], true);
-      addMesh(car, new THREE.CylinderGeometry(0.09, 0.09, 0.18, 12), trim, [x, 0.2, z], [Math.PI / 2, 0, 0]);
-    }
-  }
-  scene.add(car);
-
-  const ground = addMesh(scene, new THREE.BoxGeometry(7.2, 0.08, 4.2), floor, [0, -0.04, 0]);
-  ground.receiveShadow = true;
-  ground.castShadow = false;
-  addMesh(scene, new THREE.BoxGeometry(7.2, 1.6, 0.08), wall, [0, 0.76, -1.7]);
-  addMesh(scene, new THREE.TorusGeometry(0.28, 0.08, 10, 18), rubber, [-1.85, 0.28, 1.15], [Math.PI / 2, 0, 0]);
-  addMesh(scene, new THREE.TorusGeometry(0.28, 0.08, 10, 18), rubber, [-1.85, 0.46, 1.15], [Math.PI / 2, 0, 0.2]);
-  addMesh(scene, new THREE.BoxGeometry(0.46, 0.22, 0.28), tool, [1.7, 0.14, 1.05]);
-
-  scene.add(new THREE.HemisphereLight(light ? '#f4f1fb' : '#c4b6de', light ? '#b7ad9a' : '#2a2230', 1.35));
-  const sun = new THREE.DirectionalLight('#fff6ea', light ? 1.35 : 1.15);
-  sun.position.set(3.4, 5.2, 2.4);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(512, 512);
-  sun.shadow.camera.near = 0.5;
-  sun.shadow.camera.far = 14;
-  sun.shadow.camera.left = -3;
-  sun.shadow.camera.right = 3;
-  sun.shadow.camera.top = 3;
-  sun.shadow.camera.bottom = -3;
-  scene.add(sun);
-  return scene;
+function clonePaintMaterials(root: THREE.Object3D, allowed: string[]) {
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const next = list.map((material) => {
+      const paint = material as THREE.MeshStandardMaterial;
+      if (!paint || !isBodyPaintMaterial(paint.name, allowed)) return material;
+      const clone = paint.clone();
+      clone.userData.bodyPaint = true;
+      clone.userData.originalColor = paint.color ? paint.color.clone() : null;
+      return clone;
+    });
+    mesh.material = Array.isArray(mesh.material) ? next : next[0];
+  });
 }
 
 export default function VehicleModelViewer({
-  onFail,
+  src,
+  paintColor,
+  paintMaterials,
   label,
+  onFail,
 }: {
-  onFail: () => void;
+  src: string;
+  paintColor: string;
+  paintMaterials: string[];
   label: string;
+  onFail: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const controlsRef = useRef<OrbitControls | null>(null);
+  const pivotRef = useRef<THREE.Group | null>(null);
+  const paintRef = useRef<(color: string) => void>(() => {});
   const yawRef = useRef<(delta: number) => void>(() => {});
+  const zoomRef = useRef<(delta: number) => void>(() => {});
   const resetRef = useRef<() => void>(() => {});
+  const rotatingRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [touch, setTouch] = useState(false);
   const [rotating, setRotating] = useState(false);
@@ -105,9 +137,10 @@ export default function VehicleModelViewer({
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return;
+    if (!host || !src) return;
     const coarse = window.matchMedia('(pointer: coarse)').matches;
     setTouch(coarse);
+    setReady(false);
     let renderer: THREE.WebGLRenderer;
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
@@ -115,60 +148,99 @@ export default function VehicleModelViewer({
       fail();
       return;
     }
-    let disposed = false;
     const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    const scene = buildScene(theme);
-    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 30);
-    camera.position.copy(lookTarget).add(homeOffset);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    const scene = new THREE.Scene();
+    const garage = buildGarage(theme);
+    const pivot = new THREE.Group();
+    pivot.rotation.y = homeYaw;
+    pivotRef.current = pivot;
+    scene.add(garage, pivot);
+    scene.add(new THREE.HemisphereLight(theme === 'light' ? '#f7f4fb' : '#c9bddc', theme === 'light' ? '#b7ad9c' : '#2a2233', 1.15));
+    const sun = new THREE.DirectionalLight('#fff4e8', theme === 'light' ? 1.45 : 1.2);
+    sun.position.set(4.2, 7.2, 3.4);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(512, 512);
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 24;
+    sun.shadow.camera.left = -6;
+    sun.shadow.camera.right = 6;
+    sun.shadow.camera.top = 6;
+    sun.shadow.camera.bottom = -6;
+    scene.add(sun);
+    const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 40);
+    let zoom = 1;
+    const applyCamera = () => {
+      camera.position.copy(lookTarget).add(baseOffset.clone().multiplyScalar(zoom));
+      camera.lookAt(lookTarget);
+    };
+    applyCamera();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.25 : 1.5));
     renderer.setClearColor(0x000000, 0);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
     host.appendChild(renderer.domElement);
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.copy(lookTarget);
-    controls.enableDamping = false;
-    controls.autoRotate = false;
-    controls.enablePan = false;
-    controls.minDistance = 2.45;
-    controls.maxDistance = 6.2;
-    controls.minPolarAngle = 0.42;
-    controls.maxPolarAngle = Math.PI / 2.05;
-    controls.enabled = !coarse;
-    controls.update();
-    controlsRef.current = controls;
+    let disposed = false;
     let visible = true;
     const render = () => {
       if (disposed || document.hidden || !visible) return;
       renderer.render(scene, camera);
     };
-    const place = (offset: THREE.Vector3) => {
-      camera.position.copy(lookTarget).add(offset);
-      camera.lookAt(lookTarget);
-      controls.target.copy(lookTarget);
-      controls.update();
+    yawRef.current = (delta) => {
+      pivot.rotation.y += delta;
       render();
     };
-    yawRef.current = (delta: number) => {
-      const spherical = new THREE.Spherical().setFromVector3(camera.position.clone().sub(lookTarget));
-      spherical.theta += delta;
-      spherical.phi = THREE.MathUtils.clamp(spherical.phi, 0.42, Math.PI / 2.05);
-      spherical.radius = THREE.MathUtils.clamp(spherical.radius, 2.45, 6.2);
-      const next = new THREE.Vector3().setFromSpherical(spherical);
-      place(next);
+    zoomRef.current = (delta) => {
+      zoom = Math.min(1.7, Math.max(0.82, zoom + delta));
+      applyCamera();
+      render();
     };
-    resetRef.current = () => place(homeOffset.clone());
+    resetRef.current = () => {
+      pivot.rotation.y = homeYaw;
+      zoom = 1;
+      applyCamera();
+      render();
+    };
+    const gate = createLoadGeneration();
+    const request = gate.begin();
+    const loader = new GLTFLoader();
+    loader.load(
+      src,
+      (gltf) => {
+        if (disposed || !gate.isCurrent(request)) {
+          disposeObject(gltf.scene);
+          return;
+        }
+        clonePaintMaterials(gltf.scene, paintMaterials);
+        frameVehicle(gltf.scene);
+        gltf.scene.traverse((object) => {
+          const mesh = object as THREE.Mesh;
+          if (mesh.isMesh) mesh.castShadow = true;
+        });
+        pivot.add(gltf.scene);
+        paintRef.current = (color) => {
+          paintVehicle(pivot, color, paintMaterials);
+          render();
+        };
+        paintRef.current(paintColor);
+        setReady(true);
+        render();
+      },
+      undefined,
+      () => {
+        if (!disposed && gate.isCurrent(request)) fail();
+      },
+    );
     const resize = () => {
       const width = Math.max(host.clientWidth, 280);
-      const height = Math.max(host.clientHeight, 180);
+      const height = Math.max(host.clientHeight, 220);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height, false);
       render();
     };
     resize();
-    controls.addEventListener('change', render);
     const observer = new ResizeObserver(resize);
     observer.observe(host);
     const seen = new IntersectionObserver(
@@ -189,33 +261,52 @@ export default function VehicleModelViewer({
       if (!disposed) fail();
     };
     canvas.addEventListener('webglcontextlost', lost);
-    setReady(true);
-    render();
+    let dragging = false;
+    let lastX = 0;
+    const down = (event: PointerEvent) => {
+      if (coarse && !rotatingRef.current) return;
+      dragging = true;
+      lastX = event.clientX;
+      canvas.setPointerCapture?.(event.pointerId);
+    };
+    const move = (event: PointerEvent) => {
+      if (!dragging) return;
+      const delta = event.clientX - lastX;
+      lastX = event.clientX;
+      pivot.rotation.y += delta * 0.01;
+      render();
+    };
+    const up = () => {
+      dragging = false;
+    };
+    canvas.addEventListener('pointerdown', down);
+    canvas.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
     return () => {
       disposed = true;
-      controls.removeEventListener('change', render);
+      gate.begin();
       observer.disconnect();
       seen.disconnect();
       document.removeEventListener('visibilitychange', onHide);
       canvas.removeEventListener('webglcontextlost', lost);
-      controls.dispose();
-      scene.traverse((object) => {
-        const mesh = object as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        mesh.geometry.dispose();
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        materials.forEach((material) => material.dispose());
-      });
+      canvas.removeEventListener('pointerdown', down);
+      canvas.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      disposeObject(scene);
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();
-      controlsRef.current = null;
+      pivotRef.current = null;
     };
-  }, []);
+  }, [src, paintMaterials]);
 
   useEffect(() => {
-    if (controlsRef.current) controlsRef.current.enabled = !touch || rotating;
-  }, [touch, rotating, ready]);
+    if (ready) paintRef.current(paintColor);
+  }, [paintColor, ready]);
+
+  useEffect(() => {
+    rotatingRef.current = rotating;
+  }, [rotating]);
 
   return (
     <div className="vehicle-viewer">
@@ -223,7 +314,7 @@ export default function VehicleModelViewer({
         ref={hostRef}
         className={'vehicle-canvas-host' + (rotating ? ' is-rotating' : '')}
         tabIndex={0}
-        aria-label={`${label}. Arrow keys rotate the model.`}
+        aria-label={`${label || 'Vehicle model'}. Arrow keys rotate the vehicle. The garage stays still.`}
         onKeyDown={(event) => {
           if (event.key === 'ArrowLeft') {
             event.preventDefault();
@@ -239,12 +330,7 @@ export default function VehicleModelViewer({
       </div>
       <div className="viewer-controls">
         {touch ? (
-          <button
-            type="button"
-            className="secondary"
-            aria-pressed={rotating}
-            onClick={() => setRotating((current) => !current)}
-          >
+          <button type="button" className="secondary" aria-pressed={rotating} onClick={() => setRotating((current) => !current)}>
             {rotating ? 'Scroll the page' : 'Rotate the model'}
           </button>
         ) : null}
@@ -254,13 +340,17 @@ export default function VehicleModelViewer({
         <button type="button" className="secondary" onClick={() => yawRef.current(0.35)}>
           Rotate right
         </button>
+        <button type="button" className="secondary" onClick={() => zoomRef.current(0.12)}>
+          Zoom out
+        </button>
+        <button type="button" className="secondary" onClick={() => zoomRef.current(-0.12)}>
+          Zoom in
+        </button>
         <button type="button" className="secondary" onClick={() => resetRef.current()}>
           Reset view
         </button>
       </div>
-      {touch && rotating ? (
-        <p className="muted">Drag to look around. Vertical scrolling pauses while this is on.</p>
-      ) : null}
+      {touch && rotating ? <p className="muted">Drag to rotate the vehicle. Page scrolling pauses while this is on.</p> : null}
     </div>
   );
 }

@@ -2,6 +2,8 @@ import { VehicleStage } from '../../components/garage/VehicleStage';
 import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { historyCouldBelongTo } from '../../features/demo/links';
+import { commitUpdate } from '../../features/demo/commitUpdate';
+import { saveVehicle } from '../../features/demo/demoActions';
 import { bookingReference } from '../../features/jobs/jobViews';
 import { careSourceLabel, careStateLabel, dateCareState, mileageCareState } from '../../features/garage/vehicleCare';
 
@@ -9,7 +11,7 @@ function bookingsFor(data: any, vehicle: any) {
   return (data.vehicles && data.jobs ? data.jobs : []).filter((job: any) => job.vehicleId === vehicle.id);
 }
 
-export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
+export function VehiclePage({ data, go, notify = () => {}, setDialog, update = () => false, vehicleId }: any) {
   const vehicle = (data.vehicles || []).find((item: any) => item.id === vehicleId);
   if (!vehicle) {
     return (
@@ -34,7 +36,16 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
   return (
     <div className="vehicle-detail">
       <div className="showroom showroom-compact">
-        <VehicleStage vehicle={vehicle} />
+        <VehicleStage
+          compact
+          vehicle={vehicle}
+          onBodyStyle={(bodyStyle, variant) =>
+            commitUpdate(update, (current: any) => saveVehicle(current, { ...vehicle, bodyStyle, variant }), notify, '')
+          }
+          onPaint={(paintColor) =>
+            commitUpdate(update, (current: any) => saveVehicle(current, { ...vehicle, paintColor }), notify, '')
+          }
+        />
         <h2>
           {vehicle.year} {vehicle.make} {vehicle.model}
         </h2>

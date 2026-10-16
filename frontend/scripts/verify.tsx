@@ -46,6 +46,9 @@ import {
   deleteCustomerReview,
   catalogueModel,
   modelForVehicle,
+  resolveVehicleAsset,
+  createLoadGeneration,
+  recolorBodyPaint,
   commitUpdate,
   resolveHistoryVehicle,
   safeRouteId,
@@ -954,8 +957,10 @@ assert.ok(!customerProfile.includes('Explore another workspace'));
 assert.ok(!customerProfile.includes('Find a professional'));
 const garageHtml = screen('customer', 'garage');
 assert.ok(garageHtml.includes('Add vehicle'));
-assert.ok(garageHtml.includes('View vehicle'));
+assert.ok(garageHtml.includes('View details'));
 assert.ok(garageHtml.includes('Illustrative model — not an exact match'));
+assert.ok(garageHtml.includes('CC BY 4.0'));
+assert.ok(!garageHtml.includes('Previous vehicle'));
 assert.ok(!garageHtml.includes('Find a professional'));
 assert.ok(!garageHtml.includes('360'));
 const bookingHtml = screen('customer', 'bookings/VA-2026-1042');
@@ -1391,8 +1396,87 @@ assert.ok(ambiguousGarage.includes('History not linked to a vehicle'));
 assert.ok(ambiguousGarage.includes('Check'));
 assert.ok(!screen('customer', 'garage/a', ambiguousData).includes('Check'));
 assert.equal(catalogueModel(initialData.vehicles[0]), null);
-assert.equal(modelForVehicle(initialData.vehicles[0]).originalGeometry, true);
-assert.equal(modelForVehicle(initialData.vehicles[0]).illustrative, true);
+assert.equal(modelForVehicle(initialData.vehicles[0]).accuracy, 'illustrative');
+assert.equal(modelForVehicle(initialData.vehicles[0]).asset.id, 'khronos-car-concept');
+assert.equal(modelForVehicle(initialData.vehicles[0]).originalGeometry, false);
+const poloHatch = resolveVehicleAsset({ make: 'Volkswagen', model: 'Polo', year: '2020', bodyStyle: 'hatchback' });
+const poloLater = resolveVehicleAsset({ make: 'Volkswagen', model: 'Polo', year: '2022', bodyStyle: 'hatchback' });
+const poloAmbiguous = resolveVehicleAsset({ make: 'Volkswagen', model: 'Polo', year: '2020' });
+const conceptExact = resolveVehicleAsset({
+  make: 'Demonstration',
+  model: 'Concept Car',
+  year: '2024',
+  variant: 'show car',
+});
+const conceptApprox = resolveVehicleAsset({
+  make: 'Demonstration',
+  model: 'Concept Car',
+  year: '2021',
+  bodyStyle: 'concept coupe',
+});
+const missingModel = resolveVehicleAsset({ make: 'Toyota', model: 'Corolla', year: '2019', bodyStyle: 'sedan' });
+assert.equal(poloHatch.status, 'illustrative');
+assert.equal(poloHatch.entry.id, 'polo-2018-hatch');
+assert.notEqual(poloHatch.accuracy, 'exact');
+assert.equal(poloLater.entry.id, 'polo-2022-hatch');
+assert.notEqual(poloLater.entry.id, poloHatch.entry.id);
+assert.equal(poloAmbiguous.status, 'ambiguous');
+assert.equal(poloAmbiguous.asset, null);
+assert.equal(poloAmbiguous.choices.length, 2);
+assert.equal(conceptExact.status, 'exact');
+assert.equal(conceptExact.label, '');
+assert.equal(catalogueModel({ make: 'Demonstration', model: 'Concept Car', year: '2024', variant: 'show car' })?.id, 'demo-concept-2024');
+assert.equal(conceptApprox.status, 'approximate');
+assert.ok(conceptApprox.label.includes('Approximate model'));
+assert.equal(missingModel.entry, null);
+assert.equal(missingModel.status, 'illustrative');
+const paintSource = [
+  { name: 'Paint 1 Carmine', color: '#aa0000' },
+  { name: 'Glass', color: '#99ccff' },
+  { name: 'Tiretread', color: '#111111' },
+];
+const paintedA = recolorBodyPaint(paintSource, '#112233');
+const paintedB = recolorBodyPaint(paintSource, '#445566');
+assert.equal(paintedA[0].color, '#112233');
+assert.equal(paintedB[0].color, '#445566');
+assert.equal(paintedA[1].color, '#99ccff');
+assert.equal(paintedA[2].color, '#111111');
+assert.equal(paintSource[0].color, '#aa0000');
+const coloured = saveVehicle(initialData, { ...initialData.vehicles[0], paintColor: '#123456' });
+assert.equal(coloured.vehicles[0].id, 'v1');
+assert.equal(coloured.vehicles[0].paintColor, '#123456');
+assert.equal(coloured.jobs[0].id, initialData.jobs[0].id);
+const secondColour = saveVehicle(coloured, {
+  id: 'v2',
+  make: 'Toyota',
+  model: 'Corolla',
+  year: '2019',
+  registration: 'ZZ 1',
+  mileage: '10',
+  paintColor: '#abcdef',
+});
+assert.equal(secondColour.vehicles.find((vehicle: any) => vehicle.id === 'v1').paintColor, '#123456');
+assert.equal(secondColour.vehicles.find((vehicle: any) => vehicle.id === 'v2').paintColor, '#abcdef');
+assert.equal(secondColour.jobs.length, coloured.jobs.length);
+let unsavedColour = initialData;
+assert.equal(
+  commitUpdate(
+    (change) => {
+      change(unsavedColour);
+      return false;
+    },
+    (data) => saveVehicle(data, { ...data.vehicles[0], paintColor: '#ffffff' }),
+    () => {},
+    'Saved',
+  ),
+  false,
+);
+assert.equal((unsavedColour.vehicles[0] as any).paintColor, undefined);
+const loads = createLoadGeneration();
+const olderLoad = loads.begin();
+const newerLoad = loads.begin();
+assert.equal(loads.isCurrent(olderLoad), false);
+assert.equal(loads.isCurrent(newerLoad), true);
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );

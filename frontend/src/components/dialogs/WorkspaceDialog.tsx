@@ -2,6 +2,7 @@ import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } fr
 import { quoteTotal } from '../../demo';
 import { commitUpdate } from '../../features/demo/commitUpdate';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
+import { bodyStyleOptions } from '../../features/garage/vehicleCatalogue';
 import { removeOrArchiveVehicle, resolveHistoryVehicle, saveVehicle, updateRequestedBooking } from '../../features/demo/demoActions';
 import { bookingReference } from '../../features/jobs/jobViews';
 import { sharedRecordsForProfessional } from '../../features/garage/historyAccess';
@@ -62,6 +63,9 @@ export function WorkspaceDialog({
                 nextServiceMileage: f.get('nextServiceMileage'),
                 nextServiceSource: f.get('nextServiceSource'),
                 archived: dialog.vehicle?.archived === true,
+                variant: f.get('variant'),
+                bodyStyle: f.get('bodyStyle'),
+                paintColor: f.get('usePaint') ? f.get('paintColor') : '',
               };
               try {
                 const saved = commitUpdate(
@@ -81,7 +85,8 @@ export function WorkspaceDialog({
             <span className="chip">MY GARAGE</span>
             <h2>{dialog.vehicle ? 'Edit vehicle' : 'Add your vehicle'}</h2>
             <p className="muted">
-              These details identify the vehicle in your garage. They do not generate an accurate 3D model.
+              These details identify the vehicle and look up a published model. They do not generate accurate geometry,
+              and the vehicle is saved even when no 3D file is available.
             </p>
             <div className="form-row">
               <label>
@@ -93,6 +98,31 @@ export function WorkspaceDialog({
                 <input name="model" required defaultValue={dialog.vehicle?.model} />
               </label>
             </div>
+            <div className="form-row">
+              <label>
+                Body style
+                <select name="bodyStyle" defaultValue={dialog.vehicle?.bodyStyle || ''}>
+                  <option value="">Not specified</option>
+                  {bodyStyleOptions.map((style) => (
+                    <option key={style} value={style}>
+                      {style}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Variant
+                <input name="variant" defaultValue={dialog.vehicle?.variant || ''} />
+              </label>
+            </div>
+            <label className="check-label">
+              <input name="usePaint" type="checkbox" defaultChecked={!!dialog.vehicle?.paintColor} />
+              Set a body colour
+            </label>
+            <label>
+              Paint colour
+              <input name="paintColor" type="color" defaultValue={dialog.vehicle?.paintColor || '#f2f2f2'} />
+            </label>
             <div className="form-row">
               <label>
                 Year

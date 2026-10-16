@@ -18,6 +18,8 @@ export const initialData = {
       year: '2020',
       registration: 'DEMO 001',
       mileage: '68420',
+      bodyStyle: 'hatchback',
+      variant: 'hatchback',
     },
   ],
   jobs: [

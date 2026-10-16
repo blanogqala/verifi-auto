@@ -466,11 +466,15 @@ export function Workspace({
                     : 'Manage everything you need, in one place.'}
                 </p>
               </div>
-              {role === 'customer' && !hideFindCta && (
+              {role === 'customer' && tab === 'garage' ? (
+                <button className="primary" type="button" onClick={() => setDialog({ kind: 'vehicle' })}>
+                  Add vehicle <Plus size={17} />
+                </button>
+              ) : role === 'customer' && !hideFindCta ? (
                 <button className="primary" onClick={() => go('dashboard/find')}>
                   Find a professional <Plus size={17} />
                 </button>
-              )}
+              ) : null}
             </div>
           )}
           {invalidDetail ? (
@@ -592,10 +596,17 @@ export function Workspace({
             />
           )}
           {tab === 'garage' && role === 'customer' && (
-            <GaragePage data={data} go={go} setDialog={setDialog} />
+            <GaragePage data={data} go={go} notify={notify} setDialog={setDialog} update={update} />
           )}
           {vehicleDetailId && role === 'customer' && (
-            <VehiclePage data={data} go={go} setDialog={setDialog} vehicleId={vehicleDetailId} />
+            <VehiclePage
+              data={data}
+              go={go}
+              notify={notify}
+              setDialog={setDialog}
+              update={update}
+              vehicleId={vehicleDetailId}
+            />
           )}
           {tab === 'payments' && role === 'customer' && (
             <PaymentsPage go={go} jobs={bookingsForCustomer(jobs, data.settings?.id || 'cust-01')} setDialog={setDialog} />

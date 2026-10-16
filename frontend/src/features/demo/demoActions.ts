@@ -210,6 +210,9 @@ export function saveVehicle(data: any, vehicle: any) {
     nextServiceMileage: textValue(vehicle.nextServiceMileage),
     nextServiceSource: vehicle.nextServiceSource === 'mechanic' ? 'mechanic' : 'owner',
     archived: vehicle.archived === true,
+    variant: textValue(vehicle.variant),
+    bodyStyle: textValue(vehicle.bodyStyle),
+    paintColor: /^#[0-9a-fA-F]{6}$/.test(textValue(vehicle.paintColor)) ? textValue(vehicle.paintColor).toLowerCase() : '',
   };
   if (!next.make || !next.model || !next.year || !next.registration) throw Error('Complete the vehicle details.');
   const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];

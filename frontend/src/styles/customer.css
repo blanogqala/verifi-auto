@@ -118,11 +118,15 @@
   width: 100%;
 }
 .vehicle-canvas-host {
-  width: min(100%, 640px);
-  height: min(42vh, 280px);
-  min-height: 200px;
+  width: min(100%, 960px);
+  height: min(62vh, 520px);
+  min-height: 280px;
   position: relative;
   touch-action: pan-y;
+}
+.vehicle-stage-compact .vehicle-canvas-host {
+  height: min(42vh, 320px);
+  min-height: 200px;
 }
 .vehicle-canvas-host.is-rotating {
   touch-action: none;
@@ -145,6 +149,91 @@
 }
 .viewer-controls button {
   min-height: 44px;
+}
+.garage-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.garage-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.garage-card.selected {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px var(--purple);
+}
+.garage-card-select {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+.garage-card-select img,
+.garage-card-thumb {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--purple) 18%, transparent), transparent),
+    var(--surface);
+}
+.model-details {
+  text-align: left;
+  font-size: 0.92rem;
+}
+.paint-panel,
+.paint-swatches,
+.vehicle-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+.paint-panel {
+  display: grid;
+  justify-items: center;
+}
+.paint-swatch {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  padding: 0;
+}
+.paint-swatch[aria-pressed='true'] {
+  border-color: var(--purple);
+  box-shadow: 0 0 0 2px var(--purple);
+}
+.paint-custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (max-width: 750px) {
+  .garage-cards {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    touch-action: pan-x pan-y;
+  }
+  .garage-card {
+    flex: 0 0 220px;
+  }
+  .vehicle-canvas-host {
+    height: min(48vh, 360px);
+  }
 }
 .vehicle-fallback-art {
   width: min(100%, 280px);

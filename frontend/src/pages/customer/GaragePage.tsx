@@ -1,94 +1,85 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { VehicleStage } from '../../components/garage/VehicleStage';
-import { activeVehicles, unresolvedHistory, vehicleSnapshot } from '../../features/demo/links';
+import { resolveVehicleAsset } from '../../features/garage/assetResolution';
+import { activeVehicles, unresolvedHistory } from '../../features/demo/links';
+import { commitUpdate } from '../../features/demo/commitUpdate';
+import { saveVehicle } from '../../features/demo/demoActions';
 
-export function GaragePage({ data, go, setDialog }: any) {
+export function GaragePage({ data, go, notify, setDialog, update }: any) {
   const vehicles = activeVehicles(data.vehicles || []);
-  const [index, setIndex] = useState(0);
-  const selected = vehicles[Math.min(index, Math.max(vehicles.length - 1, 0))];
-  const count = vehicles.length;
+  const [selectedId, setSelectedId] = useState(vehicles[0]?.id || '');
+  const selected = vehicles.find((vehicle) => vehicle.id === selectedId) || vehicles[0];
   const unresolved = unresolvedHistory(data);
 
-  function move(next: number) {
-    if (!count) return;
-    setIndex((next + count) % count);
+  function persist(vehicle: any, patch: any) {
+    commitUpdate(update, (current: any) => saveVehicle(current, { ...vehicle, ...patch }), notify, '');
   }
 
   return (
     <>
-      <div className="panel-title">
-        <h2>Your vehicles</h2>
-        <button className="primary" type="button" onClick={() => setDialog({ kind: 'vehicle' })}>
-          Add vehicle <Plus size={17} />
-        </button>
-      </div>
       {!selected ? (
         <Card as="section" className="dash-panel showroom-empty">
           <h2>Your garage is empty</h2>
           <p>Add a vehicle to keep its records, bookings, and reminders together.</p>
         </Card>
       ) : (
-        <section className="showroom" aria-roledescription="carousel" aria-label="Garage showroom">
-          <div className="showroom-stage">
-            <p className="showroom-count">
-              {count === 1 ? '1 vehicle' : `${Math.min(index, count - 1) + 1} of ${count}`}
-            </p>
-            <VehicleStage key={selected.id} vehicle={selected} />
-            <h2>
-              {selected.year} {selected.make} {selected.model}
-            </h2>
-            <p>
-              {selected.registration} · {Number(selected.mileage || 0).toLocaleString()} km
-            </p>
-            <div className="showroom-controls">
-              <button
-                className="secondary"
-                type="button"
-                aria-label="Previous vehicle"
-                disabled={count < 2}
-                onClick={() => move(index - 1)}
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                className="primary"
-                type="button"
-                onClick={() => go('dashboard/garage/' + encodeURIComponent(selected.id))}
-              >
-                View vehicle
-              </button>
-              <button
-                className="secondary"
-                type="button"
-                aria-label="Next vehicle"
-                disabled={count < 2}
-                onClick={() => move(index + 1)}
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
+        <>
+          <section className="showroom" aria-label="Garage showroom">
+            <VehicleStage
+              vehicle={selected}
+              onBodyStyle={(bodyStyle, variant) => persist(selected, { bodyStyle, variant })}
+              onPaint={(paintColor) => persist(selected, { paintColor })}
+            />
+            <details className="model-details">
+              <summary>Model details</summary>
+              <p>
+                Lookup uses the local approved catalogue. It does not search the internet, and a demonstration model
+                is not a remote match for this vehicle.
+              </p>
+              <p>
+                Future asset search belongs on the server. A candidate has to be checked for accuracy, permitted use,
+                attribution, file safety, and phone performance before it is published.
+              </p>
+            </details>
+          </section>
+          <div className="garage-cards" aria-label="Your vehicles">
+            {vehicles.map((vehicle) => {
+              const match = resolveVehicleAsset(vehicle);
+              const selectedCard = vehicle.id === selected.id;
+              return (
+                <article key={vehicle.id} className={'garage-card' + (selectedCard ? ' selected' : '')}>
+                  <button
+                    type="button"
+                    className="garage-card-select"
+                    aria-pressed={selectedCard}
+                    onClick={() => setSelectedId(vehicle.id)}
+                  >
+                    {match.accuracy === 'exact' && match.asset?.thumbnail ? (
+                      <img src={match.asset.thumbnail} alt="" />
+                    ) : (
+                      <span className="garage-card-thumb" aria-hidden="true" />
+                    )}
+                    <b>
+                      {vehicle.make} {vehicle.model}
+                    </b>
+                    <span>{vehicle.year}</span>
+                    <span>{vehicle.registration}</span>
+                    <span>{Number(vehicle.mileage || 0).toLocaleString()} km</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => go('dashboard/garage/' + encodeURIComponent(vehicle.id))}
+                  >
+                    View details
+                  </button>
+                </article>
+              );
+            })}
           </div>
-          {count > 1 ? (
-            <div className="showroom-thumbs" aria-label="Vehicles">
-              {vehicles.map((vehicle, thumbIndex) => (
-                <button
-                  key={vehicle.id}
-                  type="button"
-                  className={vehicle.id === selected.id ? 'selected' : ''}
-                  aria-current={vehicle.id === selected.id ? 'true' : undefined}
-                  onClick={() => setIndex(thumbIndex)}
-                >
-                  {vehicleSnapshot(vehicle)}
-                  {vehicle.registration ? ` · ${vehicle.registration}` : ''}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="muted showroom-single">This is the only vehicle in your garage.</p>
-          )}
-        </section>
+          {vehicles.length === 1 ? <p className="muted">This is the only vehicle in your garage.</p> : null}
+        </>
       )}
       {unresolved.length ? (
         <Card as="section" className="dash-panel">
@@ -107,11 +98,7 @@ export function GaragePage({ data, go, setDialog }: any) {
                   {item.provider ? ` · ${item.provider}` : ''}
                 </small>
               </div>
-              <button
-                className="secondary"
-                type="button"
-                onClick={() => setDialog({ kind: 'resolve-history', item })}
-              >
+              <button className="secondary" type="button" onClick={() => setDialog({ kind: 'resolve-history', item })}>
                 Choose a vehicle
               </button>
             </article>
