@@ -1,5 +1,9 @@
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
 import { quoteTotal } from '../../demo';
+import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
+import { removeOrArchiveVehicle, saveVehicle, updateRequestedBooking } from '../../features/demo/demoActions';
+import { sharedRecordsForProfessional } from '../../features/garage/historyAccess';
+import { demoCustomerId } from '../../features/admin/customerRecords';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
@@ -43,22 +47,31 @@ export function WorkspaceDialog({
             onSubmit={(e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
-              const v = {
-                id: dialog.vehicle?.id || crypto.randomUUID(),
-                make: String(f.get('make')).trim(),
-                model: String(f.get('model')).trim(),
+              const vehicle = {
+                id: dialog.vehicle?.id,
+                make: f.get('make'),
+                model: f.get('model'),
                 year: f.get('year'),
                 registration: f.get('registration'),
                 mileage: f.get('mileage'),
+                licenceDiscExpiry: f.get('licenceDiscExpiry'),
+                licenceDiscSource: f.get('licenceDiscSource'),
+                nextServiceDate: f.get('nextServiceDate'),
+                nextServiceMileage: f.get('nextServiceMileage'),
+                nextServiceSource: f.get('nextServiceSource'),
+                archived: dialog.vehicle?.archived === true,
               };
-              update((d: any) => ({
-                ...d,
-                vehicles: dialog.vehicle
-                  ? d.vehicles.map((x: any) => (x.id === v.id ? v : x))
-                  : [...d.vehicles, v],
-              }));
-              setDialog(null);
-              notify('Sample vehicle saved.');
+              try {
+                const saved = update((d: any) => saveVehicle(d, vehicle));
+                if (!saved) {
+                  notify('Could not store this vehicle in this browser.');
+                  return;
+                }
+                setDialog(null);
+                notify('Sample vehicle saved.');
+              } catch (reason: any) {
+                notify(reason.message);
+              }
             }}
           >
             <span className="chip">MY GARAGE</span>
@@ -105,6 +118,42 @@ export function WorkspaceDialog({
                 defaultValue={dialog.vehicle?.registration || 'DEMO 002'}
               />
             </label>
+            <div className="form-row">
+              <label>
+                Licence disc expiry
+                <input name="licenceDiscExpiry" type="date" defaultValue={dialog.vehicle?.licenceDiscExpiry || ''} />
+              </label>
+              <label>
+                Who recorded the licence date
+                <select name="licenceDiscSource" defaultValue={dialog.vehicle?.licenceDiscSource || 'owner'}>
+                  <option value="owner">Entered by the owner</option>
+                  <option value="mechanic">Recorded by a mechanic</option>
+                </select>
+              </label>
+            </div>
+            <div className="form-row">
+              <label>
+                Next service date
+                <input name="nextServiceDate" type="date" defaultValue={dialog.vehicle?.nextServiceDate || ''} />
+              </label>
+              <label>
+                Next service mileage
+                <input
+                  name="nextServiceMileage"
+                  type="number"
+                  min="0"
+                  defaultValue={dialog.vehicle?.nextServiceMileage || ''}
+                />
+              </label>
+            </div>
+            <label>
+              Who recorded the next service
+              <select name="nextServiceSource" defaultValue={dialog.vehicle?.nextServiceSource || 'owner'}>
+                <option value="owner">Entered by the owner</option>
+                <option value="mechanic">Recorded by a mechanic</option>
+              </select>
+            </label>
+            <p className="muted">Leave a date blank when it has not been recorded. No service interval is assumed.</p>
             <button className="primary full">
               Save vehicle <Check size={17} />
             </button>
@@ -218,6 +267,15 @@ export function WorkspaceDialog({
                 </>
               )}
             </div>
+            {role === 'mechanic'
+              ? sharedRecordsForProfessional(data, dialog.job, data?.profile?.id || 'pro-own').map(
+                  (record: any) => (
+                    <p key={record.id}>
+                      Shared history: {record.title} · {record.date}
+                    </p>
+                  ),
+                )
+              : null}
           </>
         )}
         {dialog.kind === 'approve' && (
@@ -466,6 +524,104 @@ export function WorkspaceDialog({
               Keep appointment
             </button>
           </>
+        )}
+        {dialog.kind === 'archive-vehicle' && (
+          <>
+            <h2>{dialog.linked ? 'Archive this vehicle?' : 'Remove this vehicle?'}</h2>
+            <p>
+              {dialog.vehicle.year} {dialog.vehicle.make} {dialog.vehicle.model} · {dialog.vehicle.registration}
+            </p>
+            <p className="muted">
+              {dialog.linked
+                ? 'Bookings and service records stay in this browser. The vehicle leaves the showroom.'
+                : 'This vehicle has no linked bookings or service records.'}
+            </p>
+            <button
+              className="primary full"
+              type="button"
+              onClick={() => {
+                try {
+                  const saved = update((current: any) => removeOrArchiveVehicle(current, dialog.vehicle.id));
+                  if (!saved) {
+                    notify('Could not store this vehicle change in this browser.');
+                    return;
+                  }
+                  setDialog(null);
+                  notify(
+                    dialog.linked
+                      ? 'Vehicle archived. Its history stays in this browser.'
+                      : 'Vehicle removed from this browser.',
+                  );
+                } catch (reason: any) {
+                  notify(reason.message);
+                }
+              }}
+            >
+              {dialog.linked ? 'Archive vehicle' : 'Remove vehicle'}
+            </button>
+          </>
+        )}
+        {dialog.kind === 'edit-booking' && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              try {
+                const saved = update((current: any) =>
+                  updateRequestedBooking(current, {
+                    bookingId: dialog.job.id,
+                    customerId: data.settings?.id || demoCustomerId,
+                    vehicleId: String(form.get('vehicleId') || ''),
+                    date: String(form.get('date') || ''),
+                    time: String(form.get('time') || ''),
+                    description: String(form.get('description') || ''),
+                  }),
+                );
+                if (!saved) {
+                  notify('Could not store this request in this browser.');
+                  return;
+                }
+                setDialog(null);
+                notify('Demo request updated in this browser.');
+              } catch (reason: any) {
+                notify(reason.message);
+              }
+            }}
+          >
+            <h2>Edit request</h2>
+            <p className="muted">Pending requests can be edited. Accepted quotations stay unchanged.</p>
+            <label>
+              Vehicle
+              <select name="vehicleId" defaultValue={dialog.job.vehicleId || ''} required>
+                {activeVehicles(data.vehicles || []).map((vehicle) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicleOptionLabel(vehicle)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="form-row">
+              <label>
+                Preferred date
+                <input name="date" type="date" required defaultValue={dialog.job.date} />
+              </label>
+              <label>
+                Preferred time
+                <select name="time" defaultValue={dialog.job.time}>
+                  {['09:00', '11:00', '14:00', '16:00'].map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label>
+              What needs attention?
+              <textarea name="description" required minLength={3} defaultValue={dialog.job.description || ''} />
+            </label>
+            <button className="primary full" type="submit">
+              Save changes
+            </button>
+          </form>
         )}
         {dialog.kind === 'record' && (
           <>

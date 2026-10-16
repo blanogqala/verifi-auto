@@ -16,12 +16,13 @@ export function customerRecords(data: any) {
       const name = linked && text(settings.name) ? text(settings.name) : text(item.name);
       const email = linked && text(settings.email) ? text(settings.email) : text(item.email);
       const city = linked && text(settings.city) ? text(settings.city) : text(item.city);
+      const phone = linked && text(settings.phone) ? text(settings.phone) : text(item.phone);
       return {
         id: item.id,
         name,
         email,
         city,
-        phone: text(item.phone),
+        phone,
         sample: item.sample !== false,
       };
     })

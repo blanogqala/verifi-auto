@@ -1,0 +1,202 @@
+.view-profile {
+  border-color: color-mix(in srgb, var(--purple) 55%, var(--line));
+  color: var(--soft);
+  background: transparent;
+  font-weight: 700;
+}
+.view-profile:hover,
+.view-profile:focus-visible {
+  background: color-mix(in srgb, var(--purple) 16%, transparent);
+  border-color: var(--purple);
+  outline: 2px solid var(--purple);
+  outline-offset: 2px;
+}
+.customer-profile,
+.booking-detail,
+.vehicle-detail,
+.profile-page {
+  display: grid;
+  gap: 18px;
+}
+.password-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.password-field input {
+  flex: 1;
+}
+.pro-banner,
+.showroom-stage {
+  display: grid;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--purple) 28%, transparent), transparent 42%),
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 70%, #2a241c), var(--surface));
+  border: 1px solid var(--line);
+}
+.pro-banner {
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+}
+.pro-banner-art {
+  width: 120px;
+  height: 120px;
+  border-radius: 40% 40% 46% 46%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: var(--purple);
+  color: #fff;
+  font-size: 36px;
+}
+.customer-profile .avatar.big {
+  width: 112px;
+  height: 112px;
+  border-radius: 46%;
+  font-size: 28px;
+}
+.pro-banner-art img,
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pro-layout,
+.review-photos,
+.showroom-thumbs,
+.showroom-controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.pro-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+}
+.pro-services,
+.pro-contact,
+.booking-timeline {
+  margin: 0;
+  padding-left: 18px;
+}
+.review-photos img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.showroom-stage {
+  text-align: center;
+  touch-action: pan-y;
+}
+.showroom-stage h2 {
+  margin-bottom: 0;
+}
+.showroom-controls {
+  justify-content: center;
+}
+.showroom-thumbs button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: transparent;
+}
+.showroom-thumbs button.selected {
+  border-color: var(--purple);
+  color: var(--soft);
+}
+.vehicle-fallback {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+.vehicle-fallback-art {
+  width: min(100%, 280px);
+  height: 110px;
+  fill: none;
+  stroke: var(--soft);
+  stroke-width: 3;
+}
+.road-loader {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+.road-loader-scene {
+  position: relative;
+  width: 148px;
+  height: 36px;
+  overflow: hidden;
+}
+.road-loader-road {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, var(--purple), transparent);
+}
+.road-loader-car {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  width: 28px;
+  height: 14px;
+  border-radius: 4px 6px 3px 3px;
+  background: var(--purple);
+  animation: road-drive 1.4s ease-in-out infinite;
+}
+.road-loader-car::before,
+.road-loader-car::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.road-loader-car::before {
+  left: 3px;
+}
+.road-loader-car::after {
+  right: 3px;
+}
+.road-loader-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+@keyframes road-drive {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(112px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .road-loader-car {
+    animation: none;
+    left: 60px;
+  }
+}
+.page-skeleton {
+  height: 18px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--line) 70%, transparent);
+}
+@media (max-width: 750px) {
+  .pro-banner,
+  .pro-layout {
+    grid-template-columns: 1fr;
+  }
+  .showroom-controls .primary,
+  .payment-row .primary,
+  .payment-row .secondary {
+    width: 100%;
+  }
+}

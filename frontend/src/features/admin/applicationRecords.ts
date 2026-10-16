@@ -70,19 +70,39 @@ export function applicationRecords(data: any) {
   return [...own, ...reviews];
 }
 
+function blocksDirectory(provider: any, reviews: any[]) {
+  return reviews.some((item: any) => {
+    const same = item?.professionalId
+      ? item.professionalId === provider?.id
+      : item?.name === provider?.name;
+    return same && item?.status !== 'Approved';
+  });
+}
+
 /** Public directory rule: only currently approved profiles are listed. */
 export function directoryEntries(providers: any[], data: any) {
   const reviews = Array.isArray(data?.reviews) ? data.reviews : [];
   const listed = (Array.isArray(providers) ? providers : []).filter(
-    (provider) => !reviews.some((item: any) => item?.name === provider?.name && item?.status !== 'Approved'),
+    (provider) => !blocksDirectory(provider, reviews),
   );
   if (data?.application?.status === 'Approved' && data?.profile) {
+    const profile = data.profile;
     listed.push({
-      name: data.profile.name,
-      type: data.profile.type,
-      area: data.profile.city,
-      special: (data.profile.services || []).join(' · '),
-      fee: data.profile.fee,
+      id: typeof profile.id === 'string' && profile.id ? profile.id : 'pro-own',
+      name: profile.name,
+      individualName: profile.individualName || '',
+      type: profile.type,
+      area: profile.city,
+      special: (profile.services || []).join(' · '),
+      services: profile.services || [],
+      fee: profile.fee,
+      phone: typeof profile.phone === 'string' ? profile.phone : '',
+      email: typeof data?.mechanicAccount?.email === 'string' ? data.mechanicAccount.email : '',
+      website: typeof profile.website === 'string' ? profile.website : '',
+      bio: typeof profile.bio === 'string' ? profile.bio : '',
+      photo: typeof profile.photo === 'string' ? profile.photo : '',
+      applicationStatus: 'Approved',
+      own: true,
     });
   }
   return listed;

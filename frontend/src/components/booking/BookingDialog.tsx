@@ -1,38 +1,54 @@
-import { ArrowRight, ShieldCheck, MapPin, Check, X, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
+import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
+import { createBooking, saveVehicle, updateRequestedBooking } from '../../features/demo/demoActions';
+import { demoCustomerId } from '../../features/admin/customerRecords';
 
-/** Presentational view. State and actions are supplied by the owning layout. */
+/** Appointment form. The introduction step is not part of booking. */
 export function BookingDialog({
   anchor,
-  book,
-  bookings,
+  customerId,
   date,
+  description,
+  editingJob,
   go,
   modal,
-  role,
-  setBookings,
+  requestId,
   setDate,
+  setDescription,
   setModal,
+  setRequestId,
   setStep,
   setTime,
-  setVehicle,
+  setVehicleId,
   step,
   time,
-  type,
   update,
-  vehicle,
+  notify,
+  vehicleId,
+  vehicles,
 }: any) {
+  const [adding, setAdding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const choices = activeVehicles(vehicles || []);
+  const ownerId = customerId || demoCustomerId;
+
+  function close() {
+    setModal(null);
+    setAdding(false);
+  }
+
   return (
-    <div className="modal-backdrop" onClick={() => setModal(null)}>
+    <div className="modal-backdrop" onClick={close}>
       <section
         role="dialog"
         aria-modal="true"
-        aria-label={
-          modal === 'join' ? 'Join Verifi' : modal.record ? 'Service record' : 'Book an assessment'
-        }
+        aria-label={modal === 'join' ? 'Join Verifi' : editingJob ? 'Edit request' : 'Book an assessment'}
         className="modal"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
-        <button className="close" onClick={() => setModal(null)} aria-label="Close dialog">
+        <button className="close" onClick={close} aria-label="Close dialog">
           <X />
         </button>
         {modal === 'join' ? (
@@ -44,19 +60,6 @@ export function BookingDialog({
               Grow your reputation.
             </h2>
             <p>Verifi Auto is being designed for independent mobile mechanics and workshops.</p>
-            <div className="join-checks">
-              {[
-                'Professional profile and service area',
-                'Identity and relevant qualification checks',
-                'Appointments and itemised quotes',
-                'Digital service records for your customers',
-              ].map((t) => (
-                <p key={t}>
-                  <Check size={18} />
-                  {t}
-                </p>
-              ))}
-            </div>
             <div className="notice">
               Applications are not open in this design preview. Verification criteria and the pilot
               city are still being finalised.
@@ -64,30 +67,11 @@ export function BookingDialog({
             <button
               className="primary"
               onClick={() => {
-                setModal(null);
+                close();
                 anchor('trust');
               }}
             >
               Explore our proposed standard <ArrowRight size={18} />
-            </button>
-          </>
-        ) : modal.record ? (
-          <>
-            <span className="chip">ILLUSTRATIVE SERVICE RECORD</span>
-            <h2>{modal.title}</h2>
-            <p>
-              {modal.date} · {modal.mileage}
-            </p>
-            <hr />
-            <h3>Work performed</h3>
-            <p>{modal.notes}</p>
-            <p>Vehicle: Volkswagen Polo · 2020</p>
-            <div className="notice">
-              Sample record only. No real invoice, provider confirmation, or owner approval is
-              attached.
-            </div>
-            <button className="primary" onClick={() => setModal(null)}>
-              Back to My Garage
             </button>
           </>
         ) : step === 2 ? (
@@ -104,152 +88,220 @@ export function BookingDialog({
               {date} at {time}
             </p>
             <div className="notice">
-              No appointment has been sent to a professional and no payment has been taken.
+              No appointment has been sent to a professional and no payment has been taken. The time
+              is a preference, not confirmed availability.
             </div>
             <button
               className="primary"
               onClick={() => {
-                setModal(null);
+                close();
                 go('dashboard/bookings');
               }}
             >
               View my bookings <ArrowRight size={18} />
             </button>
           </div>
+        ) : adding ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              try {
+                let createdId = '';
+                const saved = update((current: any) => {
+                  const next = saveVehicle(current, {
+                    make: form.get('make'),
+                    model: form.get('model'),
+                    year: form.get('year'),
+                    registration: form.get('registration'),
+                    mileage: form.get('mileage'),
+                    licenceDiscSource: 'owner',
+                    nextServiceSource: 'owner',
+                  });
+                  createdId = next.vehicles[next.vehicles.length - 1].id;
+                  return next;
+                });
+                if (!saved) {
+                  setError('Could not store this vehicle in this browser.');
+                  return;
+                }
+                setVehicleId(createdId);
+                setAdding(false);
+                setError('');
+              } catch (reason: any) {
+                setError(reason.message);
+              }
+            }}
+          >
+            <h2>Add vehicle</h2>
+            <p className="muted">Your professional and appointment details stay on this request.</p>
+            <div className="form-row">
+              <label>
+                Make
+                <input name="make" required />
+              </label>
+              <label>
+                Model
+                <input name="model" required />
+              </label>
+            </div>
+            <div className="form-row">
+              <label>
+                Year
+                <input name="year" type="number" min="1900" max="2027" required defaultValue={2020} />
+              </label>
+              <label>
+                Mileage (km)
+                <input name="mileage" type="number" min="0" required defaultValue={0} />
+              </label>
+            </div>
+            <label>
+              Registration
+              <input name="registration" required defaultValue="DEMO 002" />
+            </label>
+            {error ? (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <button className="primary full" type="submit">
+              Save vehicle <Check size={17} />
+            </button>
+            <button className="text-link back" type="button" onClick={() => setAdding(false)}>
+              Back to appointment
+            </button>
+          </form>
         ) : (
-          <>
-            <span className="chip">SAMPLE PROFESSIONAL · STEP {step + 1} OF 2</span>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (submitting) return;
+              setSubmitting(true);
+              setError('');
+              try {
+                const vehicle = choices.find((item) => item.id === vehicleId);
+                let duplicate = false;
+                const saved = update((current: any) => {
+                  if (editingJob) {
+                    return updateRequestedBooking(current, {
+                      bookingId: editingJob.id,
+                      customerId: ownerId,
+                      vehicleId,
+                      date,
+                      time,
+                      description,
+                    });
+                  }
+                  const result = createBooking(current, {
+                    professional: modal,
+                    vehicle,
+                    date,
+                    time,
+                    description,
+                    customerId: ownerId,
+                    clientRequestId: requestId,
+                  });
+                  duplicate = result.duplicate;
+                  return result.data;
+                });
+                if (!saved) {
+                  setError('Could not store this booking in this browser.');
+                  return;
+                }
+                if (duplicate) setError('This request was already saved.');
+                if (editingJob) {
+                  notify('Demo request updated in this browser.');
+                  close();
+                } else {
+                  setRequestId(crypto.randomUUID());
+                  setStep(2);
+                }
+              } catch (reason: any) {
+                setError(reason.message);
+              } finally {
+                setSubmitting(false);
+              }
+            }}
+          >
+            <span className="chip">SAMPLE PROFESSIONAL</span>
             <h2>{modal.name}</h2>
             <p>
-              <MapPin size={16} />
               {modal.area} · {modal.type}
             </p>
-            {step === 0 ? (
-              <>
-                <div className="notice">
-                  <ShieldCheck size={21} />
-                  <div>
-                    <b>How verification will appear</b>
-                    <p>
-                      Identity, qualification, and experience checks will be shown individually.
-                      This fictional profile has not undergone checks.
-                    </p>
-                  </div>
-                </div>
-                <h3>Expertise</h3>
-                <p>{modal.special}</p>
-                <div className="fee-row">
-                  <span>Illustrative assessment fee</span>
-                  <strong>R{modal.fee}</strong>
-                </div>
-                <p className="muted">
-                  The repair price is separate. You review and approve a quote after the assessment,
-                  before repairs begin.
-                </p>
-                <button
-                  className="primary full"
-                  onClick={() => {
-                    if (role === 'customer') setStep(1);
-                    else book(modal);
-                  }}
+            <div className="fee-row">
+              <span>Assessment fee</span>
+              <strong>R{modal.fee}</strong>
+            </div>
+            <p className="muted">
+              The assessment fee is separate from future repair costs. A preferred time is not
+              confirmed availability.
+            </p>
+            {choices.length ? (
+              <label>
+                Your vehicle
+                <select
+                  required
+                  autoFocus
+                  value={vehicleId}
+                  onChange={(event) => setVehicleId(event.target.value)}
                 >
-                  Choose an appointment <ArrowRight size={18} />
-                </button>
-              </>
+                  <option value="">Select a vehicle</option>
+                  {choices.map((vehicle) => (
+                    <option key={vehicle.id} value={vehicle.id}>
+                      {vehicleOptionLabel(vehicle)}
+                    </option>
+                  ))}
+                </select>
+              </label>
             ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  setBookings([
-                    ...bookings,
-                    { provider: modal.name, date, time, vehicle, fee: modal.fee },
-                  ]);
-                  update((d: any) => ({
-                    ...d,
-                    jobs: [
-                      {
-                        id: 'VA-' + Date.now().toString().slice(-7),
-                        provider: modal.name,
-                        date,
-                        time,
-                        vehicle,
-                        fee: modal.fee,
-                        status: 'Requested',
-                        accepted: false,
-                        items: [],
-                        notes: '',
-                        quoteApproved: false,
-                        paid: false,
-                      },
-                      ...d.jobs,
-                    ],
-                    notifications: [
-                      {
-                        id: crypto.randomUUID(),
-                        text: 'Your sample assessment request was created.',
-                        read: false,
-                      },
-                      ...d.notifications,
-                    ],
-                  }));
-                  setStep(2);
-                }}
-              >
-                <label>
-                  Your vehicle
-                  <input
-                    autoFocus
-                    required
-                    value={vehicle}
-                    onChange={(e) => setVehicle(e.target.value)}
-                    placeholder="e.g. 2020 Volkswagen Polo"
-                    maxLength={100}
-                  />
-                </label>
-                <div className="form-row">
-                  <label>
-                    Preferred date
-                    <input
-                      required
-                      type="date"
-                      min={new Date().toISOString().split('T')[0]}
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Preferred time
-                    <select value={time} onChange={(e) => setTime(e.target.value)}>
-                      {['09:00', '11:00', '14:00', '16:00'].map((t) => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <label>
-                  What needs attention?
-                  <textarea
-                    placeholder="Describe the symptoms or service you need."
-                    maxLength={1000}
-                  />
-                </label>
-                <div className="fee-row">
-                  <span>Sample assessment fee</span>
-                  <strong>R{modal.fee}</strong>
-                </div>
-                <p className="muted">
-                  Preferred times are illustrative, not confirmed availability. Demo requests are
-                  saved in this browser only.
-                </p>
-                <button className="primary full" type="submit">
-                  Create demo request <ArrowRight size={18} />
+              <div className="notice">
+                <p>Add a vehicle before requesting an assessment.</p>
+                <button className="secondary" type="button" onClick={() => setAdding(true)}>
+                  Add vehicle
                 </button>
-                <button className="text-link back" type="button" onClick={() => setStep(0)}>
-                  Back to profile
-                </button>
-              </form>
+              </div>
             )}
-          </>
+            <div className="form-row">
+              <label>
+                Preferred date
+                <input
+                  required
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
+                />
+              </label>
+              <label>
+                Preferred time
+                <select value={time} onChange={(event) => setTime(event.target.value)}>
+                  {['09:00', '11:00', '14:00', '16:00'].map((item) => (
+                    <option key={item}>{item}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label>
+              What needs attention?
+              <textarea
+                required
+                minLength={3}
+                maxLength={1000}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Describe the symptoms or service you need."
+              />
+            </label>
+            {error ? (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <button className="primary full" type="submit" disabled={submitting || !choices.length}>
+              {submitting ? 'Saving request' : editingJob ? 'Save changes' : 'Create demo request'}
+              <ArrowRight size={18} />
+            </button>
+          </form>
         )}
       </section>
     </div>

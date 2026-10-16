@@ -1,80 +1,106 @@
+import { useState } from 'react';
+import type { PointerEvent } from 'react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
+import { VehicleStage } from '../../components/garage/VehicleStage';
+import { activeVehicles, vehicleSnapshot } from '../../features/demo/links';
 
-import { ArrowUpRight, ArrowRight, Car, FileText, Plus } from 'lucide-react';
+export function GaragePage({ data, go, setDialog }: any) {
+  const vehicles = activeVehicles(data.vehicles || []);
+  const [index, setIndex] = useState(0);
+  const selected = vehicles[Math.min(index, Math.max(vehicles.length - 1, 0))];
+  const count = vehicles.length;
 
-/** Presentational view. State and actions are supplied by the owning layout. */
-export function GaragePage({ data, filter, go, setDialog }: any) {
+  function move(next: number) {
+    if (!count) return;
+    setIndex((next + count) % count);
+  }
+
+  function swipe(event: PointerEvent<HTMLDivElement>) {
+    const startX = event.clientX;
+    const startY = event.clientY;
+    function end(done: globalThis.PointerEvent) {
+      const dx = done.clientX - startX;
+      const dy = done.clientY - startY;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) move(index + (dx < 0 ? 1 : -1));
+      window.removeEventListener('pointerup', end);
+    }
+    window.addEventListener('pointerup', end);
+  }
+
   return (
     <>
       <div className="panel-title">
         <h2>Your vehicles</h2>
-        <button className="primary" onClick={() => setDialog({ kind: 'vehicle' })}>
+        <button className="primary" type="button" onClick={() => setDialog({ kind: 'vehicle' })}>
           Add vehicle <Plus size={17} />
         </button>
       </div>
-      <div className="vehicle-grid">
-        {data.vehicles.map((v: any) => (
-          <Card as="article" className="vehicle-card" key={v.id}>
-            <div className="panel-title">
-              <span className="chip">DEMO VEHICLE</span>
-              <button
-                aria-label={'Edit ' + v.make + ' ' + v.model}
-                className="text-link"
-                onClick={() => setDialog({ kind: 'vehicle', vehicle: v })}
-              >
-                Edit
-              </button>
-            </div>
-            <Car size={85} strokeWidth={1} />
+      {!selected ? (
+        <Card as="section" className="dash-panel showroom-empty">
+          <h2>Your garage is empty</h2>
+          <p>Add a vehicle to keep its records, bookings, and reminders together.</p>
+        </Card>
+      ) : (
+        <section className="showroom" aria-roledescription="carousel" aria-label="Garage showroom">
+          <div className="showroom-stage" onPointerDown={swipe}>
+            <p className="showroom-count">
+              {count === 1 ? '1 vehicle' : `${Math.min(index, count - 1) + 1} of ${count}`}
+            </p>
+            <VehicleStage vehicle={selected} />
             <h2>
-              {v.make} {v.model}
+              {selected.year} {selected.make} {selected.model}
             </h2>
             <p>
-              {v.year} · {v.registration}
+              {selected.registration} · {Number(selected.mileage || 0).toLocaleString()} km
             </p>
-            <div className="vehicle-stats">
-              <span>
-                MILEAGE<strong>{Number(v.mileage).toLocaleString()} km</strong>
-              </span>
-              <span>
-                SERVICE RECORDS
-                <strong>
-                  {
-                    data.records.filter((r: any) => r.vehicle === `${v.year} ${v.make} ${v.model}`)
-                      .length
-                  }
-                </strong>
-              </span>
+            <div className="showroom-controls">
+              <button
+                className="secondary"
+                type="button"
+                aria-label="Previous vehicle"
+                disabled={count < 2}
+                onClick={() => move(index - 1)}
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                className="primary"
+                type="button"
+                onClick={() => go('dashboard/garage/' + encodeURIComponent(selected.id))}
+              >
+                View vehicle
+              </button>
+              <button
+                className="secondary"
+                type="button"
+                aria-label="Next vehicle"
+                disabled={count < 2}
+                onClick={() => move(index + 1)}
+              >
+                <ChevronRight size={18} />
+              </button>
             </div>
-            <button className="text-link" onClick={() => go('dashboard/find')}>
-              Find care for this vehicle <ArrowUpRight size={16} />
-            </button>
-          </Card>
-        ))}
-      </div>
-      <div className="panel-title history-heading">
-        <h2>Service history</h2>
-        <span className="muted">Sample and completed demo records</span>
-      </div>
-      {data.records.map((r: any) => (
-        <div className="service-history-row" key={r.id}>
-          <span className="history-dot">
-            <FileText size={20} />
-          </span>
-          <div>
-            <small>
-              {r.date} · {r.vehicle}
-            </small>
-            <h3>{r.title}</h3>
-            <p>
-              {r.provider} · {r.mileage} km
-            </p>
           </div>
-          <button className="text-link" onClick={() => setDialog({ kind: 'record', record: r })}>
-            View record <ArrowRight size={16} />
-          </button>
-        </div>
-      ))}
+          {count > 1 ? (
+            <div className="showroom-thumbs" aria-label="Vehicles">
+              {vehicles.map((vehicle, thumbIndex) => (
+                <button
+                  key={vehicle.id}
+                  type="button"
+                  className={vehicle.id === selected.id ? 'selected' : ''}
+                  aria-current={vehicle.id === selected.id ? 'true' : undefined}
+                  onClick={() => setIndex(thumbIndex)}
+                >
+                  {vehicleSnapshot(vehicle)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="muted showroom-single">This is the only vehicle in your garage.</p>
+          )}
+        </section>
+      )}
     </>
   );
 }

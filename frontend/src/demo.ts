@@ -58,3 +58,26 @@ export {
   pageTitle,
 } from './config/navigation';
 export { canVisit, canonicalPage } from './routes/access';
+export { phoneError } from './features/account/phoneNumber';
+export { persistDemoState } from './hooks/useDemoStore';
+export {
+  applyJobTransition,
+  createBooking,
+  removeOrArchiveVehicle,
+  saveCustomerProfile,
+  saveVehicle,
+  updateRequestedBooking,
+} from './features/demo/demoActions';
+export {
+  canOfferHistoryAccess,
+  grantHistoryAccess,
+  revokeHistoryAccess,
+  sharedRecordsForProfessional,
+} from './features/garage/historyAccess';
+export {
+  deleteCustomerReview,
+  eligibleReviewBookings,
+  saveCustomerReview,
+} from './features/reviews/customerReviews';
+export { catalogueModel } from './features/garage/vehicleModels';
+export { resolveProfessional, safeWebsite } from './features/professionals/professionalProfile';

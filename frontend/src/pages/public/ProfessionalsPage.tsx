@@ -8,6 +8,7 @@ export function ProfessionalsPage({
   book,
   city,
   embedded = false,
+  go,
   results,
   service,
   setCity,
@@ -74,8 +75,8 @@ export function ProfessionalsPage({
             key={p.name}
             professional={p}
             onView={() => {
-              setModal(p);
-              setStep(0);
+              if (!p.id || typeof go !== 'function') return;
+              go((embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(p.id));
             }}
             onBook={() => book(p)}
           />

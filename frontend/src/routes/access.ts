@@ -1,12 +1,15 @@
 import { Role } from '../types/roles';
 import { allowedDashboardPages } from '../config/navigation';
 
+const customerDetail = /^(find|bookings|garage)\/[^/]+$/;
+
 export function canVisit(role: Role | null, page: string) {
   if (!page.startsWith('dashboard/')) return true;
   if (!role) return false;
   const tab = page.slice('dashboard/'.length);
   if (!tab || tab.split('/').length > 2) return false;
-  return allowedDashboardPages[role].includes(tab);
+  if (allowedDashboardPages[role].includes(tab)) return true;
+  return role === 'customer' && customerDetail.test(tab);
 }
 
 const mechanicLegacyPages: Record<string, string> = {

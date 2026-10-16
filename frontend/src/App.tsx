@@ -5,6 +5,7 @@ import { LandingPage } from './pages/public/LandingPage';
 import { ProfessionalsPage } from './pages/public/ProfessionalsPage';
 import { PublicFooter } from './layouts/PublicFooter';
 import { BookingDialog } from './components/booking/BookingDialog';
+import { ProfessionalProfilePage } from './components/professionals/ProfessionalProfilePage';
 import { useState, useEffect, useRef } from 'react';
 
 import { Workspace } from './layouts/WorkspaceLayout';
@@ -48,10 +49,11 @@ export default function App() {
   const [type, setType] = useState('Either');
   const [modal, setModal] = useState<any>(null);
   const [step, setStep] = useState(0);
-  const [bookings, setBookings] = useState<any[]>([]);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('09:00');
-  const [vehicle, setVehicle] = useState('');
+  const [vehicleId, setVehicleId] = useState('');
+  const [description, setDescription] = useState('');
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [toast, setToast] = useState('');
   const [sectionTarget, setSectionTarget] = useState<{
     id: string;
@@ -120,10 +122,7 @@ export default function App() {
       let p = canonicalPage(role, raw);
       if (p.startsWith('dashboard/') && !role) p = 'login';
       else if (p.startsWith('dashboard/') && role && !canVisit(role, p)) p = 'dashboard/overview';
-      if (
-        !['home', 'find', 'login', 'register', 'forgot'].includes(p) &&
-        !p.startsWith('dashboard/')
-      )
+      if (!['home', 'find', 'login', 'register', 'forgot'].includes(p) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(p))
         p = 'home';
       setPage(p);
       if (canonicalPage(role, raw) !== raw) location.hash = p;
@@ -143,7 +142,7 @@ export default function App() {
       setPage('find');
       location.hash = 'find';
       setModal(pending);
-      setStep(0);
+      setStep(1);
       setPending(null);
     } else {
       const next =
@@ -253,6 +252,12 @@ export default function App() {
     return () => stop();
   }, [page, sectionTarget]);
   function book(p: any) {
+    setDate('');
+    setTime('09:00');
+    setVehicleId('');
+    setDescription('');
+    setRequestId(crypto.randomUUID());
+    setStep(1);
     if (role !== 'customer') {
       setModal(null);
       setPending(p);
@@ -267,9 +272,6 @@ export default function App() {
       return;
     }
     setModal(p);
-    setStep(0);
-    setDate('');
-    setVehicle('');
   }
   const directory = directoryEntries(providers, data);
   const results = directory.filter(
@@ -344,6 +346,7 @@ export default function App() {
         <ProfessionalsPage
           book={book}
           city={city}
+          go={go}
           results={results}
           service={service}
           setCity={setCity}
@@ -353,6 +356,16 @@ export default function App() {
           setType={setType}
           type={type}
         />
+      ) : page.startsWith('professional/') ? (
+        <ProfessionalProfilePage
+          book={book}
+          data={data}
+          go={go}
+          notify={setToast}
+          professionalId={decodeURIComponent(page.slice('professional/'.length))}
+          role={role}
+          update={update}
+        />
       ) : null}
       {!page.startsWith('dashboard/') && (
         <PublicFooter anchor={anchor} go={go} setModal={setModal} />
@@ -360,23 +373,25 @@ export default function App() {
       {modal && (
         <BookingDialog
           anchor={anchor}
-          book={book}
-          bookings={bookings}
+          customerId={data.settings?.id}
           date={date}
+          description={description}
           go={go}
           modal={modal}
-          role={role}
-          setBookings={setBookings}
+          notify={setToast}
+          requestId={requestId}
           setDate={setDate}
+          setDescription={setDescription}
           setModal={setModal}
+          setRequestId={setRequestId}
           setStep={setStep}
           setTime={setTime}
-          setVehicle={setVehicle}
+          setVehicleId={setVehicleId}
           step={step}
           time={time}
-          type={type}
           update={update}
-          vehicle={vehicle}
+          vehicleId={vehicleId}
+          vehicles={data.vehicles}
         />
       )}
       {toast && (

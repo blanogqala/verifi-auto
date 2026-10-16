@@ -4,6 +4,10 @@ import { EmptyState as Empty } from '../../components/ui/EmptyState';
 import { MetricCard as Metric } from '../../components/ui/MetricCard';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { quoteTotal } from '../../demo';
+import {
+  awaitingCustomerPayments,
+  recordedCustomerPayments,
+} from '../../features/admin/paymentRecords';
 
 function amount(job: any) {
   return job.items?.length ? `R${quoteTotal(job).toLocaleString()}` : 'Not recorded';
@@ -11,8 +15,8 @@ function amount(job: any) {
 
 /** Mechanic view of customer payment records. This does not settle funds to a bank. */
 export function MechanicPaymentsPage({ jobs, setDialog }: any) {
-  const awaiting = jobs.filter((job: any) => job.status === 'Awaiting payment' && !job.paid);
-  const recorded = jobs.filter((job: any) => job.paid);
+  const awaiting = awaitingCustomerPayments(jobs);
+  const recorded = recordedCustomerPayments(jobs);
   const rows = [...awaiting, ...recorded];
 
   return (

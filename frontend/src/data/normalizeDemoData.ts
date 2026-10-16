@@ -1,5 +1,6 @@
 import { rememberApproval } from '../features/admin/applicationRecords';
 import { demoCustomerId } from '../features/admin/customerRecords';
+import { professionalOptions, withRecordLinks } from '../features/demo/links';
 import { migrateJob } from '../features/jobs/jobViews';
 import { initialData } from './fixtures';
 
@@ -40,7 +41,7 @@ function normalizeCustomers(base: any) {
     name: settingsName || existingName || initialData.customers[0].name,
     email: settingsEmail || existingEmail || initialData.customers[0].email,
     city: text(settings.city) || text(existing?.city) || initialData.customers[0].city,
-    phone: text(existing?.phone),
+    phone: text(settings.phone) || text(existing?.phone),
     sample: true,
   };
   const others = source
@@ -84,10 +85,16 @@ export function normalizeDemoData(saved: any) {
   const adminAccount = normalizeAdminAccount(base.adminAccount);
   const customers = normalizeCustomers(base);
   const settings = normalizeSettings(base, customers[0].id);
+  settings.phone = text(settings.phone) || text(customers[0].phone);
+  customers[0] = { ...customers[0], phone: text(settings.phone) || text(customers[0].phone) };
+  const vehicles = Array.isArray(base.vehicles) ? base.vehicles : [];
+  const options = professionalOptions({ ...base, settings });
   return {
     ...base,
     settings,
     customers,
+    customerReviews: Array.isArray(base.customerReviews) ? base.customerReviews : [],
+    historyAccess: Array.isArray(base.historyAccess) ? base.historyAccess : [],
     adminAccount,
     mechanicAccount,
     mechanicBanking,
@@ -100,9 +107,21 @@ export function normalizeDemoData(saved: any) {
       ? base.jobs.map((job: any) => {
           const next = migrateJob(job);
           if (!next || typeof next !== 'object') return next;
-          if (typeof next.customerId === 'string' && next.customerId) return next;
-          return { ...next, customerId: demoCustomerId };
+          const linked = withRecordLinks(
+            typeof next.customerId === 'string' && next.customerId
+              ? next
+              : { ...next, customerId: demoCustomerId },
+            vehicles,
+            options,
+          );
+          return {
+            ...linked,
+            description: typeof linked.description === 'string' ? linked.description : '',
+          };
         })
       : base.jobs,
+    records: Array.isArray(base.records)
+      ? base.records.map((record: any) => withRecordLinks(record, vehicles, options))
+      : base.records,
   };
 }

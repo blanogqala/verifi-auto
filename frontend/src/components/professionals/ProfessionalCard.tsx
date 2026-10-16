@@ -24,7 +24,7 @@ export function ProfessionalCard({ professional: p, onView, onBook }: any) {
             Assessment from<strong>R{p.fee}</strong>
           </span>
           <div className="provider-actions">
-            <button className="text-link" onClick={onView}>
+            <button className="secondary view-profile" type="button" onClick={onView}>
               View profile <ArrowUpRight size={14} />
             </button>
             <button className="primary" onClick={onBook}>

@@ -7,6 +7,8 @@ import { OverviewPage } from '../pages/shared/OverviewPage';
 import { JobsPage } from '../pages/shared/JobsPage';
 import { QuotesPage } from '../pages/shared/QuotesPage';
 import { GaragePage } from '../pages/customer/GaragePage';
+import { VehiclePage } from '../pages/customer/VehiclePage';
+import { BookingDetailPage } from '../pages/customer/BookingDetailPage';
 import { PaymentsPage } from '../pages/customer/PaymentsPage';
 import { AppointmentsPage } from '../pages/mechanic/AppointmentsPage';
 import { MechanicPaymentsPage } from '../pages/mechanic/MechanicPaymentsPage';
@@ -20,6 +22,7 @@ import { AdminProfilePage } from '../pages/admin/AdminProfilePage';
 import { NotificationsPage } from '../pages/shared/NotificationsPage';
 import { SettingsPage } from '../pages/shared/SettingsPage';
 import { ProfessionalsPage } from '../pages/public/ProfessionalsPage';
+import { ProfessionalProfilePage } from '../components/professionals/ProfessionalProfilePage';
 
 import { StatusBadge as Status } from '../components/ui/StatusBadge';
 import { useState, useEffect, useRef } from 'react';
@@ -50,6 +53,7 @@ import {
   applicationRecords,
   appointmentSection,
   customerRecords,
+  bookingsForCustomer,
   decideApplication,
   isAcceptedJob,
   isManagedProfessional,
@@ -58,7 +62,7 @@ import {
   merchantProfileSection,
   merchantProfileSectionLabel,
   pageTitle,
-  transitionJob,
+  applyJobTransition,
 } from '../demo';
 
 export type DirectoryProps = {
@@ -93,7 +97,7 @@ export type WorkspaceProps = {
   go: (page: string) => void;
   logout: () => void;
   data: any;
-  update: (fn: (value: any) => any) => void;
+  update: (fn: (value: any) => any) => boolean | void;
   notify: (message: string) => void;
   theme?: string;
   setTheme?: (theme: string) => void;
@@ -234,6 +238,14 @@ export function Workspace({
       : role === 'mechanic'
         ? customerFullName(data.profile?.name) || 'Mechanic'
         : customerFullName(data.adminAccount?.name).split(/\s+/)[0] || 'Admin';
+  const sectionRoot = tab.split('/')[0];
+  const professionalId = tab.startsWith('find/') ? decodeURIComponent(tab.slice('find/'.length)) : '';
+  const bookingId = tab.startsWith('bookings/') ? decodeURIComponent(tab.slice('bookings/'.length)) : '';
+  const vehicleDetailId = tab.startsWith('garage/') ? decodeURIComponent(tab.slice('garage/'.length)) : '';
+  const hideFindCta =
+    role === 'customer' && ['profile', 'settings', 'garage', 'payments'].includes(sectionRoot);
+  const accountPhoto =
+    role === 'customer' ? data.settings?.photo || '' : role === 'mechanic' ? data.profile?.photo || '' : '';
   const heading = pageTitle(role, tab);
   const apps = applicationRecords(data);
   const customers = customerRecords(data);
@@ -253,26 +265,18 @@ export function Workspace({
   }
   function jobAction(job: any, action: string, extra: any = {}) {
     try {
-      const changed = transitionJob(job, action, extra);
-      update((d: any) => {
-        let next = { ...d, jobs: d.jobs.map((j: any) => (j.id === job.id ? changed : j)) };
-        if (action === 'pay')
-          next.records = [
-            {
-              id: job.id,
-              title: 'Completed repair',
-              date: new Date().toISOString().split('T')[0],
-              vehicle: job.vehicle,
-              mileage: extra.mileage || 'Not recorded',
-              notes: job.completionNotes,
-              provider: job.provider,
-            },
-            ...d.records,
-          ];
-        return note(next, `${job.id}: ${changed.status}.`);
+      let status = '';
+      const saved = update((d: any) => {
+        const result = applyJobTransition(d, job, action, extra);
+        status = result.job.status;
+        return note(result.data, `${job.id}: ${result.job.status}.`);
       });
+      if (saved === false) {
+        notify('Could not store this job update in this browser.');
+        return;
+      }
       setDialog(null);
-      notify('Demo job updated: ' + changed.status);
+      notify('Demo job updated: ' + status);
     } catch (e: any) {
       notify(e.message);
     }
@@ -375,7 +379,14 @@ export function Workspace({
         <JobCard
           key={j.id}
           job={j}
-          onView={() => setDialog({ kind: 'job', job: j })}
+        onView={() => {
+          if (role === 'customer') {
+            go('dashboard/bookings/' + encodeURIComponent(j.id));
+            setSide(false);
+            return;
+          }
+          setDialog({ kind: 'job', job: j });
+        }}
           quoteAction={quoteActionFor(j)}
         />
       ));
@@ -395,7 +406,7 @@ export function Workspace({
       ) : null}
       <WorkspaceSidebar
         accountName={accountName}
-        accountPhoto={role === 'mechanic' ? data.profile?.photo : ''}
+        accountPhoto={accountPhoto}
         drawer={drawer}
         goHome={goHome}
         logout={logout}
@@ -409,7 +420,7 @@ export function Workspace({
       <main className="workspace-main">
         <WorkspaceTopbar
           accountName={accountName}
-          accountPhoto={role === 'mechanic' ? data.profile?.photo : ''}
+          accountPhoto={accountPhoto}
           heading={heading}
           sectionLabel={sectionLabel}
           menuButtonRef={menuButtonRef}
@@ -423,7 +434,7 @@ export function Workspace({
           unread={unread}
         />
         <div className="workspace-body">
-          {tab !== 'find' && !merchantSection && (
+          {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && (
             <div className="workspace-heading">
               <div>
                 <div className="eyebrow">
@@ -444,7 +455,7 @@ export function Workspace({
                     : 'Manage everything you need, in one place.'}
                 </p>
               </div>
-              {role === 'customer' && (
+              {role === 'customer' && !hideFindCta && (
                 <button className="primary" onClick={() => go('dashboard/find')}>
                   Find a professional <Plus size={17} />
                 </button>
@@ -474,11 +485,11 @@ export function Workspace({
               section={appointmentView}
             />
           )}
-          {tab === 'bookings' && (
+          {tab === 'bookings' && role === 'customer' && (
             <JobsPage
               cardJobs={cardJobs}
               filter={filter}
-              jobs={jobs}
+              jobs={bookingsForCustomer(jobs, data.settings?.id || 'cust-01')}
               query={query}
               setFilter={setFilter}
               setQuery={setQuery}
@@ -495,6 +506,16 @@ export function Workspace({
                 'Completed',
                 'Cancelled',
               ]}
+            />
+          )}
+          {bookingId && role === 'customer' && (
+            <BookingDetailPage
+              bookingId={bookingId}
+              data={data}
+              go={go}
+              notify={notify}
+              setDialog={setDialog}
+              update={update}
             />
           )}
           {tab === 'jobs' && role === 'mechanic' && (
@@ -553,11 +574,14 @@ export function Workspace({
               setDialog={setDialog}
             />
           )}
-          {tab === 'garage' && (
-            <GaragePage data={data} filter={filter} go={go} setDialog={setDialog} />
+          {tab === 'garage' && role === 'customer' && (
+            <GaragePage data={data} go={go} setDialog={setDialog} />
+          )}
+          {vehicleDetailId && role === 'customer' && (
+            <VehiclePage data={data} go={go} setDialog={setDialog} vehicleId={vehicleDetailId} />
           )}
           {tab === 'payments' && role === 'customer' && (
-            <PaymentsPage filter={filter} jobs={jobs} note={note} setDialog={setDialog} />
+            <PaymentsPage go={go} jobs={bookingsForCustomer(jobs, data.settings?.id || 'cust-01')} setDialog={setDialog} />
           )}
           {tab === 'payments' && role === 'mechanic' && (
             <MechanicPaymentsPage jobs={jobs} setDialog={setDialog} />
@@ -567,6 +591,7 @@ export function Workspace({
               embedded
               book={directory.book}
               city={directory.city}
+              go={go}
               results={directory.results}
               service={directory.service}
               setCity={directory.setCity}
@@ -575,6 +600,18 @@ export function Workspace({
               setStep={directory.setStep}
               setType={directory.setType}
               type={directory.type}
+            />
+          )}
+          {professionalId && role === 'customer' && (
+            <ProfessionalProfilePage
+              book={directory.book}
+              data={data}
+              embedded
+              go={go}
+              notify={notify}
+              professionalId={professionalId}
+              role={role}
+              update={update}
             />
           )}
           {merchantSection && (

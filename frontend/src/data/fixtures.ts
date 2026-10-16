@@ -92,12 +92,16 @@ export const initialData = {
       note: 'Customer would like clarification on parts and labour before approving.',
     },
   ],
+  customerReviews: [] as any[],
+  historyAccess: [] as any[],
   settings: {
     id: 'cust-01',
     name: 'Alex Morgan',
     email: 'alex@example.com',
     city: 'East London',
+    phone: '',
     emailUpdates: true,
+    photo: '',
   },
   customers: [
     {

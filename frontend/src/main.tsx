@@ -3,4 +3,5 @@ import App from './App';
 import './styles/base.css';
 import './styles/workspace.css';
 import './styles/cards.css';
+import './styles/customer.css';
 createRoot(document.getElementById('root')!).render(<App />);

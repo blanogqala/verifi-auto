@@ -33,6 +33,18 @@ import {
   recordedCustomerPayments,
   awaitingCustomerPayments,
   paymentRecordTotal,
+  phoneError,
+  persistDemoState,
+  createBooking,
+  updateRequestedBooking,
+  applyJobTransition,
+  saveCustomerProfile,
+  removeOrArchiveVehicle,
+  grantHistoryAccess,
+  revokeHistoryAccess,
+  saveCustomerReview,
+  deleteCustomerReview,
+  catalogueModel,
 } from '../src/demo';
 import { providers } from '../src/data/professionals';
 import { Workspace } from '../src/layouts/WorkspaceLayout';
@@ -40,6 +52,7 @@ import { WorkspaceDialog } from '../src/components/dialogs/WorkspaceDialog';
 import { PublicHeader } from '../src/layouts/PublicHeader';
 import { AuthPage as Auth } from '../src/pages/auth/AuthPage';
 import { ProfessionalsPage } from '../src/pages/public/ProfessionalsPage';
+import { BookingDialog } from '../src/components/booking/BookingDialog';
 let count = 0;
 for (const role of roles) {
   for (const [tab] of navLeaves(role)) {
@@ -927,6 +940,306 @@ assert.ok(publicHeader.includes('aria-label="Switch to light mode"'));
 assert.ok(menuMarkup.includes('nav-theme'));
 assert.ok(!menuMarkup.includes('header-theme'));
 assert.ok(publicHeader.includes('aria-label="Close navigation"'));
+assert.ok(customerProfile.includes('Cell phone number'));
+assert.ok(customerProfile.includes('Change password'));
+assert.ok(customerProfile.includes('Unavailable until secure authentication is connected'));
+assert.ok(!customerProfile.includes('Explore another workspace'));
+assert.ok(!customerProfile.includes('Find a professional'));
+const garageHtml = screen('customer', 'garage');
+assert.ok(garageHtml.includes('Add vehicle'));
+assert.ok(garageHtml.includes('View vehicle'));
+assert.ok(garageHtml.includes('Illustrated preview'));
+assert.ok(!garageHtml.includes('Find a professional'));
+assert.ok(!garageHtml.includes('360'));
+const bookingHtml = screen('customer', 'bookings/VA-2026-1042');
+assert.ok(bookingHtml.includes('Front brake pads'));
+assert.ok(bookingHtml.includes('No dated timeline was stored'));
+assert.ok(bookingHtml.includes('Demo permission only'));
+const profileHtml = screen('customer', 'find/pro-precision-motorworks');
+assert.ok(profileHtml.includes('Precision Motorworks'));
+assert.ok(profileHtml.includes('No reviews yet'));
+assert.ok(profileHtml.includes('Book assessment'));
+assert.ok(screen('customer', 'find/missing-pro').includes('Professional not found'));
+assert.ok(screen('customer', 'find/pro-urban-auto-care').includes('not available'));
+assert.equal(canVisit('customer', 'dashboard/find/pro-precision-motorworks'), true);
+assert.equal(canVisit('customer', 'dashboard/bookings/VA-2026-1042'), true);
+assert.equal(canVisit('customer', 'dashboard/garage/v1'), true);
+assert.equal(canVisit('customer', 'dashboard/garage/v1/edit'), false);
+assert.equal(canVisit('mechanic', 'dashboard/find/pro-precision-motorworks'), false);
+assert.equal(canVisit('mechanic', 'dashboard/bookings/VA-2026-1042'), false);
+assert.equal(canVisit('admin', 'dashboard/garage/v1'), false);
+assert.equal(canVisit('customer', 'dashboard/jobs/VA-1'), false);
+assert.equal(catalogueModel(initialData.vehicles[0]), null);
+const linked = normalizeDemoData(initialData);
+assert.equal(linked.jobs[0].vehicleId, 'v1');
+assert.equal(linked.jobs[0].professionalId, 'pro-precision-motorworks');
+assert.equal(linked.records[0].vehicleId, 'v1');
+assert.ok(!linked.jobs[0].events);
+assert.ok(Array.isArray(linked.customerReviews));
+assert.equal(linked.reviews[0].id, 'app-02');
+assert.notEqual(linked.settings.email, linked.mechanicAccount.email);
+const ambiguous: any = structuredClone(initialData);
+ambiguous.vehicles = [
+  { id: 'a', year: '2020', make: 'Volkswagen', model: 'Polo', registration: 'A', mileage: '1' },
+  { id: 'b', year: '2020', make: 'Volkswagen', model: 'Polo', registration: 'B', mileage: '2' },
+];
+ambiguous.jobs = [
+  { id: 'j-amb', vehicle: '2020 Volkswagen Polo', provider: 'Precision Motorworks', status: 'Requested' },
+];
+ambiguous.records = [{ id: 'r-amb', vehicle: '2020 Volkswagen Polo', provider: 'Unknown Shop', title: 'Check' }];
+const ambiguousData = normalizeDemoData(ambiguous);
+assert.ok(!ambiguousData.jobs[0].vehicleId);
+assert.equal(ambiguousData.jobs[0].professionalId, 'pro-precision-motorworks');
+assert.equal(ambiguousData.jobs[0].vehicle, '2020 Volkswagen Polo');
+assert.ok(!ambiguousData.records[0].vehicleId);
+assert.ok(!ambiguousData.records[0].professionalId);
+const twin: any = structuredClone(initialData);
+twin.application = { status: 'Approved', submittedAt: '', note: '', previouslyApproved: true };
+twin.profile = { ...twin.profile, name: 'Precision Motorworks' };
+twin.vehicles = [{ id: 'solo', year: '2019', make: 'Other', model: 'Car', registration: 'Z', mileage: '1' }];
+twin.jobs = [
+  { id: 'twin', provider: 'Precision Motorworks', vehicle: '2019 Other Car', status: 'Requested', customerId: 'cust-01' },
+];
+const twinData = normalizeDemoData(twin);
+assert.equal(twinData.jobs[0].vehicleId, 'solo');
+assert.ok(!twinData.jobs[0].professionalId);
+const withPhone = saveCustomerProfile(initialData, {
+  name: 'Alex Morgan',
+  email: 'alex@example.com',
+  phone: '+27 82 123 4567',
+  emailUpdates: true,
+  photo: 'data:image/jpeg,abc',
+});
+assert.equal(withPhone.settings.phone, '+27821234567');
+assert.equal(withPhone.customers[0].phone, '+27821234567');
+assert.equal(withPhone.settings.photo, 'data:image/jpeg,abc');
+assert.equal(withPhone.profile.photo, undefined);
+assert.ok(phoneError('123'));
+assert.equal(phoneError('0821234567'), '');
+const syncedPhone = normalizeDemoData({
+  ...initialData,
+  settings: { ...initialData.settings, phone: '0821234567' },
+  customers: [{ ...initialData.customers[0], phone: '' }],
+});
+assert.equal(syncedPhone.customers[0].phone, '0821234567');
+assert.equal(customerRecords(syncedPhone)[0].phone, '0821234567');
+assert.equal(persistDemoState({ setItem() { throw new Error('quota'); } }, { ok: 1 }), false);
+let storedDemo = '';
+assert.equal(
+  persistDemoState({ setItem(_key: string, value: string) { storedDemo = value; } }, { ok: 1 }),
+  true,
+);
+assert.ok(storedDemo.includes('"ok":1'));
+const created = createBooking(initialData, {
+  professional: { id: 'pro-precision-motorworks', name: 'Precision Motorworks', fee: 450 },
+  vehicle: initialData.vehicles[0],
+  date: '2026-12-01',
+  time: '09:00',
+  description: 'Brakes squeal under light use',
+  customerId: 'cust-01',
+  clientRequestId: 'req-1',
+  now: '2026-10-16T12:00:00.000Z',
+});
+assert.equal(created.duplicate, false);
+assert.equal(created.job.vehicleId, 'v1');
+assert.equal(created.job.professionalId, 'pro-precision-motorworks');
+assert.equal(created.job.description, 'Brakes squeal under light use');
+assert.equal(created.job.createdAt, '2026-10-16T12:00:00.000Z');
+assert.equal(created.job.customerId, 'cust-01');
+const duplicateBooking = createBooking(created.data, {
+  professional: { id: 'pro-precision-motorworks', name: 'Precision Motorworks', fee: 450 },
+  vehicle: initialData.vehicles[0],
+  date: '2026-12-01',
+  time: '09:00',
+  description: 'Brakes squeal under light use',
+  customerId: 'cust-01',
+  clientRequestId: 'req-1',
+});
+assert.equal(duplicateBooking.duplicate, true);
+assert.equal(duplicateBooking.data.jobs.filter((job: any) => job.clientRequestId === 'req-1').length, 1);
+const edited = updateRequestedBooking(created.data, {
+  bookingId: created.job.id,
+  customerId: 'cust-01',
+  vehicleId: 'v1',
+  date: '2026-12-02',
+  time: '11:00',
+  description: 'Still squealing',
+});
+assert.equal(edited.jobs[0].description, 'Still squealing');
+assert.equal(edited.jobs[0].status, 'Requested');
+assert.throws(() =>
+  updateRequestedBooking(
+    { ...edited, jobs: [{ ...edited.jobs[0], status: 'Confirmed', accepted: true }] },
+    {
+      bookingId: created.job.id,
+      customerId: 'cust-01',
+      vehicleId: 'v1',
+      date: '2026-12-02',
+      time: '11:00',
+      description: 'Still squealing',
+    },
+  ),
+);
+const appointmentForm = renderToString(
+  <BookingDialog
+    anchor={() => {}}
+    customerId="cust-01"
+    date=""
+    description=""
+    go={() => {}}
+    modal={sampleProfessional}
+    notify={() => {}}
+    requestId="req-ui"
+    setDate={() => {}}
+    setDescription={() => {}}
+    setModal={() => {}}
+    setRequestId={() => {}}
+    setStep={() => {}}
+    setTime={() => {}}
+    setVehicleId={() => {}}
+    step={1}
+    time="09:00"
+    update={() => true}
+    vehicleId=""
+    vehicles={initialData.vehicles}
+  />,
+);
+assert.ok(appointmentForm.includes('What needs attention?'));
+assert.ok(appointmentForm.includes('DEMO 001'));
+assert.ok(appointmentForm.includes('not confirmed availability'));
+assert.ok(!appointmentForm.includes('Choose an appointment'));
+const appSource = readFileSync('src/App.tsx', 'utf8');
+assert.ok(appSource.includes('setStep(1)'));
+assert.ok(appSource.includes('setPending(p)'));
+const payable = {
+  ...initialData.jobs[0],
+  status: 'Awaiting payment',
+  quoteApproved: true,
+  paid: false,
+};
+assert.throws(() => transitionJob({ ...payable, status: 'Awaiting approval', quoteApproved: false }, 'pay'));
+const paidOnce = applyJobTransition({ ...initialData, jobs: [payable], records: [] }, payable, 'pay');
+assert.equal(paidOnce.job.status, 'Completed');
+assert.equal(paidOnce.job.paid, true);
+assert.ok(paidOnce.job.paidAt);
+assert.equal(paidOnce.job.paymentReference, `DEMO-${payable.id}`);
+assert.equal(paidOnce.data.records.filter((record: any) => record.id === payable.id).length, 1);
+assert.throws(() => applyJobTransition(paidOnce.data, paidOnce.job, 'pay'));
+assert.equal(recordedCustomerPayments(paidOnce.data.jobs).length, 1);
+const archived = removeOrArchiveVehicle(initialData, 'v1');
+assert.equal(archived.vehicles.find((vehicle: any) => vehicle.id === 'v1').archived, true);
+assert.equal(archived.records.length, initialData.records.length);
+const removed = removeOrArchiveVehicle(
+  {
+    ...initialData,
+    vehicles: [
+      ...initialData.vehicles,
+      { id: 'v9', make: 'Test', model: 'Car', year: '2021', registration: 'ZZ', mileage: '1' },
+    ],
+  },
+  'v9',
+);
+assert.ok(!removed.vehicles.some((vehicle: any) => vehicle.id === 'v9'));
+const historyJob = {
+  ...initialData.jobs[0],
+  id: 'VA-H',
+  status: 'Confirmed',
+  accepted: true,
+  professionalId: 'pro-precision-motorworks',
+  vehicleId: 'v1',
+  customerId: 'cust-01',
+  quoteApproved: false,
+  paid: false,
+  items: [],
+};
+const historyData = {
+  ...initialData,
+  jobs: [historyJob],
+  records: [{ ...initialData.records[0], vehicleId: 'v1' }],
+  historyAccess: [],
+};
+assert.throws(() =>
+  grantHistoryAccess(
+    { ...historyData, jobs: [{ ...historyJob, status: 'Requested', accepted: false }] },
+    { bookingId: 'VA-H', customerId: 'cust-01', recordIds: ['r1'] },
+  ),
+);
+const granted = grantHistoryAccess(historyData, {
+  bookingId: 'VA-H',
+  customerId: 'cust-01',
+  recordIds: ['r1'],
+  now: '2026-10-16T12:00:00.000Z',
+});
+assert.equal(granted.historyAccess[0].status, 'active');
+assert.equal(granted.historyAccess[0].professionalId, 'pro-precision-motorworks');
+const revoked = revokeHistoryAccess(granted, granted.historyAccess[0].id, 'cust-01');
+assert.equal(revoked.historyAccess[0].status, 'revoked');
+assert.throws(() => revokeHistoryAccess(granted, granted.historyAccess[0].id, 'cust-02'));
+const cancelledAccess = applyJobTransition(granted, historyJob, 'cancel');
+assert.equal(cancelledAccess.data.historyAccess[0].status, 'revoked');
+const payableHistory = {
+  ...historyData,
+  jobs: [{ ...historyJob, status: 'Awaiting payment', quoteApproved: true, items: [{ name: 'Labour', amount: 100 }] }],
+};
+const grantedPayment = grantHistoryAccess(payableHistory, {
+  bookingId: 'VA-H',
+  customerId: 'cust-01',
+  recordIds: ['r1'],
+});
+const expiredAccess = applyJobTransition(grantedPayment, payableHistory.jobs[0], 'pay');
+assert.equal(expiredAccess.data.historyAccess[0].status, 'expired');
+assert.equal(expiredAccess.data.historyAccess[0].expiresAt, expiredAccess.job.paidAt);
+const reviewData = {
+  ...initialData,
+  customerReviews: [],
+  jobs: [
+    {
+      id: 'VA-R',
+      customerId: 'cust-01',
+      professionalId: 'pro-precision-motorworks',
+      status: 'Completed',
+      paid: true,
+    },
+  ],
+};
+const reviewed = saveCustomerReview(reviewData, {
+  customerId: 'cust-01',
+  professionalId: 'pro-precision-motorworks',
+  bookingId: 'VA-R',
+  rating: 5,
+  text: 'Careful and clear work',
+});
+assert.equal(reviewed.customerReviews.length, 1);
+assert.throws(() =>
+  saveCustomerReview(reviewed, {
+    customerId: 'cust-01',
+    professionalId: 'pro-precision-motorworks',
+    bookingId: 'VA-R',
+    rating: 4,
+    text: 'A second review is not allowed',
+  }),
+);
+assert.throws(() => deleteCustomerReview(reviewed, reviewed.customerReviews[0].id, 'cust-02'));
+assert.equal(deleteCustomerReview(reviewed, reviewed.customerReviews[0].id, 'cust-01').customerReviews.length, 0);
+const customerPayGroups = screen('customer', 'payments', {
+  ...initialData,
+  jobs: [
+    { ...initialData.jobs[0], id: 'VA-OLD', status: 'Completed', paid: true, quoteApproved: true },
+    {
+      ...initialData.jobs[0],
+      id: 'VA-NEW',
+      status: 'Completed',
+      paid: true,
+      quoteApproved: true,
+      paidAt: '2026-10-02T09:00:00.000Z',
+      paymentReference: 'DEMO-VA-NEW',
+    },
+  ],
+} as any);
+assert.ok(customerPayGroups.includes('Date not recorded'));
+assert.ok(customerPayGroups.includes('2026-10-02'));
+assert.ok(customerPayGroups.indexOf('2026-10-02') < customerPayGroups.indexOf('Date not recorded'));
+assert.ok(!customerPayGroups.includes('Find a professional'));
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );

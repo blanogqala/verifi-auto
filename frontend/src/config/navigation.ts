@@ -203,5 +203,8 @@ export function pageTitle(role: Role, tab: string) {
     return 'Admin profile';
   if (role === 'admin' && tab.startsWith('reports')) return 'Analytics & support';
   if (role === 'admin' && tab.startsWith('applications')) return 'Applications';
+  if (role === 'customer' && tab.startsWith('find/')) return 'Professional';
+  if (role === 'customer' && tab.startsWith('bookings/')) return 'Booking';
+  if (role === 'customer' && tab.startsWith('garage/')) return 'Vehicle';
   return hiddenPageTitles[role]?.[tab] ?? 'Overview';
 }
