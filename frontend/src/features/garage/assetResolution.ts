@@ -90,10 +90,15 @@ export function resolveVehicleAsset(vehicle: any): AssetResolution {
   }
   const variant = norm(vehicle.variant);
   const body = norm(vehicle.bodyStyle);
-  const specified = generation.filter(
-    (entry) => (variant && norm(entry.variant) === variant) || (body && norm(entry.bodyStyle) === body),
-  );
-  if (!variant && !body && new Set(generation.map((entry) => entry.variant)).size > 1) {
+  const matched = generation.filter((entry) => {
+    if (variant && norm(entry.variant) !== variant) return false;
+    if (body && norm(entry.bodyStyle) !== body) return false;
+    return true;
+  });
+  if (!matched.length) {
+    return illustrative('The body style and variant do not match the same listed vehicle.');
+  }
+  if (matched.length > 1) {
     return {
       status: 'ambiguous',
       accuracy: 'unavailable',
@@ -101,13 +106,10 @@ export function resolveVehicleAsset(vehicle: any): AssetResolution {
       reason: 'Choose a body style. This name covers more than one variant.',
       asset: null,
       entry: null,
-      choices: generation,
+      choices: matched,
     };
   }
-  const chosen = specified[0] || (generation.length === 1 ? generation[0] : null);
-  if (!chosen) {
-    return illustrative('That body style is not listed for this year.');
-  }
+  const chosen = matched[0];
   if (!chosen.assetId) {
     return illustrative('No verified 3D file is published for this vehicle. A local demonstration model is shown.', chosen);
   }

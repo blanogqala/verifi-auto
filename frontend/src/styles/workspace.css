@@ -1052,15 +1052,23 @@ body:has(.modal-backdrop) {
   color: #52a982;
 }
 .status-in-progress,
-.status-confirmed {
+.status-confirmed,
+.status-active,
+.status-upcoming {
   background: #9658e81c;
   color: var(--soft);
 }
 .status-rejected,
 .status-cancelled,
-.status-suspended {
+.status-suspended,
+.status-expired,
+.status-archived {
   background: #d35b6418;
   color: #d2767d;
+}
+.status-due {
+  background: #c5942418;
+  color: #ca9e42;
 }
 [data-theme='light'] .status-awaiting-approval,
 [data-theme='light'] .status-pending-review,
@@ -1078,12 +1086,26 @@ body:has(.modal-backdrop) {
 }
 [data-theme='light'] .status-rejected,
 [data-theme='light'] .status-cancelled,
-[data-theme='light'] .status-suspended {
+[data-theme='light'] .status-suspended,
+[data-theme='light'] .status-expired,
+[data-theme='light'] .status-archived {
   color: #a63942;
+}
+[data-theme='light'] .status-due {
+  color: #88600a;
+}
+[data-theme='light'] .status-active,
+[data-theme='light'] .status-upcoming {
+  color: #5b2ea6;
 }
 .job-card h3 {
   font-size: 15px;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
+}
+.job-registration {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--soft);
 }
 .job-card > p {
   font-size: 10px;

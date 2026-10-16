@@ -15,6 +15,7 @@ export function dateCareState(value: unknown, today = new Date()): CareState {
 }
 
 export function mileageCareState(current: unknown, next: unknown): CareState {
+  if (current == null || (typeof current === 'string' && !current.trim())) return 'unknown';
   const now = Number(current);
   const target = Number(next);
   if (!Number.isFinite(now) || !Number.isFinite(target) || target <= 0) return 'unknown';

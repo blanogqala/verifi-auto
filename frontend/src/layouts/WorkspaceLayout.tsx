@@ -45,6 +45,7 @@ import {
   Users,
 } from 'lucide-react';
 import { customerFullName } from '../features/account/customerIdentity';
+import { followDetail, readBookingFilters, writeBookingFilters } from '../features/navigation/returnPath';
 import {
   Role,
   adminProfileSection,
@@ -131,10 +132,22 @@ export function Workspace({
   const [editItems, setEditItems] = useState<any[]>([]);
   const [quoteNotes, setQuoteNotes] = useState('');
   useEffect(() => {
-    setFilter('All');
-    setQuery('');
     setDialog(null);
+    const keepBookingList = role === 'customer' && (tab === 'bookings' || tab.startsWith('bookings/'));
+    if (!keepBookingList) {
+      setFilter('All');
+      setQuery('');
+      return;
+    }
+    if (tab === 'bookings') {
+      const saved = readBookingFilters();
+      setFilter(saved.filter);
+      setQuery(saved.query);
+    }
   }, [tab, role]);
+  useEffect(() => {
+    if (role === 'customer' && tab === 'bookings') writeBookingFilters(filter, query);
+  }, [filter, query, role, tab]);
   useEffect(() => {
     const media = window.matchMedia('(max-width: 750px)');
     const sync = () => {
@@ -390,9 +403,11 @@ export function Workspace({
         <JobCard
           key={j.id}
           job={j}
+        registration={(data.vehicles || []).find((vehicle: any) => vehicle.id === j.vehicleId)?.registration || ''}
+        viewLabel={role === 'customer' ? 'View booking' : 'View details'}
         onView={() => {
           if (role === 'customer') {
-            go('dashboard/bookings/' + encodeURIComponent(j.id));
+            followDetail(go, 'dashboard/' + (tab.split('/')[0] || 'bookings'), 'dashboard/bookings/' + encodeURIComponent(j.id));
             setSide(false);
             return;
           }
@@ -445,7 +460,7 @@ export function Workspace({
           unread={unread}
         />
         <div className="workspace-body">
-          {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && (
+          {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && !(role === 'customer' && (tab.startsWith('garage/') || tab.startsWith('bookings/'))) && (
             <div className={'workspace-heading' + (role === 'customer' && tab === 'garage' ? ' workspace-heading-garage' : '')}>
               <div>
                 {role === 'customer' && tab === 'garage' ? null : (

@@ -59,6 +59,8 @@ import {
   bookingReference,
   saveVehicle,
 } from '../src/demo';
+import { bookingProgress } from '../src/features/jobs/bookingProgress';
+import { customerReturnAllowed, rememberReturn, resolveReturn } from '../src/features/navigation/returnPath';
 import { providers } from '../src/data/professionals';
 import { Workspace } from '../src/layouts/WorkspaceLayout';
 import { WorkspaceDialog } from '../src/components/dialogs/WorkspaceDialog';
@@ -1434,6 +1436,16 @@ assert.equal(poloHatch.entry.id, 'polo-2018-hatch');
 assert.notEqual(poloHatch.accuracy, 'exact');
 assert.equal(poloLater.entry.id, 'polo-2022-hatch');
 assert.notEqual(poloLater.entry.id, poloHatch.entry.id);
+const contradicted = resolveVehicleAsset({
+  make: 'Volkswagen',
+  model: 'Polo',
+  year: '2020',
+  bodyStyle: 'hatchback',
+  variant: 'sedan',
+});
+assert.equal(contradicted.status, 'illustrative');
+assert.equal(contradicted.entry, null);
+assert.equal(contradicted.asset.id, 'khronos-car-concept');
 assert.equal(poloAmbiguous.status, 'ambiguous');
 assert.equal(poloAmbiguous.asset, null);
 assert.equal(poloAmbiguous.choices.length, 2);
@@ -1506,6 +1518,25 @@ const olderLoad = loads.begin();
 const newerLoad = loads.begin();
 assert.equal(loads.isCurrent(olderLoad), false);
 assert.equal(loads.isCurrent(newerLoad), true);
+for (const status of ['Requested', 'Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment', 'Completed']) {
+  const progress = bookingProgress({ status });
+  assert.equal(progress.steps.some((step) => step.state === 'current' || status === 'Completed'), true);
+  if (status !== 'Completed' && status !== 'Rejected' && status !== 'Cancelled') {
+    assert.equal(progress.terminal, '');
+  }
+}
+assert.equal(bookingProgress({ status: 'Completed' }).steps.every((step) => step.state === 'complete'), true);
+assert.equal(bookingProgress({ status: 'Rejected', rejectionReason: 'Unavailable' }).terminal, 'rejected');
+assert.equal(bookingProgress({ status: 'Rejected' }).steps.some((step) => step.state === 'complete'), false);
+assert.equal(bookingProgress({ status: 'Cancelled', accepted: true }).steps[1].state, 'stopped');
+assert.equal(bookingProgress({ status: 'Awaiting approval' }).steps[2].state, 'current');
+assert.equal(bookingProgress({ status: 'Changes requested' }).steps[2].state, 'current');
+const returns = rememberReturn({}, 'dashboard/garage/v1', 'dashboard/bookings/VA-2026-1042');
+assert.equal(resolveReturn(returns, 'dashboard/garage/v1', 'dashboard/garage'), 'dashboard/bookings/VA-2026-1042');
+assert.equal(resolveReturn({}, 'dashboard/bookings/VA-2026-1042', 'dashboard/bookings'), 'dashboard/bookings');
+assert.equal(customerReturnAllowed('https://example.com'), false);
+assert.equal(customerReturnAllowed('dashboard/jobs/VA-1'), false);
+assert.equal(rememberReturn({}, 'dashboard/find/pro-precision-motorworks', 'dashboard/bookings/VA-2026-1042')['dashboard/find/pro-precision-motorworks'], 'dashboard/bookings/VA-2026-1042');
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );

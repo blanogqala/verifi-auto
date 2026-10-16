@@ -2,12 +2,15 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { ArrowRight, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { Card } from '../ui/Card';
+import { DetailBack, DetailCard, DetailFields } from '../ui/DetailChrome';
 import { RoadLoader } from '../ui/RoadLoader';
 import { demoCustomerId } from '../../features/admin/customerRecords';
 import { customerRecords } from '../../features/admin/customerRecords';
 import { readProfilePhoto } from '../../features/account/profilePhoto';
 import { initialsFromName } from '../../features/account/customerIdentity';
 import { resolveProfessional, verificationCopy } from '../../features/professionals/professionalProfile';
+import { formatDay } from '../../features/jobs/bookingProgress';
+import { backTarget, returnLabel } from '../../features/navigation/returnPath';
 import {
   deleteCustomerReview,
   eligibleReviewBookings,
@@ -45,16 +48,17 @@ export function ProfessionalProfilePage({
   const [photoState, setPhotoState] = useState<'idle' | 'working'>('idle');
   const [error, setError] = useState('');
   const customers = customerRecords(data);
+  const here = (embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(professionalId || '');
+  const fallback = embedded ? 'dashboard/find' : 'find';
+  const back = backTarget(here, fallback);
 
   if (resolved.state === 'missing') {
     return (
-      <Tag className="section profile-page">
+      <Tag className="section profile-page detail-page">
+        <DetailBack label={returnLabel(back)} onClick={() => go(back)} />
         <Card as="section" className="dash-panel">
           <h1>Professional not found</h1>
           <p>This profile link does not match a professional in this browser preview.</p>
-          <button className="secondary" type="button" onClick={() => go(embedded ? 'dashboard/find' : 'find')}>
-            Back to professionals
-          </button>
         </Card>
       </Tag>
     );
@@ -62,7 +66,8 @@ export function ProfessionalProfilePage({
 
   if (resolved.state === 'unavailable') {
     return (
-      <Tag className="section profile-page">
+      <Tag className="section profile-page detail-page">
+        <DetailBack label={returnLabel(back)} onClick={() => go(fallback)} />
         <Card as="section" className="dash-panel">
           <span className="chip">UNAVAILABLE</span>
           <h1>{resolved.name || 'Professional unavailable'}</h1>
@@ -71,16 +76,12 @@ export function ProfessionalProfilePage({
             {resolved.applicationStatus ? ` (${resolved.applicationStatus})` : ''}. Sample directory
             status only. No private documents are shown.
           </p>
-          <button className="secondary" type="button" onClick={() => go(embedded ? 'dashboard/find' : 'find')}>
-            Back to professionals
-          </button>
         </Card>
       </Tag>
     );
   }
 
   const profile = resolved.profile;
-  const ownReview = reviews.find((review: any) => review.customerId === customerId);
 
   async function addPhoto(file: File) {
     setPhotoState('working');
@@ -122,8 +123,13 @@ export function ProfessionalProfilePage({
     }
   }
 
+  const average = reviews.length
+    ? reviews.reduce((sum: number, review: any) => sum + Number(review.rating || 0), 0) / reviews.length
+    : null;
+
   return (
-    <Tag className={'section profile-page' + (embedded ? ' profile-embedded' : '')}>
+    <Tag className={'section profile-page detail-page' + (embedded ? ' profile-embedded' : '')}>
+      <DetailBack label={returnLabel(back)} onClick={() => go(back)} />
       <section className="pro-banner">
         <div className="pro-banner-art" aria-hidden="true">
           {profile.photo ? <img src={profile.photo} alt="" /> : <span>{initialsFromName(profile.name)}</span>}
@@ -133,8 +139,16 @@ export function ProfessionalProfilePage({
           <h1>{profile.name}</h1>
           {profile.individualName ? <p>{profile.individualName}</p> : null}
           <p>
-            <MapPin size={16} aria-hidden="true" /> {profile.area} · {profile.type}
+            <MapPin size={16} aria-hidden="true" /> {profile.area || 'Location not recorded'} · {profile.type || 'Type not recorded'}
           </p>
+          <p>
+            <ShieldCheck size={16} aria-hidden="true" /> {profile.applicationStatus || 'Verification not recorded'}
+          </p>
+          {average != null ? (
+            <p>
+              <Star size={16} aria-hidden="true" /> {average.toFixed(1)} from {reviews.length} review{reviews.length === 1 ? '' : 's'}
+            </p>
+          ) : null}
           <button
             className="primary"
             type="button"
@@ -153,168 +167,194 @@ export function ProfessionalProfilePage({
           </button>
         </div>
       </section>
-      <div className="pro-layout">
-        <Card as="section" className="dash-panel">
-          <h2>About</h2>
-          <p>{profile.bio || (profile.sample ? 'Sample profile. No about text has been recorded.' : 'No about text has been recorded.')}</p>
-          <h2>Services offered</h2>
-          {profile.services.length ? (
-            <ul className="pro-services">
-              {profile.services.map((service: string) => (
-                <li key={service}>{service}</li>
-              ))}
-            </ul>
-          ) : (
-            <p>No services have been recorded.</p>
-          )}
-          <div className="fee-row">
-            <span>Assessment fee</span>
-            <strong>R{profile.fee}</strong>
-          </div>
-          <p className="muted">Repair costs are quoted separately after the assessment.</p>
-        </Card>
-        <Card as="section" className="dash-panel">
-          <h2>Contact</h2>
-          {profile.phone || profile.email || profile.website ? (
-            <ul className="pro-contact">
-              {profile.phone ? <li>{profile.phone}</li> : null}
-              {profile.email ? <li>{profile.email}</li> : null}
-              {profile.website ? (
-                <li>
-                  <a href={profile.website} target="_blank" rel="noopener noreferrer">
-                    {profile.website}
-                  </a>
-                </li>
-              ) : null}
-            </ul>
-          ) : (
-            <p>No public phone, email, or website has been recorded.</p>
-          )}
-          <h2>Verification</h2>
-          <div className="notice">
-            <ShieldCheck size={20} aria-hidden="true" />
-            <p>{verificationCopy(profile)}</p>
-          </div>
-        </Card>
-      </div>
-      <Card as="section" className="dash-panel">
-        <h2>Customer reviews</h2>
-        {reviews.length ? (
-          reviews.map((review: any) => {
-            const mine = review.customerId === customerId;
-            const name = mine
-              ? 'You'
-              : customers.find((customer) => customer.id === review.customerId)?.name || 'Customer';
-            return (
-              <article key={review.id} className="review-card">
-                <p>
-                  <Star size={16} aria-hidden="true" /> <span className="visually-hidden">Rating</span>
-                  {stars(review.rating)} · {name}
-                </p>
-                <p>{review.text}</p>
-                {review.photos?.length ? (
-                  <div className="review-photos">
-                    {review.photos.map((photo: string) => (
-                      <img key={photo.slice(-24)} src={photo} alt="" />
+      <div className="detail-layout pro-layout">
+        <div className="detail-main">
+          <DetailCard title="About">
+            <p>{profile.bio || (profile.sample ? 'Sample profile. No about text has been recorded.' : 'No about text has been recorded.')}</p>
+          </DetailCard>
+          <DetailCard title="Services">
+            {profile.services.length ? (
+              <ul className="pro-services">
+                {profile.services.map((service: string) => (
+                  <li key={service}>{service}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>No services have been recorded.</p>
+            )}
+          </DetailCard>
+          <DetailCard title="Customer reviews">
+            {reviews.length ? (
+              reviews.map((review: any) => {
+                const mine = review.customerId === customerId;
+                const name = mine
+                  ? 'You'
+                  : customers.find((customer) => customer.id === review.customerId)?.name || 'Customer';
+                return (
+                  <article key={review.id} className="review-card">
+                    <p>
+                      <Star size={16} aria-hidden="true" /> <span className="visually-hidden">Rating</span>
+                      {stars(review.rating)} · {name}
+                    </p>
+                    <p className="muted">{review.createdAt ? formatDay(review.createdAt) : 'Date not recorded'}</p>
+                    <p>{review.text}</p>
+                    {review.photos?.length ? (
+                      <div className="review-photos">
+                        {review.photos.map((photo: string) => (
+                          <img key={photo.slice(-24)} src={photo} alt="" />
+                        ))}
+                      </div>
+                    ) : null}
+                    {mine && role === 'customer' ? (
+                      <div className="button-row">
+                        <button
+                          className="secondary"
+                          type="button"
+                          onClick={() => {
+                            setEditing(review.id);
+                            setBookingId(review.bookingId);
+                            setRating(review.rating);
+                            setText(review.text);
+                            setPhotos(review.photos || []);
+                          }}
+                        >
+                          Edit review
+                        </button>
+                        <button
+                          className="secondary"
+                          type="button"
+                          onClick={() => {
+                            try {
+                              const saved = update((current: any) => deleteCustomerReview(current, review.id, customerId));
+                              notify(
+                                saved
+                                  ? 'Demo review removed from this browser.'
+                                  : 'Could not store this change in this browser.',
+                              );
+                            } catch (reason: any) {
+                              notify(reason.message);
+                            }
+                          }}
+                        >
+                          Delete review
+                        </button>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })
+            ) : (
+              <p>No reviews yet</p>
+            )}
+            {role === 'customer' && eligible.length ? (
+              <form className="review-form" onSubmit={submitReview}>
+                <h3>{editing ? 'Edit your review' : 'Add a review'}</h3>
+                <p className="muted">Only a completed booking you own with this professional can be reviewed.</p>
+                <label>
+                  Booking
+                  <select value={bookingId} onChange={(event) => setBookingId(event.target.value)} disabled={!!editing}>
+                    {eligible.map((job: any) => (
+                      <option key={job.id} value={job.id}>
+                        {job.id}
+                      </option>
                     ))}
-                  </div>
+                  </select>
+                </label>
+                <label>
+                  Rating
+                  <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
+                    {[5, 4, 3, 2, 1].map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Review
+                  <textarea value={text} onChange={(event) => setText(event.target.value)} maxLength={1000} required />
+                </label>
+                <label>
+                  Photos
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = '';
+                      if (file) void addPhoto(file);
+                    }}
+                  />
+                </label>
+                {photoState === 'working' ? <RoadLoader label="Preparing review photo" /> : null}
+                {error ? (
+                  <p className="form-error" role="alert">
+                    {error}
+                  </p>
                 ) : null}
-                {mine && role === 'customer' ? (
-                  <div className="button-row">
-                    <button
-                      className="secondary"
-                      type="button"
-                      onClick={() => {
-                        setEditing(review.id);
-                        setBookingId(review.bookingId);
-                        setRating(review.rating);
-                        setText(review.text);
-                        setPhotos(review.photos || []);
-                      }}
-                    >
-                      Edit review
-                    </button>
-                    <button
-                      className="secondary"
-                      type="button"
-                      onClick={() => {
-                        try {
-                          const saved = update((current: any) =>
-                            deleteCustomerReview(current, review.id, customerId),
-                          );
-                          notify(
-                            saved
-                              ? 'Demo review removed from this browser.'
-                              : 'Could not store this change in this browser.',
-                          );
-                        } catch (reason: any) {
-                          notify(reason.message);
-                        }
-                      }}
-                    >
-                      Delete review
-                    </button>
-                  </div>
-                ) : null}
-              </article>
-            );
-          })
-        ) : (
-          <p>No reviews yet</p>
-        )}
-        {role === 'customer' && eligible.length ? (
-          <form className="review-form" onSubmit={submitReview}>
-            <h3>{editing ? 'Edit your review' : 'Add a review'}</h3>
-            <p className="muted">Only a completed booking you own with this professional can be reviewed.</p>
-            <label>
-              Booking
-              <select value={bookingId} onChange={(event) => setBookingId(event.target.value)} disabled={!!editing}>
-                {eligible.map((job: any) => (
-                  <option key={job.id} value={job.id}>
-                    {job.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Rating
-              <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
-                {[5, 4, 3, 2, 1].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Review
-              <textarea value={text} onChange={(event) => setText(event.target.value)} maxLength={1000} required />
-            </label>
-            <label>
-              Photos
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = '';
-                  if (file) void addPhoto(file);
-                }}
-              />
-            </label>
-            {photoState === 'working' ? <RoadLoader label="Preparing review photo" /> : null}
-            {error ? (
-              <p className="form-error" role="alert">
-                {error}
-              </p>
+                <button className="primary" type="submit" disabled={photoState === 'working'}>
+                  Save review
+                </button>
+              </form>
             ) : null}
-            <button className="primary" type="submit" disabled={photoState === 'working'}>
-              Save review
+          </DetailCard>
+        </div>
+        <div className="detail-side">
+          <DetailCard title="Book an assessment">
+            <p className="muted">The fee is for the assessment. Repair costs are quoted afterwards.</p>
+            <button
+              className="primary"
+              type="button"
+              onClick={() =>
+                book({
+                  id: profile.id,
+                  name: profile.name,
+                  area: profile.area,
+                  type: profile.type,
+                  fee: profile.fee,
+                  special: profile.services.join(' · '),
+                })
+              }
+            >
+              Book assessment <ArrowRight size={18} />
             </button>
-          </form>
-        ) : null}
-        {ownReview && role !== 'customer' ? null : null}
-      </Card>
+          </DetailCard>
+          <DetailCard title="Assessment pricing">
+            <DetailFields items={[{ label: 'Assessment fee', value: profile.fee != null ? `R${profile.fee}` : 'Not recorded' }]} />
+          </DetailCard>
+          <DetailCard title="Contact">
+            {profile.phone || profile.email || profile.website ? (
+              <ul className="pro-contact">
+                {profile.phone ? (
+                  <li>
+                    <a href={'tel:' + profile.phone}>{profile.phone}</a>
+                  </li>
+                ) : null}
+                {profile.email ? (
+                  <li>
+                    <a href={'mailto:' + profile.email}>{profile.email}</a>
+                  </li>
+                ) : null}
+                {profile.website ? (
+                  <li>
+                    <a href={profile.website} target="_blank" rel="noopener noreferrer">
+                      Website
+                    </a>
+                  </li>
+                ) : null}
+              </ul>
+            ) : (
+              <p>No public phone, email, or website has been recorded.</p>
+            )}
+          </DetailCard>
+          <DetailCard title="Verification">
+            <div className="notice">
+              <ShieldCheck size={20} aria-hidden="true" />
+              <p>{verificationCopy(profile)}</p>
+            </div>
+          </DetailCard>
+        </div>
+      </div>
     </Tag>
   );
 }

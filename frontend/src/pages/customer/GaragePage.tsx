@@ -5,6 +5,7 @@ import { VehicleStage } from '../../components/garage/VehicleStage';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
 import { selectVehicleId, vehicleCardImage, vehicleCardLabel } from '../../features/garage/garageSelection';
 import { activeVehicles, unresolvedHistory } from '../../features/demo/links';
+import { followDetail } from '../../features/navigation/returnPath';
 
 function VehicleSilhouette() {
   return (
@@ -17,9 +18,17 @@ function VehicleSilhouette() {
   );
 }
 
+function storedGarageId() {
+  try {
+    return sessionStorage.getItem('verifi-garage-selected') || '';
+  } catch {
+    return '';
+  }
+}
+
 export function GaragePage({ data, go, setDialog }: any) {
   const vehicles = activeVehicles(data.vehicles || []);
-  const [selectedId, setSelectedId] = useState(vehicles[0]?.id || '');
+  const [selectedId, setSelectedId] = useState(storedGarageId() || vehicles[0]?.id || '');
   const resolvedId = vehicles.some((vehicle) => vehicle.id === selectedId) ? selectedId : vehicles[0]?.id || '';
   const selected = vehicles.find((vehicle) => vehicle.id === resolvedId);
   const unresolved = unresolvedHistory(data);
@@ -28,6 +37,14 @@ export function GaragePage({ data, go, setDialog }: any) {
   useEffect(() => {
     if (resolvedId !== selectedId) setSelectedId(resolvedId);
   }, [resolvedId, selectedId]);
+  useEffect(() => {
+    if (!resolvedId) return;
+    try {
+      sessionStorage.setItem('verifi-garage-selected', resolvedId);
+    } catch {
+      /* Selection still works until the page is left. */
+    }
+  }, [resolvedId]);
 
   return (
     <>
@@ -53,7 +70,7 @@ export function GaragePage({ data, go, setDialog }: any) {
               <button
                 type="button"
                 className="primary"
-                onClick={() => go('dashboard/garage/' + encodeURIComponent(selected.id))}
+                onClick={() => followDetail(go, 'dashboard/garage', 'dashboard/garage/' + encodeURIComponent(selected.id))}
               >
                 View details
               </button>

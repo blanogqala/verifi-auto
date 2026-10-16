@@ -1,5 +1,6 @@
 import { ProfessionalCard } from '../../components/professionals/ProfessionalCard';
 import { Card } from '../../components/ui/Card';
+import { followDetail } from '../../features/navigation/returnPath';
 
 import { ArrowUpRight, ShieldCheck, MapPin, Wrench, Search } from 'lucide-react';
 
@@ -76,7 +77,9 @@ export function ProfessionalsPage({
             professional={p}
             onView={() => {
               if (!p.id || typeof go !== 'function') return;
-              go((embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(p.id));
+              const from = embedded ? 'dashboard/find' : 'find';
+              const to = (embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(p.id);
+              followDetail(go, from, to);
             }}
             onBook={() => book(p)}
           />

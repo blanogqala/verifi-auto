@@ -14,7 +14,9 @@ One realistic model is stored in this project:
 - Earlier model: public-domain concept car by Unity Fan
 - Body paint materials: `Paint 1 Carmine`, `Paint 2 Carmine`, and the Pearl and Graphite variants of those names
 
-The file is the official glTF binary sample (about 11 MB). It is lazy-loaded only when the showroom draws it. It is a concept car. The catalogue marks it as an exact match only for Demonstration Concept Car, 2024, show car. Years 2020–2023 of that same demonstration model are an approximate match. A Volkswagen Polo is listed by generation and body style so the lookup can tell those apart, but no Polo file is published, so the showroom uses the concept car as an illustrative model and says so. Its card does not use this car’s photograph. While the model is on screen, a Credits link carries the CC BY 4.0 attribution.
+The file is the official glTF binary sample (about 11 MB). It is lazy-loaded only when the showroom draws it. It is a concept car. The catalogue marks it as an exact match only for Demonstration Concept Car, 2024, show car. Years 2020–2023 of that same demonstration model are an approximate match for that demonstration car, not for a production vehicle. A Volkswagen Polo is listed by generation and body style so the lookup can tell those apart, but no Polo file is published. Supplied body style and variant must both match the same catalogue row. A contradictory pair does not count as a match. The showroom can still show the concept car as an illustrative model and says so. Its card does not use this car’s photograph. While the model is on screen, a Credits link carries the CC BY 4.0 attribution.
+
+No licensed Polo asset has been added. A real Polo model needs a verified source, generation, and licence before it can be published. Search photos are not a substitute.
 
 Khronos logos inside the sample are trademarks of the Khronos Group. Showing the sample does not mean Khronos endorses this product.
 
