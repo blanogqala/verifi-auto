@@ -1,4 +1,5 @@
 import { Search } from 'lucide-react';
+import { bookingReference } from '../../features/jobs/jobViews';
 
 import { EmptyState as Empty } from '../../components/ui/EmptyState';
 
@@ -53,14 +54,14 @@ export function JobsPage({
           jobs.filter(
             (j: any) =>
               (filter === 'All' || j.status === filter) &&
-              `${j.id} ${j.provider} ${j.vehicle}`.toLowerCase().includes(query.toLowerCase()),
+              `${bookingReference(j)} ${j.provider} ${j.vehicle}`.toLowerCase().includes(query.toLowerCase()),
           ),
         )}
       </div>
       {!jobs.some(
         (j: any) =>
           (filter === 'All' || j.status === filter) &&
-          `${j.id} ${j.provider} ${j.vehicle}`.toLowerCase().includes(query.toLowerCase()),
+          `${bookingReference(j)} ${j.provider} ${j.vehicle}`.toLowerCase().includes(query.toLowerCase()),
       ) && <Empty title={emptyTitle} text={emptyText} />}
     </>
   );

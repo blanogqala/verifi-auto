@@ -11,6 +11,7 @@ import {
   recordedCustomerPayments,
 } from '../../features/admin/paymentRecords';
 import { demoDocumentHtml, openDemoDocument } from '../../features/payments/demoDocuments';
+import { bookingReference } from '../../features/jobs/jobViews';
 
 function dayKey(value: string) {
   return value.slice(0, 10);
@@ -30,7 +31,7 @@ function groups(jobs: any[]) {
 }
 
 function openDoc(job: any, kind: 'invoice' | 'receipt') {
-  openDemoDocument(demoDocumentHtml(job, kind), `${kind}-${job.id}.html`);
+  openDemoDocument(demoDocumentHtml(job, kind), `${kind}-${bookingReference(job)}.html`);
 }
 
 export function PaymentsPage({ go, jobs, setDialog }: any) {
@@ -108,7 +109,7 @@ function PaymentRow({ job, go, setDialog }: any) {
     <div className="payment-row">
       <FileText size={23} />
       <div>
-        <b>{job.id}</b>
+        <b>{bookingReference(job)}</b>
         <small>
           {job.provider} · {job.vehicle}
         </small>

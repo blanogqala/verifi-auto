@@ -63,6 +63,8 @@ import {
   merchantProfileSectionLabel,
   pageTitle,
   applyJobTransition,
+  commitUpdate,
+  detailId,
 } from '../demo';
 
 export type DirectoryProps = {
@@ -239,9 +241,10 @@ export function Workspace({
         ? customerFullName(data.profile?.name) || 'Mechanic'
         : customerFullName(data.adminAccount?.name).split(/\s+/)[0] || 'Admin';
   const sectionRoot = tab.split('/')[0];
-  const professionalId = tab.startsWith('find/') ? decodeURIComponent(tab.slice('find/'.length)) : '';
-  const bookingId = tab.startsWith('bookings/') ? decodeURIComponent(tab.slice('bookings/'.length)) : '';
-  const vehicleDetailId = tab.startsWith('garage/') ? decodeURIComponent(tab.slice('garage/'.length)) : '';
+  const professionalId = detailId(tab, 'find');
+  const bookingId = detailId(tab, 'bookings');
+  const vehicleDetailId = detailId(tab, 'garage');
+  const invalidDetail = professionalId === null || bookingId === null || vehicleDetailId === null;
   const hideFindCta =
     role === 'customer' && ['profile', 'settings', 'garage', 'payments'].includes(sectionRoot);
   const accountPhoto =
@@ -264,22 +267,20 @@ export function Workspace({
     };
   }
   function jobAction(job: any, action: string, extra: any = {}) {
-    try {
-      let status = '';
-      const saved = update((d: any) => {
+    let status = '';
+    const saved = commitUpdate(
+      update,
+      (d: any) => {
         const result = applyJobTransition(d, job, action, extra);
         status = result.job.status;
         return note(result.data, `${job.id}: ${result.job.status}.`);
-      });
-      if (saved === false) {
-        notify('Could not store this job update in this browser.');
-        return;
-      }
-      setDialog(null);
-      notify('Demo job updated: ' + status);
-    } catch (e: any) {
-      notify(e.message);
-    }
+      },
+      notify,
+      '',
+    );
+    if (!saved) return;
+    setDialog(null);
+    notify('Demo job updated: ' + status);
   }
   function review(app: any, status: string) {
     if (status === 'Approved' && checks.length < 3) {
@@ -291,34 +292,39 @@ export function Workspace({
       return;
     }
     const decision = decideApplication(app, status, reviewNote);
-    update((d: any) =>
-      note(
-        app.own
-          ? {
-              ...d,
-              application: {
-                ...d.application,
-                status: decision.status,
-                note: decision.note,
-                previouslyApproved: decision.previouslyApproved,
+    const saved = commitUpdate(
+      update,
+      (d: any) =>
+        note(
+          app.own
+            ? {
+                ...d,
+                application: {
+                  ...d.application,
+                  status: decision.status,
+                  note: decision.note,
+                  previouslyApproved: decision.previouslyApproved,
+                },
+              }
+            : {
+                ...d,
+                reviews: d.reviews.map((a: any) =>
+                  a.id === app.id
+                    ? {
+                        ...a,
+                        status: decision.status,
+                        note: decision.note,
+                        previouslyApproved: decision.previouslyApproved,
+                      }
+                    : a,
+                ),
               },
-            }
-          : {
-              ...d,
-              reviews: d.reviews.map((a: any) =>
-                a.id === app.id
-                  ? {
-                      ...a,
-                      status: decision.status,
-                      note: decision.note,
-                      previouslyApproved: decision.previouslyApproved,
-                    }
-                  : a,
-              ),
-            },
-        `${app.name}: application ${status.toLowerCase()}.`,
-      ),
+          `${app.name}: application ${status.toLowerCase()}.`,
+        ),
+      notify,
+      '',
     );
+    if (!saved) return;
     setDialog(null);
     notify('Demo application ' + status.toLowerCase());
   }
@@ -342,23 +348,28 @@ export function Workspace({
       e.target.value = '';
       return;
     }
-    update((d: any) => ({
-      ...d,
-      documents: [
-        ...d.documents.filter((x: any) => x.kind !== kind),
-        {
-          id: crypto.randomUUID(),
-          kind,
-          name: file.name,
-          size: file.size,
-          date: new Date().toISOString().split('T')[0],
-        },
-      ],
-      application: { ...d.application, status: 'Draft' },
-    }));
+    const saved = commitUpdate(
+      update,
+      (d: any) => ({
+        ...d,
+        documents: [
+          ...d.documents.filter((x: any) => x.kind !== kind),
+          {
+            id: crypto.randomUUID(),
+            kind,
+            name: file.name,
+            size: file.size,
+            date: new Date().toISOString().split('T')[0],
+          },
+        ],
+        application: { ...d.application, status: 'Draft' },
+      }),
+      notify,
+      'Sample document selected. Only its name and size are saved in this browser.',
+    );
+    if (!saved) return;
     setUploadError('');
     e.target.value = '';
-    notify('Sample document selected. Only its name and size are saved in this browser.');
   }
   function quoteActionFor(job: any) {
     if (role !== 'mechanic') return null;
@@ -462,6 +473,12 @@ export function Workspace({
               )}
             </div>
           )}
+          {invalidDetail ? (
+            <Card as="section" className="dash-panel">
+              <h2>This link is not valid</h2>
+              <p>The address could not be read. Open the page again from the menu.</p>
+            </Card>
+          ) : null}
           {tab === 'overview' && (
             <OverviewPage
               apps={apps}
@@ -687,7 +704,7 @@ export function Workspace({
               setQuery={setQuery}
             />
           )}
-          {tab === 'notifications' && <NotificationsPage data={data} update={update} />}
+          {tab === 'notifications' && <NotificationsPage data={data} notify={notify} update={update} />}
           {adminSection && (
             <AdminProfilePage
               data={data}

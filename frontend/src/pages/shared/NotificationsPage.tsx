@@ -1,9 +1,10 @@
 import { Card } from '../../components/ui/Card';
 
 import { Check, Bell } from 'lucide-react';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
-export function NotificationsPage({ data, update }: any) {
+export function NotificationsPage({ data, notify = () => {}, update }: any) {
   return (
     <Card as="section" className="dash-panel">
       <div className="panel-title">
@@ -11,10 +12,15 @@ export function NotificationsPage({ data, update }: any) {
         <button
           className="text-link"
           onClick={() =>
-            update((d: any) => ({
-              ...d,
-              notifications: d.notifications.map((n: any) => ({ ...n, read: true })),
-            }))
+            commitUpdate(
+              update,
+              (d: any) => ({
+                ...d,
+                notifications: d.notifications.map((n: any) => ({ ...n, read: true })),
+              }),
+              notify,
+              '',
+            )
           }
         >
           Mark all as read <Check size={16} />
@@ -25,12 +31,17 @@ export function NotificationsPage({ data, update }: any) {
           className={'notification-row ' + (!n.read ? 'unread' : '')}
           key={n.id}
           onClick={() =>
-            update((d: any) => ({
-              ...d,
-              notifications: d.notifications.map((x: any) =>
-                x.id === n.id ? { ...x, read: true } : x,
-              ),
-            }))
+            commitUpdate(
+              update,
+              (d: any) => ({
+                ...d,
+                notifications: d.notifications.map((x: any) =>
+                  x.id === n.id ? { ...x, read: true } : x,
+                ),
+              }),
+              notify,
+              '',
+            )
           }
         >
           <span>

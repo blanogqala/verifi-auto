@@ -17,6 +17,8 @@ import {
   canonicalPage,
   applyAccountDetails,
   directoryEntries,
+  safeRouteId,
+  storageFailureMessage,
   useDemoStore,
 } from './demo';
 
@@ -132,9 +134,19 @@ export default function App() {
     return () => window.removeEventListener('hashchange', change);
   }, [role]);
   function login(r: Role, register = false, details: any = {}) {
+    if (r === 'customer' || r === 'mechanic') {
+      try {
+        const saved = update((d: any) => applyAccountDetails(d, r, details));
+        if (saved === false) {
+          setToast(storageFailureMessage);
+          return;
+        }
+      } catch (error: any) {
+        setToast(error?.message || storageFailureMessage);
+        return;
+      }
+    }
     setRole(r);
-    if (r === 'customer' || r === 'mechanic')
-      update((d: any) => applyAccountDetails(d, r, details));
     try {
       sessionStorage.setItem('verifi-demo-role', r);
     } catch {}
@@ -357,15 +369,22 @@ export default function App() {
           type={type}
         />
       ) : page.startsWith('professional/') ? (
+        safeRouteId(page.slice('professional/'.length)) ? (
         <ProfessionalProfilePage
           book={book}
           data={data}
           go={go}
           notify={setToast}
-          professionalId={decodeURIComponent(page.slice('professional/'.length))}
+          professionalId={safeRouteId(page.slice('professional/'.length)) || ''}
           role={role}
           update={update}
         />
+        ) : (
+          <main className="page-wrap">
+            <h1>This link is not valid</h1>
+            <p>The professional address could not be read.</p>
+          </main>
+        )
       ) : null}
       {!page.startsWith('dashboard/') && (
         <PublicFooter anchor={anchor} go={go} setModal={setModal} />

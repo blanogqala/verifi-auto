@@ -10,6 +10,7 @@ export {
   isCancelledRequest,
   isPendingRequest,
   isRejectedRequest,
+  bookingReference,
 } from './features/jobs/jobViews';
 export { bankingRecord, maskAccountNumber } from './features/account/bankingDetails';
 export { photoFileError } from './features/account/profilePhoto';
@@ -57,15 +58,17 @@ export {
   navLeaves,
   pageTitle,
 } from './config/navigation';
-export { canVisit, canonicalPage } from './routes/access';
+export { canVisit, canonicalPage, detailId, safeRouteId } from './routes/access';
 export { phoneError } from './features/account/phoneNumber';
 export { persistDemoState } from './hooks/useDemoStore';
+export { commitUpdate, storageFailureMessage } from './features/demo/commitUpdate';
 export {
   applyJobTransition,
   createBooking,
   removeOrArchiveVehicle,
   saveCustomerProfile,
   saveVehicle,
+  resolveHistoryVehicle,
   updateRequestedBooking,
 } from './features/demo/demoActions';
 export {
@@ -79,5 +82,5 @@ export {
   eligibleReviewBookings,
   saveCustomerReview,
 } from './features/reviews/customerReviews';
-export { catalogueModel } from './features/garage/vehicleModels';
+export { catalogueModel, modelForVehicle } from './features/garage/vehicleModels';
 export { resolveProfessional, safeWebsite } from './features/professionals/professionalProfile';

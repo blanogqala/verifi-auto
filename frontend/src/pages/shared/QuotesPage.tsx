@@ -2,6 +2,7 @@ import { Card } from '../../components/ui/Card';
 
 import { ArrowRight, FileText } from 'lucide-react';
 import { quoteTotal } from '../../demo';
+import { bookingReference } from '../../features/jobs/jobViews';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
@@ -24,7 +25,7 @@ export function QuotesPage({ filter, jobs, name, quoteEditor, role, setDialog }:
           .map((j: any) => (
             <Card as="article" className="quote-card dash-panel" key={j.id}>
               <div className="panel-title">
-                <span className="reference">{j.id}</span>
+                <span className="reference">{bookingReference(j)}</span>
                 <Status value={j.status} />
               </div>
               <h2>{j.vehicle}</h2>

@@ -11,6 +11,7 @@ import {
   recordedCustomerPayments,
 } from '../../features/admin/paymentRecords';
 import { quoteTotal } from '../../demo';
+import { bookingReference } from '../../features/jobs/jobViews';
 
 const filters = ['All', 'Awaiting customer payment', 'Customer payment recorded'];
 
@@ -34,7 +35,7 @@ export function FinancePage({ customers, filter, jobs, query, setDialog, setFilt
   const needle = query.toLowerCase();
   const visible = rowsFor(jobs, selected).filter((job) => {
     const customer = customerNameForJob(job, customers);
-    return `${job.id} ${customer} ${job.provider || ''} ${job.paymentReference || ''}`
+    return `${bookingReference(job)} ${customer} ${job.provider || ''} ${job.paymentReference || ''}`
       .toLowerCase()
       .includes(needle);
   });
@@ -85,7 +86,7 @@ export function FinancePage({ customers, filter, jobs, query, setDialog, setFilt
             <div className="payment-row" key={job.id}>
               <FileText size={23} />
               <div>
-                <b>{job.id}</b>
+                <b>{bookingReference(job)}</b>
                 <small>
                   {customerNameForJob(job, customers)} · {job.provider || 'Mechanic not recorded'}
                 </small>

@@ -1,3 +1,4 @@
+import { bookingReference } from '../../features/jobs/jobViews';
 import { Card } from '../ui/Card';
 import { StatusBadge as Status } from '../ui/StatusBadge';
 import { Car, Calendar, ArrowRight } from 'lucide-react';
@@ -6,7 +7,7 @@ export function JobCard({ job: j, onView, quoteAction }: any) {
   return (
     <Card as="article" className="job-card" key={j.id}>
       <div className="job-card-top">
-        <span className="reference">{j.id}</span>
+        <span className="reference">{bookingReference(j)}</span>
         <Status value={j.status} />
       </div>
       <h3>{j.provider}</h3>

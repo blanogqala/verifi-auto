@@ -3,10 +3,18 @@ import { demoCustomerId } from '../admin/customerRecords';
 import { grantHistoryAccess, revokeHistoryAccess, settleHistoryAccess } from '../garage/historyAccess';
 import { transitionJob } from '../jobs/jobWorkflow';
 import { deleteCustomerReview, saveCustomerReview } from '../reviews/customerReviews';
-import { activeVehicles, textValue, uniqueVehicleId, vehicleSnapshot } from './links';
+import { activeVehicles, historyCouldBelongTo, textValue, vehicleOptionLabel, vehicleSnapshot } from './links';
 
 function customerIdOf(data: any) {
   return textValue(data?.settings?.id) || demoCustomerId;
+}
+
+function readableBookingReference() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  let code = '';
+  for (const byte of bytes) code += alphabet[byte % alphabet.length];
+  return `VA-${code}`;
 }
 
 export function createBooking(
@@ -37,13 +45,16 @@ export function createBooking(
   const customerId = input.customerId || customerIdOf(data);
   const label = vehicleSnapshot(vehicle);
   const job = {
-    id: 'VA-' + Date.now().toString().slice(-7),
+    id: crypto.randomUUID(),
+    reference: readableBookingReference(),
     clientRequestId: requestId,
     provider: input.professional.name,
     professionalId,
+    professionalLink: 'resolved',
     vehicle: label,
     vehicleLabel: label,
     vehicleId: vehicle.id,
+    vehicleLink: 'resolved',
     registration: vehicle.registration,
     date: input.date,
     time: input.time,
@@ -101,6 +112,7 @@ export function updateRequestedBooking(
     vehicle: label,
     vehicleLabel: label,
     vehicleId: vehicle.id,
+    vehicleLink: 'resolved',
     registration: vehicle.registration,
     date: input.date,
     time: input.time,
@@ -127,7 +139,9 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
         vehicle: changed.vehicleLabel || changed.vehicle,
         vehicleLabel: changed.vehicleLabel || changed.vehicle,
         vehicleId: changed.vehicleId || '',
+        vehicleLink: changed.vehicleId ? 'resolved' : changed.vehicleLink || 'unmatched',
         professionalId: changed.professionalId || '',
+        professionalLink: changed.professionalId ? 'resolved' : changed.professionalLink || 'unmatched',
         customerId: changed.customerId || '',
         mileage: extra.mileage || changed.completedMileage || 'Not recorded',
         notes: changed.completionNotes,
@@ -208,16 +222,8 @@ export function saveVehicle(data: any, vehicle: any) {
 
 function vehicleHasHistory(data: any, vehicleId: string) {
   const vehicle = (data.vehicles || []).find((item: any) => item.id === vehicleId);
-  const label = vehicleSnapshot(vehicle);
-  const nameIsThisVehicle = uniqueVehicleId(label, data.vehicles || []) === vehicleId;
-  const jobs = (data.jobs || []).some(
-    (job: any) => job.vehicleId === vehicleId || (!job.vehicleId && nameIsThisVehicle && job.vehicle === label),
-  );
-  const records = (data.records || []).some(
-    (record: any) =>
-      record.vehicleId === vehicleId || (!record.vehicleId && nameIsThisVehicle && record.vehicle === label),
-  );
-  return jobs || records;
+  const items = [...(data.jobs || []), ...(data.records || [])];
+  return items.some((item) => historyCouldBelongTo(item, vehicle));
 }
 
 export function removeOrArchiveVehicle(data: any, vehicleId: string) {
@@ -233,6 +239,56 @@ export function removeOrArchiveVehicle(data: any, vehicleId: string) {
     };
   }
   return { ...data, vehicles: vehicles.filter((item: any) => item.id !== vehicleId) };
+}
+
+/** Explicit customer confirmation. This does not guess a vehicle from a shared name. */
+export function resolveHistoryVehicle(
+  data: any,
+  input: { recordId?: string; jobId?: string; vehicleId: string; confirmed: boolean; now?: string },
+) {
+  if (input.confirmed !== true) throw Error('Confirm which vehicle this history belongs to.');
+  const vehicle = (data.vehicles || []).find((item: any) => item.id === input.vehicleId);
+  if (!vehicle) throw Error('Choose a vehicle.');
+  const now = input.now || new Date().toISOString();
+  const apply = (item: any) => ({
+    ...item,
+    vehicleId: vehicle.id,
+    vehicleLink: 'resolved',
+    vehicleLinkCandidates: [vehicle.id],
+    linkResolution: {
+      at: now,
+      vehicleId: vehicle.id,
+      registration: vehicle.registration || '',
+      label: vehicleOptionLabel(vehicle),
+      source: 'manual',
+      previous: item.vehicleLink || '',
+    },
+  });
+  if (input.recordId) {
+    const records = data.records || [];
+    if (!records.some((record: any) => record.id === input.recordId)) throw Error('Record not found.');
+    return {
+      ...data,
+      records: records.map((record: any) =>
+        record.id === input.recordId
+          ? apply(record)
+          : record,
+      ),
+    };
+  }
+  if (input.jobId) {
+    const jobs = data.jobs || [];
+    if (!jobs.some((job: any) => job.id === input.jobId)) throw Error('Booking not found.');
+    return {
+      ...data,
+      jobs: jobs.map((job: any) =>
+        job.id === input.jobId
+          ? apply(job)
+          : job,
+      ),
+    };
+  }
+  throw Error('Choose a history record.');
 }
 
 export { grantHistoryAccess, revokeHistoryAccess, saveCustomerReview, deleteCustomerReview };

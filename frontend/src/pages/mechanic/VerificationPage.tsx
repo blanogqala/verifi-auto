@@ -2,6 +2,7 @@ import { Card } from '../../components/ui/Card';
 
 import { ArrowRight, ShieldCheck, Check } from 'lucide-react';
 import { canSubmit } from '../../demo';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
@@ -81,21 +82,24 @@ export function VerificationPage({ data, name, note, notify, profile, route, upd
             className="primary"
             disabled={!canSubmit(data)}
             onClick={() => {
-              update((d: any) =>
-                note(
-                  {
-                    ...d,
-                    application: {
-                      ...d.application,
-                      status: 'Pending review',
-                      submittedAt: new Date().toISOString().split('T')[0],
-                      note: '',
+              commitUpdate(
+                update,
+                (d: any) =>
+                  note(
+                    {
+                      ...d,
+                      application: {
+                        ...d.application,
+                        status: 'Pending review',
+                        submittedAt: new Date().toISOString().split('T')[0],
+                        note: '',
+                      },
                     },
-                  },
-                  'Your sample application has been submitted for review.',
-                ),
+                    'Your sample application has been submitted for review.',
+                  ),
+                notify,
+                'Submitted. Switch to the admin preview to review this application.',
               );
-              notify('Submitted. Switch to the admin preview to review this application.');
             }}
           >
             Submit for demo review <ArrowRight size={17} />

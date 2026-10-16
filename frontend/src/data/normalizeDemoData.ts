@@ -116,6 +116,7 @@ export function normalizeDemoData(saved: any) {
           );
           return {
             ...linked,
+            reference: text(linked.reference) || text(linked.id),
             description: typeof linked.description === 'string' ? linked.description : '',
           };
         })

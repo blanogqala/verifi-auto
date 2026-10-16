@@ -1,31 +1,19 @@
 import { useState } from 'react';
-import type { PointerEvent } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { VehicleStage } from '../../components/garage/VehicleStage';
-import { activeVehicles, vehicleSnapshot } from '../../features/demo/links';
+import { activeVehicles, unresolvedHistory, vehicleSnapshot } from '../../features/demo/links';
 
 export function GaragePage({ data, go, setDialog }: any) {
   const vehicles = activeVehicles(data.vehicles || []);
   const [index, setIndex] = useState(0);
   const selected = vehicles[Math.min(index, Math.max(vehicles.length - 1, 0))];
   const count = vehicles.length;
+  const unresolved = unresolvedHistory(data);
 
   function move(next: number) {
     if (!count) return;
     setIndex((next + count) % count);
-  }
-
-  function swipe(event: PointerEvent<HTMLDivElement>) {
-    const startX = event.clientX;
-    const startY = event.clientY;
-    function end(done: globalThis.PointerEvent) {
-      const dx = done.clientX - startX;
-      const dy = done.clientY - startY;
-      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) move(index + (dx < 0 ? 1 : -1));
-      window.removeEventListener('pointerup', end);
-    }
-    window.addEventListener('pointerup', end);
   }
 
   return (
@@ -43,11 +31,11 @@ export function GaragePage({ data, go, setDialog }: any) {
         </Card>
       ) : (
         <section className="showroom" aria-roledescription="carousel" aria-label="Garage showroom">
-          <div className="showroom-stage" onPointerDown={swipe}>
+          <div className="showroom-stage">
             <p className="showroom-count">
               {count === 1 ? '1 vehicle' : `${Math.min(index, count - 1) + 1} of ${count}`}
             </p>
-            <VehicleStage vehicle={selected} />
+            <VehicleStage key={selected.id} vehicle={selected} />
             <h2>
               {selected.year} {selected.make} {selected.model}
             </h2>
@@ -93,6 +81,7 @@ export function GaragePage({ data, go, setDialog }: any) {
                   onClick={() => setIndex(thumbIndex)}
                 >
                   {vehicleSnapshot(vehicle)}
+                  {vehicle.registration ? ` · ${vehicle.registration}` : ''}
                 </button>
               ))}
             </div>
@@ -101,6 +90,34 @@ export function GaragePage({ data, go, setDialog }: any) {
           )}
         </section>
       )}
+      {unresolved.length ? (
+        <Card as="section" className="dash-panel">
+          <h2>History not linked to a vehicle</h2>
+          <p className="muted">
+            These records stay unlinked. A shared or unknown vehicle name is not assigned automatically when a
+            vehicle is renamed, archived, or removed.
+          </p>
+          {unresolved.map((item: any) => (
+            <article key={item.historyKind + '-' + item.id} className="document-row">
+              <div>
+                <b>{item.title || item.status || 'History record'}</b>
+                <small>
+                  {item.vehicleLabel || item.vehicle || 'Vehicle name not recorded'}
+                  {item.registration ? ` · ${item.registration}` : ''}
+                  {item.provider ? ` · ${item.provider}` : ''}
+                </small>
+              </div>
+              <button
+                className="secondary"
+                type="button"
+                onClick={() => setDialog({ kind: 'resolve-history', item })}
+              >
+                Choose a vehicle
+              </button>
+            </article>
+          ))}
+        </Card>
+      ) : null}
     </>
   );
 }

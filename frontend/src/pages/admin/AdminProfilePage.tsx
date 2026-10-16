@@ -5,6 +5,7 @@ import {
   adminProfileSectionLabel,
   type AdminProfileSection,
 } from '../../config/navigation';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 
 const tabs: { id: AdminProfileSection; label: string; target: string; Icon: typeof UserRound }[] = [
   { id: 'account', label: adminProfileSectionLabel.account, target: 'profile/account', Icon: UserRound },
@@ -73,14 +74,18 @@ export function AdminProfilePage({ data, logout, notify, route, section, update 
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget as HTMLFormElement);
-            update((current: any) => ({
-              ...current,
-              platform: {
-                pilot: form.get('pilot'),
-                applicationsOpen: form.get('applicationsOpen') === 'on',
-              },
-            }));
-            notify('Demo settings saved in this browser.');
+            commitUpdate(
+              update,
+              (current: any) => ({
+                ...current,
+                platform: {
+                  pilot: form.get('pilot'),
+                  applicationsOpen: form.get('applicationsOpen') === 'on',
+                },
+              }),
+              notify,
+              'Demo settings saved in this browser.',
+            );
           }}
         >
           <h2>Pilot configuration</h2>
@@ -127,14 +132,18 @@ export function AdminProfilePage({ data, logout, notify, route, section, update 
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget as HTMLFormElement);
-            update((current: any) => ({
-              ...current,
-              adminAccount: {
-                name: String(form.get('name') || '').trim(),
-                email: String(form.get('email') || '').trim(),
-              },
-            }));
-            notify('Demo profile saved in this browser.');
+            commitUpdate(
+              update,
+              (current: any) => ({
+                ...current,
+                adminAccount: {
+                  name: String(form.get('name') || '').trim(),
+                  email: String(form.get('email') || '').trim(),
+                },
+              }),
+              notify,
+              'Demo profile saved in this browser.',
+            );
           }}
         >
           <h2>Profile</h2>

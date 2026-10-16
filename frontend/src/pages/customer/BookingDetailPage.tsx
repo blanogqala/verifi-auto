@@ -4,6 +4,7 @@ import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { demoCustomerId } from '../../features/admin/customerRecords';
 import { canOfferHistoryAccess, activeGrantForBooking } from '../../features/garage/historyAccess';
 import { grantHistoryAccess, revokeHistoryAccess } from '../../features/demo/demoActions';
+import { bookingReference } from '../../features/jobs/jobViews';
 import { useState } from 'react';
 
 function ownerId(job: any, fallback: string) {
@@ -35,7 +36,7 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
   return (
     <div className="booking-detail">
       <Card as="section" className="dash-panel">
-        <span className="reference">{job.id}</span>
+        <span className="reference">{bookingReference(job)}</span>
         <Status value={job.status} />
         <h2>{job.vehicleLabel || job.vehicle}</h2>
         {vehicle ? (
@@ -139,7 +140,7 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
         </p>
         <p>Professional: {job.provider || 'Not linked'}</p>
         <p>Vehicle: {job.vehicleLabel || job.vehicle || 'Not linked'}</p>
-        <p>Booking: {job.id}</p>
+        <p>Booking: {bookingReference(job)}</p>
         <p>Access: {grant ? 'Granted' : 'No access'}</p>
         {canOfferHistoryAccess(job) ? (
           <form

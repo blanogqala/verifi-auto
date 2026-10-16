@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 import { createBooking, saveVehicle, updateRequestedBooking } from '../../features/demo/demoActions';
 import { demoCustomerId } from '../../features/admin/customerRecords';
 
@@ -106,9 +107,10 @@ export function BookingDialog({
             onSubmit={(event) => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);
-              try {
-                let createdId = '';
-                const saved = update((current: any) => {
+              let createdId = '';
+              const saved = commitUpdate(
+                update,
+                (current: any) => {
                   const next = saveVehicle(current, {
                     make: form.get('make'),
                     model: form.get('model'),
@@ -120,17 +122,14 @@ export function BookingDialog({
                   });
                   createdId = next.vehicles[next.vehicles.length - 1].id;
                   return next;
-                });
-                if (!saved) {
-                  setError('Could not store this vehicle in this browser.');
-                  return;
-                }
-                setVehicleId(createdId);
-                setAdding(false);
-                setError('');
-              } catch (reason: any) {
-                setError(reason.message);
-              }
+                },
+                setError,
+                '',
+              );
+              if (!saved) return;
+              setVehicleId(createdId);
+              setAdding(false);
+              setError('');
             }}
           >
             <h2>Add vehicle</h2>
@@ -181,34 +180,39 @@ export function BookingDialog({
               try {
                 const vehicle = choices.find((item) => item.id === vehicleId);
                 let duplicate = false;
-                const saved = update((current: any) => {
-                  if (editingJob) {
-                    return updateRequestedBooking(current, {
-                      bookingId: editingJob.id,
-                      customerId: ownerId,
-                      vehicleId,
+                const saved = commitUpdate(
+                  update,
+                  (current: any) => {
+                    if (editingJob) {
+                      return updateRequestedBooking(current, {
+                        bookingId: editingJob.id,
+                        customerId: ownerId,
+                        vehicleId,
+                        date,
+                        time,
+                        description,
+                      });
+                    }
+                    const result = createBooking(current, {
+                      professional: modal,
+                      vehicle,
                       date,
                       time,
                       description,
+                      customerId: ownerId,
+                      clientRequestId: requestId,
                     });
-                  }
-                  const result = createBooking(current, {
-                    professional: modal,
-                    vehicle,
-                    date,
-                    time,
-                    description,
-                    customerId: ownerId,
-                    clientRequestId: requestId,
-                  });
-                  duplicate = result.duplicate;
-                  return result.data;
-                });
-                if (!saved) {
-                  setError('Could not store this booking in this browser.');
+                    duplicate = result.duplicate;
+                    return result.data;
+                  },
+                  setError,
+                  '',
+                );
+                if (!saved) return;
+                if (duplicate) {
+                  setError('This request was already saved.');
                   return;
                 }
-                if (duplicate) setError('This request was already saved.');
                 if (editingJob) {
                   notify('Demo request updated in this browser.');
                   close();
@@ -216,8 +220,6 @@ export function BookingDialog({
                   setRequestId(crypto.randomUUID());
                   setStep(2);
                 }
-              } catch (reason: any) {
-                setError(reason.message);
               } finally {
                 setSubmitting(false);
               }

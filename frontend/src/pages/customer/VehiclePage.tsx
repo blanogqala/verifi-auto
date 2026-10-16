@@ -1,7 +1,8 @@
 import { VehicleStage } from '../../components/garage/VehicleStage';
 import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
-import { vehicleSnapshot } from '../../features/demo/links';
+import { historyCouldBelongTo } from '../../features/demo/links';
+import { bookingReference } from '../../features/jobs/jobViews';
 import { careSourceLabel, careStateLabel, dateCareState, mileageCareState } from '../../features/garage/vehicleCare';
 
 function bookingsFor(data: any, vehicle: any) {
@@ -21,20 +22,14 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
       </Card>
     );
   }
-  const linkedRecords = (data.records || []).filter((record: any) => record.vehicleId === vehicle.id);
-  const legacyRecords = (data.records || []).filter(
-    (record: any) => !record.vehicleId && record.vehicle === vehicleSnapshot(vehicle),
-  );
-  const ambiguous =
-    (data.vehicles || []).filter(
-      (item: any) => item.archived !== true && vehicleSnapshot(item) === vehicleSnapshot(vehicle),
-    ).length > 1;
-  const records = ambiguous ? linkedRecords : [...linkedRecords, ...legacyRecords];
+  const records = (data.records || []).filter((record: any) => record.vehicleId === vehicle.id);
   const bookings = bookingsFor(data, vehicle);
+  const linked = [...(data.jobs || []), ...(data.records || [])].some((item) =>
+    historyCouldBelongTo(item, vehicle),
+  );
   const disc = dateCareState(vehicle.licenceDiscExpiry);
   const serviceDate = dateCareState(vehicle.nextServiceDate);
   const serviceMileage = mileageCareState(vehicle.mileage, vehicle.nextServiceMileage);
-  const linked = bookings.length > 0 || records.length > 0;
 
   return (
     <div className="vehicle-detail">
@@ -77,7 +72,7 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
               type="button"
               onClick={() => go('dashboard/bookings/' + encodeURIComponent(job.id))}
             >
-              {job.id} · {job.status}
+              {bookingReference(job)} · {job.status}
             </button>
           ))
         ) : (
@@ -99,12 +94,6 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
         ) : (
           <p>No service records are linked to this vehicle.</p>
         )}
-        {ambiguous && legacyRecords.length ? (
-          <p>Some older records match this name but were not linked, because more than one vehicle uses it.</p>
-        ) : null}
-        {!ambiguous && legacyRecords.length ? (
-          <p>These older records use the saved vehicle name and do not have a vehicle id yet.</p>
-        ) : null}
       </Card>
       <Card as="section" className="dash-panel">
         <h2>Reminders</h2>

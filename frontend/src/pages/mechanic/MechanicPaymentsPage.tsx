@@ -4,6 +4,7 @@ import { EmptyState as Empty } from '../../components/ui/EmptyState';
 import { MetricCard as Metric } from '../../components/ui/MetricCard';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { quoteTotal } from '../../demo';
+import { bookingReference } from '../../features/jobs/jobViews';
 import {
   awaitingCustomerPayments,
   recordedCustomerPayments,
@@ -46,7 +47,7 @@ export function MechanicPaymentsPage({ jobs, setDialog }: any) {
             <div className="payment-row" key={job.id}>
               <FileText size={23} />
               <div>
-                <b>{job.id}</b>
+                <b>{bookingReference(job)}</b>
                 <small>
                   {job.vehicle}
                   {job.provider ? ` · ${job.provider}` : ''}

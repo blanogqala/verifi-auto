@@ -1,7 +1,9 @@
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
 import { quoteTotal } from '../../demo';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
-import { removeOrArchiveVehicle, saveVehicle, updateRequestedBooking } from '../../features/demo/demoActions';
+import { removeOrArchiveVehicle, resolveHistoryVehicle, saveVehicle, updateRequestedBooking } from '../../features/demo/demoActions';
+import { bookingReference } from '../../features/jobs/jobViews';
 import { sharedRecordsForProfessional } from '../../features/garage/historyAccess';
 import { demoCustomerId } from '../../features/admin/customerRecords';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
@@ -62,11 +64,13 @@ export function WorkspaceDialog({
                 archived: dialog.vehicle?.archived === true,
               };
               try {
-                const saved = update((d: any) => saveVehicle(d, vehicle));
-                if (!saved) {
-                  notify('Could not store this vehicle in this browser.');
-                  return;
-                }
+                const saved = commitUpdate(
+                  update,
+                  (d: any) => saveVehicle(d, vehicle),
+                  notify,
+                  '',
+                );
+                if (!saved) return;
                 setDialog(null);
                 notify('Sample vehicle saved.');
               } catch (reason: any) {
@@ -76,6 +80,9 @@ export function WorkspaceDialog({
           >
             <span className="chip">MY GARAGE</span>
             <h2>{dialog.vehicle ? 'Edit vehicle' : 'Add your vehicle'}</h2>
+            <p className="muted">
+              These details identify the vehicle in your garage. They do not generate an accurate 3D model.
+            </p>
             <div className="form-row">
               <label>
                 Make
@@ -161,7 +168,7 @@ export function WorkspaceDialog({
         )}
         {dialog.kind === 'job' && (
           <>
-            <span className="reference">{dialog.job.id}</span>
+            <span className="reference">{bookingReference(dialog.job)}</span>
             <h2>{dialog.job.vehicle}</h2>
             <Status value={dialog.job.status} />
             <p>
@@ -335,7 +342,7 @@ export function WorkspaceDialog({
               });
             }}
           >
-            <span className="chip">{dialog.job.id}</span>
+            <span className="chip">{bookingReference(dialog.job)}</span>
             <h2>Prepare a clear quote.</h2>
             <p>Itemise parts and labour. The customer must approve before work begins.</p>
             {editItems.map((item, i) => (
@@ -415,7 +422,7 @@ export function WorkspaceDialog({
           >
             <h2>Record the work performed.</h2>
             <p>
-              {dialog.job.id} · {dialog.job.vehicle}
+              {bookingReference(dialog.job)} · {dialog.job.vehicle}
             </p>
             <label>
               Completed work
@@ -446,7 +453,7 @@ export function WorkspaceDialog({
           >
             <h2>Reject this request?</h2>
             <p>
-              {dialog.job.id} · {dialog.job.vehicle}. The customer will see this reason. Only a
+              {bookingReference(dialog.job)} · {dialog.job.vehicle}. The customer will see this reason. Only a
               pending request can be rejected.
             </p>
             <label>
@@ -469,7 +476,7 @@ export function WorkspaceDialog({
                   : 'Your repair invoice.'}
             </h2>
             <p>
-              {dialog.job.id}
+              {bookingReference(dialog.job)}
               <br />
               {dialog.job.provider} · {dialog.job.vehicle}
             </p>
@@ -540,21 +547,19 @@ export function WorkspaceDialog({
               className="primary full"
               type="button"
               onClick={() => {
-                try {
-                  const saved = update((current: any) => removeOrArchiveVehicle(current, dialog.vehicle.id));
-                  if (!saved) {
-                    notify('Could not store this vehicle change in this browser.');
-                    return;
-                  }
-                  setDialog(null);
-                  notify(
-                    dialog.linked
-                      ? 'Vehicle archived. Its history stays in this browser.'
-                      : 'Vehicle removed from this browser.',
-                  );
-                } catch (reason: any) {
-                  notify(reason.message);
-                }
+                const saved = commitUpdate(
+                  update,
+                  (current: any) => removeOrArchiveVehicle(current, dialog.vehicle.id),
+                  notify,
+                  '',
+                );
+                if (!saved) return;
+                setDialog(null);
+                notify(
+                  dialog.linked
+                    ? 'Vehicle archived. Bookings, invoices, and service history stay in this browser.'
+                    : 'Vehicle removed from this browser.',
+                );
               }}
             >
               {dialog.linked ? 'Archive vehicle' : 'Remove vehicle'}
@@ -567,20 +572,21 @@ export function WorkspaceDialog({
               event.preventDefault();
               const form = new FormData(event.currentTarget);
               try {
-                const saved = update((current: any) =>
-                  updateRequestedBooking(current, {
-                    bookingId: dialog.job.id,
-                    customerId: data.settings?.id || demoCustomerId,
-                    vehicleId: String(form.get('vehicleId') || ''),
-                    date: String(form.get('date') || ''),
-                    time: String(form.get('time') || ''),
-                    description: String(form.get('description') || ''),
-                  }),
+                const saved = commitUpdate(
+                  update,
+                  (current: any) =>
+                    updateRequestedBooking(current, {
+                      bookingId: dialog.job.id,
+                      customerId: data.settings?.id || demoCustomerId,
+                      vehicleId: String(form.get('vehicleId') || ''),
+                      date: String(form.get('date') || ''),
+                      time: String(form.get('time') || ''),
+                      description: String(form.get('description') || ''),
+                    }),
+                  notify,
+                  '',
                 );
-                if (!saved) {
-                  notify('Could not store this request in this browser.');
-                  return;
-                }
+                if (!saved) return;
                 setDialog(null);
                 notify('Demo request updated in this browser.');
               } catch (reason: any) {
@@ -731,7 +737,7 @@ export function WorkspaceDialog({
               dialog.bookings.map((job: any) => (
                 <div className="document-row" key={job.id}>
                   <div>
-                    <b>{job.id}</b>
+                    <b>{bookingReference(job)}</b>
                     <small>
                       {job.vehicle} · {job.provider || 'Mechanic not recorded'} · {job.status}
                     </small>
@@ -746,19 +752,74 @@ export function WorkspaceDialog({
             </div>
           </>
         )}
+        {dialog.kind === 'resolve-history' && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              const saved = commitUpdate(
+                update,
+                (current: any) =>
+                  resolveHistoryVehicle(current, {
+                    jobId: dialog.item.historyKind === 'job' ? dialog.item.id : undefined,
+                    recordId: dialog.item.historyKind === 'record' ? dialog.item.id : undefined,
+                    vehicleId: String(form.get('vehicleId') || ''),
+                    confirmed: form.get('confirm') === 'on',
+                  }),
+                notify,
+                'History linked to the selected registration.',
+              );
+              if (saved) setDialog(null);
+            }}
+          >
+            <h2>Link this history</h2>
+            <p>
+              <b>{dialog.item.title || dialog.item.status || 'History record'}</b>
+              <br />
+              {dialog.item.vehicleLabel || dialog.item.vehicle || 'Vehicle name not recorded'}
+              {dialog.item.provider ? ` · ${dialog.item.provider}` : ''}
+            </p>
+            <p className="muted">
+              Choose the registration yourself. The saved vehicle name is not used to decide this.
+            </p>
+            <label>
+              Vehicle registration
+              <select name="vehicleId" required defaultValue="">
+                <option value="">Select a registration</option>
+                {(data.vehicles || []).map((vehicle: any) => (
+                  <option key={vehicle.id} value={vehicle.id}>
+                    {vehicleOptionLabel(vehicle)}
+                    {vehicle.archived ? ' · archived' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="check-label">
+              <input name="confirm" type="checkbox" required />
+              I confirm this record belongs to the selected registration
+            </label>
+            <button className="primary full" type="submit">
+              Link history
+            </button>
+          </form>
+        )}
         {dialog.kind === 'report' && (
           <form
             onSubmit={(e) => {
               e.preventDefault();
               const resolution = String(new FormData(e.currentTarget).get('resolution'));
-              update((d: any) => ({
-                ...d,
-                reports: d.reports.map((r: any) =>
-                  r.id === dialog.report.id ? { ...r, status: 'Resolved', resolution } : r,
-                ),
-              }));
-              setDialog(null);
-              notify('Sample report resolved.');
+              const saved = commitUpdate(
+                update,
+                (d: any) => ({
+                  ...d,
+                  reports: d.reports.map((r: any) =>
+                    r.id === dialog.report.id ? { ...r, status: 'Resolved', resolution } : r,
+                  ),
+                }),
+                notify,
+                'Sample report resolved.',
+              );
+              if (saved) setDialog(null);
             }}
           >
             <span className="reference">{dialog.report.id}</span>

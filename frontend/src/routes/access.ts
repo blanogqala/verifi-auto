@@ -2,6 +2,27 @@ import { Role } from '../types/roles';
 import { allowedDashboardPages } from '../config/navigation';
 
 const customerDetail = /^(find|bookings|garage)\/[^/]+$/;
+const routeIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/;
+
+export function safeRouteId(value: string) {
+  if (!value) return null;
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+  if (!routeIdPattern.test(decoded)) return null;
+  return decoded;
+}
+
+export function detailId(tab: string, section: 'find' | 'bookings' | 'garage') {
+  const prefix = section + '/';
+  if (!tab.startsWith(prefix)) return undefined;
+  const raw = tab.slice(prefix.length);
+  if (!raw || raw.includes('/')) return null;
+  return safeRouteId(raw);
+}
 
 export function canVisit(role: Role | null, page: string) {
   if (!page.startsWith('dashboard/')) return true;

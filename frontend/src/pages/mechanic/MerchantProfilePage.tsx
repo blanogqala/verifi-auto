@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { merchantProfileSectionLabel, type MerchantProfileSection } from '../../config/navigation';
 import { bankingRecord } from '../../features/account/bankingDetails';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 import { initialsFromName, merchantIdentityLabel } from '../../features/account/customerIdentity';
 import { photoFileError, readProfilePhoto } from '../../features/account/profilePhoto';
 import { BusinessProfilePage } from './BusinessProfilePage';
@@ -271,11 +272,16 @@ export function MerchantProfilePage({
                   setBankError(result.error || 'Check the sample banking details.');
                   return;
                 }
+                const saved = commitUpdate(
+                  update,
+                  (current: any) => ({ ...current, mechanicBanking: result.record }),
+                  notify,
+                  'Sample banking details saved in this browser. No payout was set up.',
+                );
+                if (!saved) return;
                 setBankError('');
                 setBank({ ...emptyBank, accountType: result.record.accountType });
                 setEditingBank(false);
-                update((current: any) => ({ ...current, mechanicBanking: result.record }));
-                notify('Sample banking details saved in this browser. No payout was set up.');
               }}
             >
               <div className="form-row">

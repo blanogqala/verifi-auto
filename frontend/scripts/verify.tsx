@@ -45,6 +45,13 @@ import {
   saveCustomerReview,
   deleteCustomerReview,
   catalogueModel,
+  modelForVehicle,
+  commitUpdate,
+  resolveHistoryVehicle,
+  safeRouteId,
+  detailId,
+  bookingReference,
+  saveVehicle,
 } from '../src/demo';
 import { providers } from '../src/data/professionals';
 import { Workspace } from '../src/layouts/WorkspaceLayout';
@@ -948,7 +955,7 @@ assert.ok(!customerProfile.includes('Find a professional'));
 const garageHtml = screen('customer', 'garage');
 assert.ok(garageHtml.includes('Add vehicle'));
 assert.ok(garageHtml.includes('View vehicle'));
-assert.ok(garageHtml.includes('Illustrated preview'));
+assert.ok(garageHtml.includes('Illustrative model — not an exact match'));
 assert.ok(!garageHtml.includes('Find a professional'));
 assert.ok(!garageHtml.includes('360'));
 const bookingHtml = screen('customer', 'bookings/VA-2026-1042');
@@ -1240,6 +1247,152 @@ assert.ok(customerPayGroups.includes('Date not recorded'));
 assert.ok(customerPayGroups.includes('2026-10-02'));
 assert.ok(customerPayGroups.indexOf('2026-10-02') < customerPayGroups.indexOf('Date not recorded'));
 assert.ok(!customerPayGroups.includes('Find a professional'));
+assert.equal(linked.jobs[0].reference, 'VA-2026-1042');
+assert.equal(bookingReference(linked.jobs[0]), 'VA-2026-1042');
+const removedTwin = normalizeDemoData({
+  ...ambiguousData,
+  vehicles: ambiguousData.vehicles.filter((vehicle: any) => vehicle.id === 'a'),
+});
+assert.equal(removedTwin.jobs[0].vehicleLink, 'ambiguous');
+assert.equal(removedTwin.jobs[0].vehicleId, '');
+assert.equal(removedTwin.records[0].vehicleId, '');
+const renamedTwin = normalizeDemoData({
+  ...ambiguousData,
+  vehicles: ambiguousData.vehicles.map((vehicle: any) =>
+    vehicle.id === 'b' ? { ...vehicle, make: 'Audi', model: 'A3', registration: 'B' } : vehicle,
+  ),
+});
+assert.equal(renamedTwin.jobs[0].vehicleId, '');
+assert.equal(renamedTwin.jobs[0].vehicle, '2020 Volkswagen Polo');
+const archivedTwin = removeOrArchiveVehicle(ambiguousData, 'a');
+assert.equal(archivedTwin.vehicles.find((vehicle: any) => vehicle.id === 'a').archived, true);
+assert.equal(archivedTwin.jobs.length, ambiguousData.jobs.length);
+assert.equal(archivedTwin.records.length, ambiguousData.records.length);
+assert.equal(archivedTwin.jobs[0].vehicleId, '');
+const repeated = normalizeDemoData(normalizeDemoData(archivedTwin));
+assert.equal(repeated.jobs[0].vehicleLink, 'ambiguous');
+assert.equal(repeated.records[0].vehicleId, '');
+assert.throws(() =>
+  resolveHistoryVehicle(ambiguousData, { recordId: 'r-amb', vehicleId: 'a', confirmed: false }),
+);
+const manuallyLinked = resolveHistoryVehicle(ambiguousData, {
+  recordId: 'r-amb',
+  vehicleId: 'a',
+  confirmed: true,
+  now: '2026-10-16T00:00:00.000Z',
+});
+assert.equal(manuallyLinked.records[0].vehicleId, 'a');
+assert.equal(manuallyLinked.records[0].vehicleLink, 'resolved');
+assert.equal(manuallyLinked.records[0].linkResolution.registration, 'A');
+assert.equal(manuallyLinked.records[0].linkResolution.previous, 'ambiguous');
+assert.equal(normalizeDemoData(manuallyLinked).records[0].vehicleId, 'a');
+assert.equal(normalizeDemoData(manuallyLinked).jobs[0].vehicleId, '');
+const renamedLinked = saveVehicle(linked, { ...linked.vehicles[0], make: 'Changed' });
+assert.equal(renamedLinked.jobs[0].vehicle, '2020 Volkswagen Polo');
+assert.equal(normalizeDemoData(renamedLinked).jobs[0].vehicleId, 'v1');
+const sameTime = '2026-10-16T12:00:00.000Z';
+const bookingInput = {
+  professional: { id: 'pro-precision-motorworks', name: 'Precision Motorworks', fee: 450 },
+  vehicle: initialData.vehicles[0],
+  date: '2026-12-01',
+  time: '09:00',
+  description: 'Brakes squeal under light use',
+  customerId: 'cust-01',
+};
+const firstBooking = createBooking(initialData, { ...bookingInput, clientRequestId: 'same-time-a', now: sameTime });
+const secondBooking = createBooking(firstBooking.data, {
+  ...bookingInput,
+  clientRequestId: 'same-time-b',
+  now: sameTime,
+});
+assert.notEqual(firstBooking.job.id, secondBooking.job.id);
+assert.notEqual(firstBooking.job.reference, secondBooking.job.reference);
+assert.match(firstBooking.job.id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+assert.equal(
+  createBooking(secondBooking.data, { ...bookingInput, clientRequestId: 'same-time-a', now: sameTime }).job.id,
+  firstBooking.job.id,
+);
+assert.equal(bookingReference(firstBooking.job), firstBooking.job.reference);
+const paidRecord = applyJobTransition(
+  { ...initialData, jobs: [{ ...firstBooking.job, status: 'Awaiting payment', quoteApproved: true, items: [{ name: 'Labour', amount: 80 }] }], records: [] },
+  { ...firstBooking.job, status: 'Awaiting payment', quoteApproved: true },
+  'pay',
+);
+assert.equal(paidRecord.data.records[0].id, firstBooking.job.id);
+assert.equal(safeRouteId('%E0%A4%A'), null);
+assert.equal(safeRouteId('a%2Fb'), null);
+assert.equal(safeRouteId('pro-precision-motorworks'), 'pro-precision-motorworks');
+assert.equal(detailId('bookings/%E0%A4%A', 'bookings'), null);
+assert.equal(detailId('find/pro-precision-motorworks', 'find'), 'pro-precision-motorworks');
+assert.doesNotThrow(() => screen('customer', 'bookings/%E0%A4%A'));
+assert.ok(screen('customer', 'bookings/%E0%A4%A').includes('This link is not valid'));
+assert.ok(screen('customer', 'bookings/a%2Fb').includes('This link is not valid'));
+assert.ok(screen('customer', 'bookings/missing-booking').includes('Booking not found'));
+assert.equal(canVisit('customer', 'dashboard/bookings/a/b'), false);
+assert.equal(canVisit('mechanic', 'dashboard/garage/v1'), false);
+const failureMessages: string[] = [];
+let unchanged = initialData;
+assert.equal(
+  commitUpdate(
+    () => false,
+    (data) => ({ ...data, reviews: [] }),
+    (message) => failureMessages.push(message),
+    'Demo application approved',
+  ),
+  false,
+);
+assert.equal(failureMessages.length, 1);
+assert.ok(!failureMessages[0].includes('approved'));
+assert.equal(
+  commitUpdate(
+    (change) => {
+      change(unchanged);
+      return false;
+    },
+    (data) =>
+      saveCustomerProfile(data, {
+        name: 'Replacement Name',
+        email: 'replacement@example.com',
+        phone: '0821234567',
+        emailUpdates: true,
+      }),
+    (message) => failureMessages.push(message),
+    'Demo profile saved',
+  ),
+  false,
+);
+assert.equal(unchanged.settings.name, initialData.settings.name);
+assert.equal(
+  commitUpdate(
+    () => {
+      throw new Error('disk full');
+    },
+    (data) => data,
+    (message) => failureMessages.push(message),
+    'Request saved',
+  ),
+  false,
+);
+assert.ok(failureMessages.includes('disk full'));
+assert.equal(
+  commitUpdate(
+    () => false,
+    (data) =>
+      createBooking(data, { ...bookingInput, clientRequestId: 'failed-save', now: sameTime }).data,
+    (message) => failureMessages.push(message),
+    'Request saved',
+  ),
+  false,
+);
+assert.ok(failureMessages.some((message) => message.startsWith('Could not save')));
+assert.ok(!failureMessages.includes('Request saved'));
+const ambiguousGarage = screen('customer', 'garage', ambiguousData);
+assert.ok(ambiguousGarage.includes('History not linked to a vehicle'));
+assert.ok(ambiguousGarage.includes('Check'));
+assert.ok(!screen('customer', 'garage/a', ambiguousData).includes('Check'));
+assert.equal(catalogueModel(initialData.vehicles[0]), null);
+assert.equal(modelForVehicle(initialData.vehicles[0]).originalGeometry, true);
+assert.equal(modelForVehicle(initialData.vehicles[0]).illustrative, true);
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );

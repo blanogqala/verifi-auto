@@ -29,6 +29,12 @@ export function isCancelledRequest(job: any) {
   return job?.status === 'Cancelled' && job.accepted !== true;
 }
 
+export function bookingReference(job: any) {
+  const reference = typeof job?.reference === 'string' ? job.reference.trim() : '';
+  const id = typeof job?.id === 'string' ? job.id.trim() : '';
+  return reference || id;
+}
+
 /** Mark jobs that already passed acceptance. Do not invent dates for older records. */
 export function migrateJob(job: any) {
   if (!job || typeof job !== 'object') return job;

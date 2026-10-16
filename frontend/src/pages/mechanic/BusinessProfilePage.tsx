@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card } from '../../components/ui/Card';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 
 import { ArrowRight, Wrench, Check } from 'lucide-react';
 
@@ -21,16 +22,20 @@ export function BusinessProfilePage({
       className="dash-panel settings-form"
       onSubmit={(e) => {
         e.preventDefault();
-        update((d: any) => ({
-          ...d,
-          profile,
-          mechanicAccount: {
-            ...(d.mechanicAccount || d.merchantAccount || {}),
-            email: email.trim(),
-          },
-          application: { ...d.application, status: 'Draft' },
-        }));
-        notify('Business profile saved. Changes require application review.');
+        commitUpdate(
+          update,
+          (d: any) => ({
+            ...d,
+            profile,
+            mechanicAccount: {
+              ...(d.mechanicAccount || d.merchantAccount || {}),
+              email: email.trim(),
+            },
+            application: { ...d.application, status: 'Draft' },
+          }),
+          notify,
+          'Business profile saved. Changes require application review.',
+        );
       }}
     >
       <div className="panel-title">

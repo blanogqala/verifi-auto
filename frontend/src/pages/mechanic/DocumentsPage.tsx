@@ -3,6 +3,7 @@ import { Card } from '../../components/ui/Card';
 import { ArrowRight, ShieldCheck, FileText, Upload, Trash2 } from 'lucide-react';
 
 import { EmptyState as Empty } from '../../components/ui/EmptyState';
+import { commitUpdate } from '../../features/demo/commitUpdate';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function DocumentsPage({
@@ -52,27 +53,31 @@ export function DocumentsPage({
           <button
             className="secondary"
             onClick={() => {
-              update((d: any) => ({
-                ...d,
-                documents: [
-                  {
-                    id: 'sample-id',
-                    kind: 'Identity evidence',
-                    name: 'sample-identity.pdf',
-                    size: 24500,
-                    date: '2026-10-14',
-                  },
-                  {
-                    id: 'sample-qualification',
-                    kind: 'Qualifications / experience',
-                    name: 'sample-qualification.pdf',
-                    size: 32000,
-                    date: '2026-10-14',
-                  },
-                ],
-                application: { ...d.application, status: 'Draft' },
-              }));
-              notify('Illustrative evidence added. No real documents uploaded.');
+              commitUpdate(
+                update,
+                (d: any) => ({
+                  ...d,
+                  documents: [
+                    {
+                      id: 'sample-id',
+                      kind: 'Identity evidence',
+                      name: 'sample-identity.pdf',
+                      size: 24500,
+                      date: '2026-10-14',
+                    },
+                    {
+                      id: 'sample-qualification',
+                      kind: 'Qualifications / experience',
+                      name: 'sample-qualification.pdf',
+                      size: 32000,
+                      date: '2026-10-14',
+                    },
+                  ],
+                  application: { ...d.application, status: 'Draft' },
+                }),
+                notify,
+                'Illustrative evidence added. No real documents uploaded.',
+              );
             }}
           >
             Use sample evidence instead
@@ -94,12 +99,16 @@ export function DocumentsPage({
                 <button
                   aria-label={'Remove ' + d.kind}
                   onClick={() => {
-                    update((s: any) => ({
-                      ...s,
-                      documents: s.documents.filter((x: any) => x.id !== d.id),
-                      application: { ...s.application, status: 'Draft' },
-                    }));
-                    notify('Sample document removed; application returned to draft.');
+                    commitUpdate(
+                      update,
+                      (s: any) => ({
+                        ...s,
+                        documents: s.documents.filter((x: any) => x.id !== d.id),
+                        application: { ...s.application, status: 'Draft' },
+                      }),
+                      notify,
+                      'Sample document removed; application returned to draft.',
+                    );
                   }}
                 >
                   <Trash2 size={17} />

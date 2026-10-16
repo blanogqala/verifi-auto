@@ -3,7 +3,7 @@ import { Card } from '../../components/ui/Card';
 import { EmptyState as Empty } from '../../components/ui/EmptyState';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import type { AppointmentSection } from '../../config/navigation';
-import { isCancelledRequest, isPendingRequest, isRejectedRequest } from '../../features/jobs/jobViews';
+import { bookingReference, isCancelledRequest, isPendingRequest, isRejectedRequest } from '../../features/jobs/jobViews';
 
 const tabs: { id: AppointmentSection; label: string }[] = [
   { id: 'pending', label: 'Pending' },
@@ -41,7 +41,7 @@ export function AppointmentsPage({ jobs, onReject, onAccept, route, section }: a
         visible.map((job: any) => (
           <Card as="article" className="dash-panel appointment-card" key={job.id}>
             <div className="panel-title">
-              <span className="reference">{job.id}</span>
+              <span className="reference">{bookingReference(job)}</span>
               <Status value={job.status} />
             </div>
             <h2>{job.vehicle}</h2>
