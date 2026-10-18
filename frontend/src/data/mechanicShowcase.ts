@@ -300,6 +300,43 @@ const jobs = [
     quoteApproved: false,
     paid: false,
   },
+  {
+    ...workshop,
+    id: 'VA-2026-1112',
+    customerId: 'cust-01',
+    vehicleId: 'v1',
+    vehicleLink: 'resolved',
+    vehicle: '2020 Volkswagen Polo',
+    vehicleLabel: '2020 Volkswagen Polo',
+    date: '2026-10-25',
+    time: '10:00',
+    status: 'Awaiting approval',
+    accepted: true,
+    description: 'Routine oil service and inspection before a long trip.',
+    quoteVersion: 1,
+    quoteApproved: false,
+    paid: false,
+    notes: 'Oil, filter, and service labour. Awaiting your approval.',
+    items: [
+      { id: 'line-1112-a', name: 'Engine oil and oil filter', category: 'parts', quantity: null, unitPriceCents: null, amount: 680 },
+      { id: 'line-1112-b', name: 'Service labour and inspection', category: 'labour', quantity: null, unitPriceCents: null, amount: 450 },
+    ],
+    quoteVersions: [{
+      version: 1,
+      submittedAt: '2026-10-18T14:00:00.000Z',
+      clientSubmitId: 'show-1112-v1',
+      notes: 'Oil, filter, and service labour. Awaiting your approval.',
+      totalCents: 113000,
+      items: [
+        { id: 'line-1112-a', name: 'Engine oil and oil filter', category: 'parts', quantity: null, unitPriceCents: null, amount: 680 },
+        { id: 'line-1112-b', name: 'Service labour and inspection', category: 'labour', quantity: null, unitPriceCents: null, amount: 450 },
+      ],
+    }],
+    events: [
+      { at: '2026-10-18T12:00:00.000Z', type: 'confirm', label: 'Request accepted' },
+      { at: '2026-10-18T14:00:00.000Z', type: 'quote', label: 'Quotation sent for approval' },
+    ],
+  },
 ];
 
 const messages = [
@@ -423,17 +460,6 @@ const notifications = [
   },
 ];
 
-const historyGrant = {
-  id: 'grant-show-1042',
-  bookingId: 'VA-2026-1042',
-  customerId: 'cust-01',
-  professionalId: 'pro-precision-motorworks',
-  vehicleId: 'v1',
-  recordIds: ['r1', 'r2'],
-  status: 'active',
-  grantedAt: '2026-10-18T07:20:00.000Z',
-};
-
 function list(value: unknown) {
   return Array.isArray(value) ? value : [];
 }
@@ -457,7 +483,6 @@ export function withMechanicShowcase(data: any) {
   const noteIds = new Set(list(source.notifications).map((note: any) => note?.id));
   const noteKeys = new Set(list(source.notifications).map((note: any) => note?.eventKey).filter(Boolean));
   const grants = list(source.historyAccess);
-  const hasPoloGrant = grants.some((grant: any) => grant?.bookingId === 'VA-2026-1042');
   return {
     ...source,
     customers: [...list(source.customers), ...customers.filter((customer) => !customerIds.has(customer.id))],
@@ -467,6 +492,6 @@ export function withMechanicShowcase(data: any) {
       ...list(source.notifications),
       ...notifications.filter((note) => !noteIds.has(note.id) && !noteKeys.has(note.eventKey)),
     ],
-    historyAccess: hasPoloGrant ? grants : [historyGrant, ...grants],
+    historyAccess: grants,
   };
 }
