@@ -151,7 +151,6 @@
   opacity: 0.38;
 }
 .showroom-arrow:focus-visible,
-.garage-card:focus-visible,
 .model-credits:focus-visible,
 .vehicle-canvas-host:focus-visible {
   outline: 2px solid var(--purple);
@@ -208,15 +207,20 @@
   display: grid;
   gap: 8px;
   padding: 10px;
-  border: 1px solid var(--line);
+  border: var(--card-border-width) solid var(--card-border);
   border-radius: 16px;
-  background: var(--surface);
-  color: inherit;
+  background: var(--card-background);
+  color: var(--ink);
   text-align: left;
 }
 .garage-card.selected {
+  background: color-mix(in srgb, var(--purple) 22%, var(--card-background));
   border-color: var(--purple);
-  box-shadow: 0 0 0 2px var(--purple);
+  box-shadow: inset 0 0 0 2px var(--purple);
+}
+.garage-card:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 4px;
 }
 .garage-card img,
 .garage-card-silhouette {
@@ -346,6 +350,55 @@
 .detail-page {
   display: grid;
   gap: 16px;
+}
+.detail-tabs {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+.detail-tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: var(--card-border-width) solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+[data-theme='light'] .detail-tabs button {
+  background: #fff;
+}
+.detail-tabs button[aria-selected='true'] {
+  border-color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 24%, var(--tint));
+  box-shadow: inset 0 0 0 1px var(--purple);
+}
+.detail-tabs button:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+.detail-panel {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.detail-panel[hidden] {
+  display: none;
+}
+.urgent-summary {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #c5942418;
+  color: #ca9e42;
+  font-weight: 700;
+}
+[data-theme='light'] .urgent-summary {
+  color: #88600a;
 }
 .detail-back {
   display: inline-flex;
@@ -685,8 +738,9 @@ select {
   gap: 8px;
   padding: 16px;
   border-radius: var(--radius);
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--card-background);
+  color: var(--ink);
+  border: var(--card-border-width) solid var(--card-border);
 }
 .next-action h2 {
   margin: 0;
@@ -724,7 +778,7 @@ select {
 }
 .booking-card-copy strong,
 .booking-card-copy span {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .booking-card-copy strong {
   font-size: 1.05rem;
@@ -749,9 +803,10 @@ select {
   padding: 0 12px 12px 120px;
 }
 .fold {
-  border: 1px solid var(--line);
+  border: var(--card-border-width) solid var(--card-border);
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--card-background);
+  color: var(--ink);
   padding: 4px 16px 12px;
 }
 .fold > summary {

@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card } from '../../components/ui/Card';
+import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { DetailBack, DetailCard, DetailFields } from '../../components/ui/DetailChrome';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { historyCouldBelongTo } from '../../features/demo/links';
@@ -52,10 +53,19 @@ function Reminder({ label, state, detail, source }: { label: string; state: stri
   );
 }
 
+function urgentCare(label: string, state: string) {
+  if (state !== 'expired' && state !== 'due') return '';
+  return `${label} is ${careStateLabel(state).toLowerCase()}`;
+}
+
 export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
+  const [tab, setTab] = useState('overview');
   const vehicle = (data.vehicles || []).find((item: any) => item.id === vehicleId);
   const here = 'dashboard/garage/' + encodeURIComponent(vehicleId || '');
   const back = backTarget(here, 'dashboard/garage');
+  useEffect(() => {
+    setTab('overview');
+  }, [vehicleId]);
   useEffect(() => {
     if (!vehicle?.id) return;
     try {
@@ -86,6 +96,11 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
   const shared = grantsOf(data).filter(
     (grant: any) => grant?.vehicleId === vehicle.id && grant?.status === 'active',
   );
+  const urgent = [
+    urgentCare('Next service', serviceDate),
+    urgentCare('Next service mileage', serviceMileage),
+    urgentCare('Licence disc expiry', disc),
+  ].filter(Boolean);
 
   return (
     <div className="detail-page vehicle-detail">
@@ -107,108 +122,127 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
           </button>
         </div>
       </header>
-      <DetailCard
-        title="Care reminders"
-        action={
-          <button className="text-link" type="button" onClick={() => setDialog({ kind: 'vehicle', vehicle })}>
-            Edit reminders
-          </button>
-        }
-      >
-        <Reminder
-          label="Next service"
-          state={careStateLabel(serviceDate)}
-          detail={vehicle.nextServiceDate ? formatDay(vehicle.nextServiceDate) : 'No date saved'}
-          source={careSourceLabel(vehicle.nextServiceSource)}
-        />
-        <Reminder
-          label="Next service mileage"
-          state={careStateLabel(serviceMileage)}
-          detail={recorded(vehicle.nextServiceMileage) ? mileageText(vehicle.nextServiceMileage) : 'No mileage saved'}
-          source={careSourceLabel(vehicle.nextServiceSource)}
-        />
-        <Reminder
-          label="Licence disc expiry"
-          state={careStateLabel(disc)}
-          detail={vehicle.licenceDiscExpiry ? formatDay(vehicle.licenceDiscExpiry) : 'No date saved'}
-          source={careSourceLabel(vehicle.licenceDiscSource)}
-        />
-        <p className="muted">Only saved dates are shown.</p>
-      </DetailCard>
-      <DetailCard title="Vehicle facts">
-        <DetailFields
-          items={[
-            { label: 'Make', value: recorded(vehicle.make) || 'Not recorded' },
-            { label: 'Model', value: recorded(vehicle.model) || 'Not recorded' },
-            { label: 'Year', value: recorded(vehicle.year) || 'Not recorded' },
-            { label: 'Body style', value: recorded(vehicle.bodyStyle) || 'Not recorded' },
-            { label: 'Variant', value: recorded(vehicle.variant) || 'Not recorded' },
-            {
-              label: 'Paint colour',
-              value: recorded(vehicle.paintColor) ? (
-                <span className="paint-value">
-                  <i style={{ background: vehicle.paintColor }} />
-                  {vehicle.paintColor}
-                </span>
-              ) : (
-                'Not recorded'
-              ),
-            },
-            { label: 'Registration', value: recorded(vehicle.registration) || 'Not recorded' },
-            { label: 'Mileage', value: mileageText(vehicle.mileage) },
-          ]}
-        />
-        <p className="muted">Service plans are not available yet.</p>
-      </DetailCard>
-      {records.length > 3 ? (
-        <details className="fold">
-          <summary>Service history ({records.length})</summary>
-          <HistoryList records={records} />
-        </details>
-      ) : (
-        <DetailCard title="Service history">
-          <HistoryList records={records} />
-        </DetailCard>
-      )}
-      {bookings.length > 3 ? (
-        <details className="fold">
-          <summary>Related bookings ({bookings.length})</summary>
-          <BookingList bookings={bookings} go={go} here={here} />
-        </details>
-      ) : (
-        <DetailCard title="Related bookings">
-          <BookingList bookings={bookings} go={go} here={here} />
-        </DetailCard>
-      )}
-      <details className="fold">
-        <summary>History sharing</summary>
-        {shared.length ? (
-          <ul className="history-list">
-            {shared.map((grant: any) => (
-              <li key={grant.id}>
-                <b>Shared for booking {grant.bookingId}</b>
-                <span>{Array.isArray(grant.recordIds) ? `${grant.recordIds.length} record(s)` : 'Records selected'}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No service history is shared for this vehicle.</p>
-        )}
-      </details>
-      <DetailCard title={linked ? 'Archive vehicle' : 'Remove vehicle'}>
-        <p>
-          {linked
-            ? 'Bookings and service records stay in this browser. Archiving removes the vehicle from the showroom.'
-            : 'This vehicle has no linked history. Removing it deletes only this vehicle record.'}
+      <DetailTabs
+        id="vehicle-detail"
+        label="Vehicle details"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'history', label: 'History' },
+        ]}
+      />
+      {tab === 'history' && urgent.length ? (
+        <p className="urgent-summary" role="status">
+          {urgent.join(' · ')}
         </p>
-        <button
-          className="secondary"
-          type="button"
-          onClick={() => setDialog({ kind: 'archive-vehicle', vehicle, linked })}
+      ) : null}
+      <DetailPanel scope="vehicle-detail" tabId="overview" value={tab}>
+        <DetailCard
+          title="Care reminders"
+          action={
+            <button className="text-link" type="button" onClick={() => setDialog({ kind: 'vehicle', vehicle })}>
+              Edit reminders
+            </button>
+          }
         >
-          {linked ? 'Archive vehicle' : 'Remove vehicle'}
-        </button>
-      </DetailCard>
+          <Reminder
+            label="Next service"
+            state={careStateLabel(serviceDate)}
+            detail={vehicle.nextServiceDate ? formatDay(vehicle.nextServiceDate) : 'No date saved'}
+            source={careSourceLabel(vehicle.nextServiceSource)}
+          />
+          <Reminder
+            label="Next service mileage"
+            state={careStateLabel(serviceMileage)}
+            detail={recorded(vehicle.nextServiceMileage) ? mileageText(vehicle.nextServiceMileage) : 'No mileage saved'}
+            source={careSourceLabel(vehicle.nextServiceSource)}
+          />
+          <Reminder
+            label="Licence disc expiry"
+            state={careStateLabel(disc)}
+            detail={vehicle.licenceDiscExpiry ? formatDay(vehicle.licenceDiscExpiry) : 'No date saved'}
+            source={careSourceLabel(vehicle.licenceDiscSource)}
+          />
+          <p className="muted">Only saved dates are shown.</p>
+        </DetailCard>
+        <DetailCard title="Vehicle facts">
+          <DetailFields
+            items={[
+              { label: 'Make', value: recorded(vehicle.make) || 'Not recorded' },
+              { label: 'Model', value: recorded(vehicle.model) || 'Not recorded' },
+              { label: 'Year', value: recorded(vehicle.year) || 'Not recorded' },
+              { label: 'Body style', value: recorded(vehicle.bodyStyle) || 'Not recorded' },
+              { label: 'Variant', value: recorded(vehicle.variant) || 'Not recorded' },
+              {
+                label: 'Paint colour',
+                value: recorded(vehicle.paintColor) ? (
+                  <span className="paint-value">
+                    <i style={{ background: vehicle.paintColor }} />
+                    {vehicle.paintColor}
+                  </span>
+                ) : (
+                  'Not recorded'
+                ),
+              },
+              { label: 'Registration', value: recorded(vehicle.registration) || 'Not recorded' },
+              { label: 'Mileage', value: mileageText(vehicle.mileage) },
+            ]}
+          />
+          <p className="muted">Service plans are not available yet.</p>
+        </DetailCard>
+        <DetailCard title={linked ? 'Archive vehicle' : 'Remove vehicle'}>
+          <p>
+            {linked
+              ? 'Bookings and service records stay in this browser. Archiving removes the vehicle from the showroom.'
+              : 'This vehicle has no linked history. Removing it deletes only this vehicle record.'}
+          </p>
+          <button
+            className="secondary"
+            type="button"
+            onClick={() => setDialog({ kind: 'archive-vehicle', vehicle, linked })}
+          >
+            {linked ? 'Archive vehicle' : 'Remove vehicle'}
+          </button>
+        </DetailCard>
+      </DetailPanel>
+      <DetailPanel scope="vehicle-detail" tabId="history" value={tab}>
+        {records.length > 3 ? (
+          <details className="fold">
+            <summary>Service history ({records.length})</summary>
+            <HistoryList records={records} />
+          </details>
+        ) : (
+          <DetailCard title="Service history">
+            <HistoryList records={records} />
+          </DetailCard>
+        )}
+        {bookings.length > 3 ? (
+          <details className="fold">
+            <summary>Related bookings ({bookings.length})</summary>
+            <BookingList bookings={bookings} go={go} here={here} />
+          </details>
+        ) : (
+          <DetailCard title="Related bookings">
+            <BookingList bookings={bookings} go={go} here={here} />
+          </DetailCard>
+        )}
+        <details className="fold">
+          <summary>History sharing</summary>
+          {shared.length ? (
+            <ul className="history-list">
+              {shared.map((grant: any) => (
+                <li key={grant.id}>
+                  <b>Shared for booking {grant.bookingId}</b>
+                  <span>{Array.isArray(grant.recordIds) ? `${grant.recordIds.length} record(s)` : 'Records selected'}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No service history is shared for this vehicle.</p>
+          )}
+        </details>
+      </DetailPanel>
     </div>
   );
 }

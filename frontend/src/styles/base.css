@@ -449,13 +449,12 @@ option {
 }
 .service-card {
   text-align: left;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--card-background);
+  color: var(--ink);
+  border: var(--card-border-width) solid var(--card-border);
   padding: 27px 22px;
   position: relative;
-  border-radius: 9px;
-  
-  
+  border-radius: var(--card-radius);
 }
 .service-card:hover {
   border-color: var(--purple);
@@ -863,9 +862,10 @@ footer.site-footer > div:nth-child(2) {
   gap: 25px;
 }
 .provider-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  background: var(--card-background);
+  color: var(--ink);
+  border: var(--card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
   overflow: hidden;
 }
 .provider-art {

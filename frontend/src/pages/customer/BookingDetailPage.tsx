@@ -1,5 +1,6 @@
 import { quoteTotal } from '../../features/jobs/jobWorkflow';
 import { Card } from '../../components/ui/Card';
+import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { BookingProgress } from '../../components/jobs/BookingProgress';
@@ -9,7 +10,7 @@ import { grantHistoryAccess, revokeHistoryAccess } from '../../features/demo/dem
 import { bookingReference } from '../../features/jobs/jobViews';
 import { bookingProgress, formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function ownerId(job: any, fallback: string) {
   return typeof job?.customerId === 'string' && job.customerId ? job.customerId : fallback;
@@ -30,10 +31,16 @@ function lineQty(item: any) {
 export function BookingDetailPage({ data, go, notify, setDialog, update, bookingId }: any) {
   const customerId = data?.settings?.id || demoCustomerId;
   const job = (data.jobs || []).find((item: any) => item.id === bookingId);
+  const [tab, setTab] = useState('overview');
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
   const here = 'dashboard/bookings/' + encodeURIComponent(bookingId || '');
   const back = backTarget(here, 'dashboard/bookings');
+  useEffect(() => {
+    setTab('overview');
+    setSelected([]);
+    setError('');
+  }, [bookingId]);
   if (!job || ownerId(job, demoCustomerId) !== customerId) {
     return (
       <div className="detail-page">
@@ -54,6 +61,12 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
   const paymentLabel = job.paid ? 'Demo paid' : payable ? 'Awaiting payment' : 'Not payable yet';
   const progress = bookingProgress(job);
   const showQty = Array.isArray(job.items) && job.items.some((item: any) => lineQty(item) != null);
+  const quoteAction =
+    job.status === 'Awaiting approval' || job.status === 'Changes requested'
+      ? 'Review quote'
+      : payable
+        ? 'Review payment'
+        : '';
 
   return (
     <div className="detail-page booking-detail">
@@ -80,101 +93,33 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
               Edit request
             </button>
           ) : null}
-          {job.status === 'Awaiting approval' ? (
-            <>
-              <button className="primary" type="button" onClick={() => setDialog({ kind: 'approve', job })}>
-                Review and approve
-              </button>
-              <button className="secondary" type="button" onClick={() => setDialog({ kind: 'changes', job })}>
-                Request changes
-              </button>
-            </>
+          {quoteAction && tab !== 'quote' ? (
+            <button className="primary" type="button" onClick={() => setTab('quote')}>
+              {quoteAction}
+            </button>
           ) : null}
           {['Requested', 'Confirmed'].includes(job.status) ? (
             <button className="secondary" type="button" onClick={() => setDialog({ kind: 'cancel', job })}>
               Cancel request
             </button>
           ) : null}
-          {payable ? (
-            <button className="primary" type="button" onClick={() => setDialog({ kind: 'pay', job })}>
-              Review and pay
-            </button>
-          ) : null}
         </div>
       </section>
+      <DetailTabs
+        id="booking-detail"
+        label="Booking details"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'quote', label: 'Quote & payment' },
+        ]}
+      />
+      <DetailPanel scope="booking-detail" tabId="overview" value={tab}>
       <DetailCard title="Progress">
         <BookingProgress job={job} />
       </DetailCard>
-      <DetailCard title="Quote and payment">
-        {job.items?.length ? (
-          <div className="quote-table">
-            <div className={'quote-head' + (showQty ? ' quote-head-qty' : '')}>
-              <span>Description</span>
-              {showQty ? <span>Qty</span> : null}
-              <span>Amount</span>
-            </div>
-            {job.items.map((item: any) => (
-              <div className={'quote-line' + (showQty ? ' quote-line-qty' : '')} key={item.name + item.amount}>
-                <span>
-                  {lineKind(item) ? <small>{lineKind(item)}</small> : null}
-                  {item.name}
-                </span>
-                {showQty ? <span>{lineQty(item) ?? '—'}</span> : null}
-                <b>R{Number(item.amount).toLocaleString()}</b>
-              </div>
-            ))}
-            <div className={'quote-line quote-total' + (showQty ? ' quote-line-qty' : '')}>
-              <span>Total</span>
-              {showQty ? <span /> : null}
-              <b>R{total.toLocaleString()}</b>
-            </div>
-          </div>
-        ) : (
-          <p>No repair quotation has been recorded.</p>
-        )}
-        <DetailFields
-          items={[
-            { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
-            { label: 'Approval', value: job.quoteApproved ? 'Approved' : 'Not approved' },
-            { label: 'Payment', value: paymentLabel },
-            { label: 'Reference', value: job.paymentReference || 'Not recorded' },
-            { label: 'Paid', value: job.paidAt ? formatWhen(job.paidAt) : 'Not recorded' },
-          ]}
-        />
-        <p className="muted">The assessment fee is separate from the quotation total.</p>
-        {job.notes ? <p>{job.notes}</p> : null}
-        {job.changeRequest ? <p>Change request: {job.changeRequest}</p> : null}
-        {job.completionNotes ? <p>Completion: {job.completionNotes}</p> : null}
-        {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
-        <div className="button-row">
-          {job.status === 'Awaiting approval' ? (
-            <>
-              <button className="primary" type="button" onClick={() => setDialog({ kind: 'approve', job })}>
-                Review and approve
-              </button>
-              <button className="secondary" type="button" onClick={() => setDialog({ kind: 'changes', job })}>
-                Request changes
-              </button>
-            </>
-          ) : null}
-          {payable ? (
-            <button className="primary" type="button" onClick={() => setDialog({ kind: 'pay', job })}>
-              Review and pay
-            </button>
-          ) : null}
-          {job.paid ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'receipt', job })}>
-              View receipt
-            </button>
-          ) : job.items?.length ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'invoice', job })}>
-              View invoice
-            </button>
-          ) : null}
-        </div>
-      </DetailCard>
-      <details className="fold">
-        <summary>Appointment details</summary>
+      <DetailCard title="Appointment">
         <p>{job.description || 'No request description was saved.'}</p>
         <p className="muted">A preferred time is not confirmed availability.</p>
         <DetailFields
@@ -209,7 +154,7 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
             </button>
           ) : null}
         </div>
-      </details>
+      </DetailCard>
       <details className="fold">
         <summary>History sharing</summary>
         <p className="muted">Choose which service records this professional can see for this booking.</p>
@@ -302,6 +247,77 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
           <p>No dated timeline was stored for this booking. The progress steps above use the current status only.</p>
         )}
       </details>
+      </DetailPanel>
+      <DetailPanel scope="booking-detail" tabId="quote" value={tab}>
+      <DetailCard title="Quote and payment">
+        {job.items?.length ? (
+          <div className="quote-table">
+            <div className={'quote-head' + (showQty ? ' quote-head-qty' : '')}>
+              <span>Description</span>
+              {showQty ? <span>Qty</span> : null}
+              <span>Amount</span>
+            </div>
+            {job.items.map((item: any) => (
+              <div className={'quote-line' + (showQty ? ' quote-line-qty' : '')} key={item.name + item.amount}>
+                <span>
+                  {lineKind(item) ? <small>{lineKind(item)}</small> : null}
+                  {item.name}
+                </span>
+                {showQty ? <span>{lineQty(item) ?? '—'}</span> : null}
+                <b>R{Number(item.amount).toLocaleString()}</b>
+              </div>
+            ))}
+            <div className={'quote-line quote-total' + (showQty ? ' quote-line-qty' : '')}>
+              <span>Total</span>
+              {showQty ? <span /> : null}
+              <b>R{total.toLocaleString()}</b>
+            </div>
+          </div>
+        ) : (
+          <p>No repair quotation has been recorded.</p>
+        )}
+        <DetailFields
+          items={[
+            { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
+            { label: 'Approval', value: job.quoteApproved ? 'Approved' : 'Not approved' },
+            { label: 'Payment', value: paymentLabel },
+            { label: 'Reference', value: job.paymentReference || 'Not recorded' },
+            { label: 'Paid', value: job.paidAt ? formatWhen(job.paidAt) : 'Not recorded' },
+          ]}
+        />
+        <p className="muted">The assessment fee is separate from the quotation total.</p>
+        {job.notes ? <p>{job.notes}</p> : null}
+        {job.changeRequest ? <p>Change request: {job.changeRequest}</p> : null}
+        {job.completionNotes ? <p>Completion: {job.completionNotes}</p> : null}
+        {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
+        <div className="button-row">
+          {job.status === 'Awaiting approval' ? (
+            <>
+              <button className="primary" type="button" onClick={() => setDialog({ kind: 'approve', job })}>
+                Review and approve
+              </button>
+              <button className="secondary" type="button" onClick={() => setDialog({ kind: 'changes', job })}>
+                Request changes
+              </button>
+            </>
+          ) : null}
+          {payable ? (
+            <button className="primary" type="button" onClick={() => setDialog({ kind: 'pay', job })}>
+              Review and pay
+            </button>
+          ) : null}
+          {job.paid ? (
+            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'receipt', job })}>
+              View receipt
+            </button>
+          ) : job.items?.length ? (
+            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'invoice', job })}>
+              View invoice
+            </button>
+          ) : null}
+        </div>
+      </DetailCard>
+      </DetailPanel>
     </div>
   );
 }

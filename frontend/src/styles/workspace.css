@@ -105,13 +105,14 @@ button:disabled {
   color: var(--muted);
 }
 .auth-card {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 14px;
+  background: var(--card-background);
+  color: var(--ink);
+  border: var(--card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
   padding: 35px;
   max-width: 520px;
   width: 100%;
-  box-shadow: var(--shadow);
+  box-shadow: var(--card-shadow);
   align-self: center;
 }
 .auth-card h2 {
@@ -552,8 +553,22 @@ body:has(.workspace.drawer-open),
 body:has(.modal-backdrop) {
   overflow: hidden;
 }
-.workspace-mark {
+.workspace-top .workspace-mark {
   display: none;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  place-items: center;
+}
+.workspace-top .workspace-mark img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  max-width: 32px;
+  max-height: 32px;
+  object-fit: contain;
 }
 .workspace-top {
   display: flex;
@@ -937,9 +952,10 @@ body:has(.modal-backdrop) {
 }
 .metric {
   padding: 20px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 9px;
+  background: var(--card-background);
+  color: var(--ink);
+  border: var(--card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
   min-width: 0;
 }
 .metric > span {
@@ -975,9 +991,10 @@ body:has(.modal-backdrop) {
 }
 .dash-panel {
   padding: 25px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  background: var(--card-background);
+  color: var(--ink);
+  border: var(--card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
   min-width: 0;
 }
 .dash-panel > h2,
@@ -1008,9 +1025,10 @@ body:has(.modal-backdrop) {
   gap: 15px;
 }
 .job-card {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface);
+  border: var(--card-border-width) solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-background);
+  color: var(--ink);
   padding: 22px;
 }
 .job-card-top {
@@ -1779,7 +1797,7 @@ td .text-link {
     grid-template-columns: 1fr;
   }
   .mini-jobs {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .metrics {
     gap: 12px;
@@ -2030,7 +2048,7 @@ td .text-link {
     gap: 8px;
   }
   .workspace-menu,
-  .workspace-mark,
+  .workspace-top .workspace-mark,
   .workspace-top .theme,
   .workspace-top button.profile-link,
   .workspace-top button.customer-notify,
@@ -2043,16 +2061,9 @@ td .text-link {
   .workspace-menu {
     display: grid !important;
   }
-  .workspace-mark {
+  .workspace-top .workspace-mark {
     display: grid;
-    place-items: center;
     margin-right: auto;
-    padding: 0;
-  }
-  .workspace-mark img {
-    height: 32px;
-    width: auto;
-    display: block;
   }
   .workspace-top .workspace-crumb {
     display: none;
