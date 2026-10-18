@@ -476,6 +476,8 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--purple);
 }
 .detail-card h2 {
   display: flex;
