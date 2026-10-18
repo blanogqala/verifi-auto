@@ -1760,6 +1760,24 @@ assert.equal(commitUpdate(() => false, (data) => saveQuoteDraft(data, {
 assert.equal(accepted.data.jobs[0].items.length, 0);
 assert.equal(failed.length, 1);
 const showcaseGarage = normalizeDemoData(withMechanicShowcase(structuredClone(initialData)));
+// Showcase upgrades preserve user changes and never grant vehicle access implicitly.
+assert.deepEqual(showcaseGarage.historyAccess, initialData.historyAccess);
+assert.deepEqual(withMechanicShowcase(showcaseGarage), withMechanicShowcase(withMechanicShowcase(showcaseGarage)));
+const sampleJobs = jobsForMechanic(showcaseGarage.jobs, showcaseGarage);
+for (const status of ['Requested', 'Rejected', 'Cancelled', 'Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment', 'Completed']) {
+  assert.ok(sampleJobs.some((job: any) => job.status === status), `Missing mechanic showcase state: ${status}`);
+}
+const editedShowcase = structuredClone(showcaseGarage);
+editedShowcase.jobs.find((job: any) => job.id === 'VA-2026-1101').status = 'Confirmed';
+assert.equal(withMechanicShowcase(editedShowcase).jobs.find((job: any) => job.id === 'VA-2026-1101').status, 'Confirmed');
+assert.equal(quoteTotal(sampleJobs.find((job: any) => job.id === 'VA-2026-1112')), 1130);
+for (const route of ['appointments/pending', 'appointments/pending/VA-2026-1101', 'jobs', 'jobs/VA-2026-1112', 'jobs/VA-2026-1112/quote', 'jobs/VA-2026-1106/messages']) {
+  const html = screen('mechanic', route, showcaseGarage);
+  assert.ok(!html.includes('Job unavailable'), route);
+  assert.ok(!html.includes('Request unavailable'), route);
+  assert.ok(html.includes(route.includes('1101') ? 'Toyota Fortuner' : route.includes('1112') ? 'Volkswagen Polo' : route.includes('1106') ? 'BMW 320d' : 'Toyota'), route);
+}
+
 assert.ok(!screen('customer', 'garage', showcaseGarage).includes('History not linked to a vehicle'));
 assert.ok(!screen('customer', 'garage', showcaseGarage).includes('Thandi Mbeki'));
 assert.throws(() => sendMessage(paid.data, {
