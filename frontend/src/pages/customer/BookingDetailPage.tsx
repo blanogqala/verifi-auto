@@ -8,7 +8,7 @@ import { demoCustomerId } from '../../features/admin/customerRecords';
 import { canOfferHistoryAccess, activeGrantForBooking } from '../../features/garage/historyAccess';
 import { grantHistoryAccess, revokeHistoryAccess } from '../../features/demo/demoActions';
 import { bookingReference } from '../../features/jobs/jobViews';
-import { bookingProgress, formatDay, formatWhen } from '../../features/jobs/bookingProgress';
+import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
 import { useEffect, useState } from 'react';
 
@@ -59,14 +59,7 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
   const events = Array.isArray(job.events) ? job.events : [];
   const total = quoteTotal(job);
   const paymentLabel = job.paid ? 'Demo paid' : payable ? 'Awaiting payment' : 'Not payable yet';
-  const progress = bookingProgress(job);
   const showQty = Array.isArray(job.items) && job.items.some((item: any) => lineQty(item) != null);
-  const quoteAction =
-    job.status === 'Awaiting approval' || job.status === 'Changes requested'
-      ? 'Review quote'
-      : payable
-        ? 'Review payment'
-        : '';
 
   return (
     <div className="detail-page booking-detail">
@@ -84,27 +77,9 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
         }
         aside={<Status value={job.status} />}
       />
-      <section className="next-action" aria-label="Next step">
-        <h2>Next step</h2>
-        <p>{progress.next}</p>
-        <div className="button-row">
-          {job.status === 'Requested' ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'edit-booking', job })}>
-              Edit request
-            </button>
-          ) : null}
-          {quoteAction && tab !== 'quote' ? (
-            <button className="primary" type="button" onClick={() => setTab('quote')}>
-              {quoteAction}
-            </button>
-          ) : null}
-          {['Requested', 'Confirmed'].includes(job.status) ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'cancel', job })}>
-              Cancel request
-            </button>
-          ) : null}
-        </div>
-      </section>
+      <DetailCard title="Progress">
+        <BookingProgress job={job} />
+      </DetailCard>
       <DetailTabs
         id="booking-detail"
         label="Booking details"
@@ -116,9 +91,6 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
         ]}
       />
       <DetailPanel scope="booking-detail" tabId="overview" value={tab}>
-      <DetailCard title="Progress">
-        <BookingProgress job={job} />
-      </DetailCard>
       <DetailCard title="Appointment">
         <p>{job.description || 'No request description was saved.'}</p>
         <p className="muted">A preferred time is not confirmed availability.</p>
@@ -151,6 +123,16 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
               onClick={() => followDetail(go, here, 'dashboard/garage/' + encodeURIComponent(vehicle.id))}
             >
               View vehicle
+            </button>
+          ) : null}
+          {job.status === 'Requested' ? (
+            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'edit-booking', job })}>
+              Edit request
+            </button>
+          ) : null}
+          {['Requested', 'Confirmed'].includes(job.status) ? (
+            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'cancel', job })}>
+              Cancel request
             </button>
           ) : null}
         </div>

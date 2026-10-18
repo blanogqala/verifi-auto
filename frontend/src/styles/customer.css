@@ -123,9 +123,11 @@
   gap: 12px;
   padding: 16px;
   margin-bottom: 16px;
-  border: 1px solid var(--line);
+  border: var(--card-border-width) solid var(--card-border);
   border-radius: 18px;
-  background: var(--surface);
+  background: var(--card-background);
+  color: var(--ink);
+  box-shadow: var(--card-shadow);
 }
 .showroom-compact {
   margin-bottom: 0;
@@ -214,9 +216,9 @@
   text-align: left;
 }
 .garage-card.selected {
-  background: color-mix(in srgb, var(--purple) 22%, var(--card-background));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--purple) 36%, var(--card-surface)), var(--card-surface));
   border-color: var(--purple);
-  box-shadow: inset 0 0 0 2px var(--purple);
+  box-shadow: 0 0 0 3px var(--purple);
 }
 .garage-card:focus-visible {
   outline: 3px solid var(--ink);
@@ -485,14 +487,15 @@
 .detail-card-body {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 .detail-card-foot {
   margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
-.detail-card-quiet {
-  background: transparent;
+.detail-card {
+  min-width: 0;
 }
 .detail-fields {
   display: grid;
@@ -544,8 +547,7 @@
   font-size: 13px;
 }
 .history-list,
-.activity-list,
-.progress-list {
+.activity-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -562,28 +564,65 @@
 .activity-list li:last-child {
   padding-bottom: 0;
 }
-.progress-summary {
+.booking-progress {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.progress-scroller {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
+  scroll-behavior: smooth;
+  padding: 6px 2px 10px;
+}
+.progress-scroller:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 3px;
+}
+.progress-list {
+  display: flex;
+  align-items: flex-start;
+  width: max-content;
+  min-width: 100%;
   margin: 0;
-  font-weight: 700;
+  padding: 0;
+  list-style: none;
 }
 .progress-step {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  column-gap: 12px;
+  position: relative;
+  display: flex;
+  flex: 1 0 92px;
+  flex-direction: column;
+  align-items: center;
+  min-width: 92px;
+  gap: 8px;
+  text-align: center;
 }
-.progress-node {
-  display: contents;
-  background: transparent;
-  border: 0;
-  color: inherit;
-  text-align: left;
-  padding: 0;
+.progress-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  top: 15px;
+  left: calc(50% + 16px);
+  width: calc(100% - 32px);
+  height: 2px;
+  background: color-mix(in srgb, var(--muted) 42%, var(--line));
+}
+.progress-step.is-complete:not(:last-child)::before {
+  background: #52a982;
 }
 .progress-mark {
-  width: 28px;
-  height: 28px;
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--surface2);
   color: var(--muted);
@@ -597,43 +636,39 @@
 .progress-step.is-current .progress-mark {
   background: var(--purple);
   color: #fff;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--purple) 25%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--purple) 28%, transparent);
 }
 .progress-step.is-stopped .progress-mark {
-  background: #d35b6424;
-  color: #d2767d;
-}
-.progress-step.is-upcoming .progress-label {
-  color: var(--muted);
+  background: #d35b64;
+  color: #fff;
+  box-shadow: 0 0 0 4px color-mix(in srgb, #d35b64 30%, transparent);
 }
 .progress-label {
-  align-self: center;
+  display: block;
+  width: 100%;
+  color: var(--ink);
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.25;
+  overflow-wrap: break-word;
 }
-.progress-note {
-  grid-column: 2;
-  margin: 4px 0 12px;
+.progress-step.is-current .progress-label {
+  font-weight: 800;
 }
-.progress-step.is-current .progress-mark {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--purple) 25%, transparent);
+.progress-step.is-upcoming .progress-label {
+  color: color-mix(in srgb, var(--ink) 68%, var(--muted));
+  font-weight: 650;
 }
-.progress-list {
-  display: grid;
+.progress-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
 }
-.progress-step {
-  position: relative;
-}
-.progress-step:not(:last-child)::before {
-  content: '';
-  position: absolute;
-  left: 13px;
-  top: 28px;
-  bottom: 0;
-  width: 2px;
-  background: var(--line);
-}
-.progress-step.is-complete:not(:last-child)::before {
-  background: #52a982;
+@media (prefers-reduced-motion: reduce) {
+  .progress-scroller {
+    scroll-behavior: auto;
+  }
 }
 .quote-table {
   display: grid;
@@ -732,23 +767,6 @@ select {
 .booking-card-art .garage-card-silhouette {
   width: 88px;
   height: 48px;
-}
-.next-action {
-  display: grid;
-  gap: 8px;
-  padding: 16px;
-  border-radius: var(--radius);
-  background: var(--card-background);
-  color: var(--ink);
-  border: var(--card-border-width) solid var(--card-border);
-}
-.next-action h2 {
-  margin: 0;
-  font-size: 1.05rem;
-}
-.next-action p {
-  margin: 0;
-  color: var(--muted);
 }
 .ui-card.booking-card {
   padding: 0;

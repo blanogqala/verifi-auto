@@ -913,7 +913,7 @@ footer.site-footer > div:nth-child(2) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--purple);
   margin-top: 20px;
   padding-top: 20px;
 }

@@ -2,15 +2,21 @@
 :root {
   --card-radius: 12px;
   --card-padding: 20px;
-  --card-border-width: 1px;
-  --card-border: var(--line);
-  --card-background: var(--surface);
-  --card-shadow: none;
-}
-[data-theme='light'] {
   --card-border-width: 2px;
   --card-border: var(--purple);
-  --card-background: var(--tint);
+  --card-surface: #1b1724;
+  --card-background: linear-gradient(145deg, #2c243c 0%, #1a1b22 58%, #221c2e 100%);
+  --card-shadow: 0 10px 28px rgb(0 0 0 / 22%);
+  --card-quiet-background: #1a1b20;
+  --card-quiet-border: var(--line);
+  --card-quiet-border-width: 1px;
+}
+[data-theme='light'] {
+  --card-surface: #f3eafa;
+  --card-background: linear-gradient(145deg, #fbf8ff 0%, #f0e8fc 52%, #e7dcf8 100%);
+  --card-shadow: 0 10px 24px rgb(90 50 140 / 9%);
+  --card-quiet-background: #fff;
+  --card-quiet-border: color-mix(in srgb, var(--purple) 24%, #e4dcf0);
 }
 .ui-card.ui-card {
   background: var(--card-background);
@@ -21,7 +27,7 @@
   box-shadow: var(--card-shadow);
 }
 .ui-card--accent {
-  --card-background: var(--tint);
+  --card-background: linear-gradient(145deg, color-mix(in srgb, var(--purple) 16%, var(--card-surface)), var(--card-surface));
 }
 .ui-card.ui-card.provider-card {
   padding: 0;
@@ -30,9 +36,14 @@
 .ui-card.service-card {
   text-align: left;
 }
+.ui-card.ui-card.empty,
+.ui-card.ui-card.detail-card-quiet {
+  background: var(--card-quiet-background);
+  border: var(--card-quiet-border-width) dashed var(--card-quiet-border);
+  box-shadow: none;
+}
 .ui-card.empty {
   text-align: center;
-  border-style: dashed;
 }
 @media (max-width: 750px) {
   :root {
