@@ -78,12 +78,11 @@ export default function App() {
   useEffect(() => {
     if (!modal) return;
     const prior = document.activeElement as HTMLElement;
-    const old = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.documentElement.classList.add('scroll-lock');
     const el = document.querySelector('.modal') as HTMLElement;
     const focusables = () =>
       Array.from(
-        el.querySelectorAll<HTMLElement>('button,input,select,textarea,summary,[tabindex="0"]'),
+        el.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,summary,[tabindex="0"]'),
       ).filter((e) => !e.hasAttribute('disabled'));
     focusables()[0]?.focus();
     function key(e: KeyboardEvent) {
@@ -103,11 +102,28 @@ export default function App() {
     }
     document.addEventListener('keydown', key);
     return () => {
-      document.body.style.overflow = old;
+      document.documentElement.classList.remove('scroll-lock');
+      document.body.style.overflow = '';
       document.removeEventListener('keydown', key);
       prior?.focus();
     };
   }, [modal, step]);
+  useEffect(() => {
+    function onFocusIn(event: FocusEvent) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (!target.matches('input, textarea, select')) return;
+      if (target instanceof HTMLInputElement && ['checkbox', 'radio', 'range', 'color', 'file', 'hidden', 'button', 'submit'].includes(target.type))
+        return;
+      if (!window.matchMedia('(max-width: 900px)').matches) return;
+      const behavior: ScrollBehavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+      window.setTimeout(() => {
+        target.scrollIntoView({ block: 'center', inline: 'nearest', behavior });
+      }, 280);
+    }
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, []);
   function go(p: string) {
     if (p === 'garage') p = 'dashboard/garage';
     p = canonicalPage(role, p);
@@ -116,6 +132,8 @@ export default function App() {
     setPage(p);
     location.hash = p;
     setMenu(false);
+    if (!modal) document.documentElement.classList.remove('scroll-lock');
+    document.body.style.overflow = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   useEffect(() => {
@@ -127,6 +145,7 @@ export default function App() {
       if (!['home', 'find', 'login', 'register', 'forgot'].includes(p) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(p))
         p = 'home';
       setPage(p);
+      document.body.style.overflow = '';
       if (canonicalPage(role, raw) !== raw) location.hash = p;
     };
     window.addEventListener('hashchange', change);
@@ -301,6 +320,14 @@ export default function App() {
   }, [showWorkspace]);
   return (
     <>
+      <svg width="0" height="0" aria-hidden="true" focusable="false" style={{ position: 'absolute' }}>
+        <filter id="logo-matte" colorInterpolationFilters="sRGB">
+          <feColorMatrix
+            type="matrix"
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  2.2 2.2 2.2 0 -0.25"
+          />
+        </filter>
+      </svg>
       {!showWorkspace && (
         <PublicHeader
           accountLabel={accountLabel}

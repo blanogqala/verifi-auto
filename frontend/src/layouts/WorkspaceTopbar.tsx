@@ -10,6 +10,7 @@ export type WorkspaceTopbarProps = {
   heading: string;
   sectionLabel?: string;
   role: Role;
+  goHome: () => void;
   route: (tab: string) => void;
   setSide: (open: boolean) => void;
   side: boolean;
@@ -26,6 +27,7 @@ export function WorkspaceTopbar({
   accountPhoto = '',
   heading,
   sectionLabel = '',
+  goHome,
   role,
   route,
   setSide,
@@ -69,6 +71,9 @@ export function WorkspaceTopbar({
         aria-label={side ? 'Close workspace navigation' : 'Open workspace navigation'}
       >
         <Menu size={20} />
+      </button>
+      <button type="button" className="workspace-mark" onClick={goHome} aria-label="Verifi Auto home">
+        <img src="/logo.png" alt="" />
       </button>
       <span className="workspace-crumb">
         {workspaceRole} workspace <ChevronRight size={13} /> {heading}

@@ -13,18 +13,45 @@
   --soft: #c5a1f5;
   --tint: #201a2d;
   --shadow: 0 15px 50px #0003;
+  --gutter: 16px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --radius: 12px;
+  --control: 44px;
+  --text: 16px;
+  --text-secondary: 14px;
+  --field-font: 16px;
+}
+@media (min-width: 768px) {
+  :root {
+    --gutter: 24px;
+  }
+}
+@media (min-width: 1200px) {
+  :root {
+    --gutter: 36px;
+  }
 }
 * {
   box-sizing: border-box;
 }
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 96px;
+  scroll-padding-top: calc(96px + env(safe-area-inset-top));
+}
+html.scroll-lock,
+html.scroll-lock body {
+  overflow: hidden;
 }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
+  overflow-x: clip;
 }
 [data-theme='light'] {
   color-scheme: light;
@@ -77,19 +104,28 @@ h4 {
   margin: 0;
   font-weight: 600;
 }
+h1 {
+  font-size: clamp(1.75rem, 2.2vw, 2.15rem);
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
 h2 {
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+  line-height: 1.25;
+}
+.section h2 {
   font-size: clamp(29px, 3vw, 43px);
   line-height: 1.22;
 }
 h3 {
-  font-size: 19px;
+  font-size: 1.125rem;
   letter-spacing: -0.025em;
 }
 em {
   font-style: normal;
   color: var(--soft);
 }
-header {
+header.site-header {
   height: 85px;
   display: flex;
   align-items: center;
@@ -120,6 +156,11 @@ header {
   width: auto;
   display: block;
 }
+[data-theme='light'] .brand-icon img,
+[data-theme='light'] .workspace-mark img,
+[data-theme='light'] footer.site-footer .brand img {
+  filter: url('#logo-matte');
+}
 .brand-auto {
   font-weight: 400;
   color: var(--muted);
@@ -133,19 +174,19 @@ header {
   align-self: flex-end;
   margin-bottom: 7px;
 }
-nav,
+.site-header nav,
 .nav-actions {
   display: flex;
   align-items: center;
   gap: 26px;
 }
-nav button {
+.site-header nav button {
   font-size: 12px;
   color: var(--muted);
   padding: 10px 0;
 }
-nav button:hover,
-nav button.active {
+.site-header nav button:hover,
+.site-header nav button.active {
   color: var(--soft);
 }
 .nav-actions {
@@ -221,7 +262,7 @@ nav button.active {
   border-radius: 50%;
   background: var(--purple);
 }
-h1 {
+.hero h1 {
   font-size: clamp(45px, 5.3vw, 76px);
   line-height: 1.1;
   letter-spacing: -0.055em;
@@ -238,12 +279,13 @@ h1 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 22px;
+  gap: 8px;
   background: var(--purple);
   color: #140b22;
-  padding: 16px 22px;
+  min-height: var(--control);
+  padding: 10px 16px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -367,7 +409,8 @@ select {
   background: transparent;
   color: var(--ink);
   width: 100%;
-  font-size: 12px;
+  min-width: 0;
+  font-size: var(--field-font);
   cursor: pointer;
 }
 option {
@@ -703,11 +746,11 @@ small.muted {
   gap: 65px;
   padding-top: 65px;
 }
-details {
+.faq details {
   border-bottom: 2px solid var(--purple);
   padding: 20px 0;
 }
-summary {
+.faq summary {
   display: flex;
   justify-content: space-between;
   cursor: pointer;
@@ -715,15 +758,15 @@ summary {
   gap: 15px;
   list-style: none;
 }
-summary::-webkit-details-marker {
+.faq summary::-webkit-details-marker {
   display: none;
 }
-details p {
+.faq details p {
   font-size: 12px;
   color: var(--muted);
   padding-right: 20px;
 }
-details[open] summary svg {
+.faq details[open] summary svg {
   transform: rotate(180deg);
 }
 .professional-banner {
@@ -745,7 +788,7 @@ details[open] summary svg {
   font-size: 12px;
   color: var(--muted);
 }
-footer {
+footer.site-footer {
   padding: 45px 7.5%;
   border-top: 2px solid var(--purple);
   display: flex;
@@ -753,23 +796,22 @@ footer {
   gap: 35px;
   align-items: center;
   background: var(--tint);
-
 }
-footer .brand {
+footer.site-footer .brand {
   font-size: 24px;
 }
-footer .brand img {
+footer.site-footer .brand img {
   height: 36px;
   width: auto;
   display: block;
 }
-footer p,
-footer small {
+footer.site-footer p,
+footer.site-footer small {
   font-size: 10px;
   color: var(--muted);
   line-height: 1.8;
 }
-footer > div:nth-child(2) {
+footer.site-footer > div:nth-child(2) {
   display: flex;
   gap: 25px;
   font-size: 11px;
@@ -999,26 +1041,40 @@ footer > div:nth-child(2) {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 24px;
+  overflow: hidden;
+  padding:
+    calc(16px + env(safe-area-inset-top))
+    calc(16px + env(safe-area-inset-right))
+    calc(16px + env(safe-area-inset-bottom))
+    calc(16px + env(safe-area-inset-left));
 }
 .modal {
   position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 15px;
-  padding: 40px;
-  width: 550px;
+  padding: 20px 24px 28px;
+  width: min(36rem, 100%);
   max-width: 100%;
-  max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px));
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px);
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   box-shadow: 0 30px 100px #0006;
+  scroll-padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 .close {
-  position: absolute;
-  right: 16px;
-  top: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  float: right;
+  width: var(--control);
+  height: var(--control);
+  display: grid;
+  place-items: center;
+  margin: 0 0 8px 8px;
   color: var(--muted);
+  background: var(--surface);
+  border-radius: 8px;
 }
 .modal h2 {
   font-size: 31px;
@@ -1082,13 +1138,14 @@ footer > div:nth-child(2) {
 .modal select {
   display: block;
   width: 100%;
+  min-width: 0;
   padding: 13px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--bg);
   color: var(--ink);
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--field-font);
 }
 .modal textarea {
   min-height: 85px;
@@ -1151,7 +1208,7 @@ hr {
   }
 }
 @media (max-width: 1100px) {
-  nav {
+  .site-header nav {
     gap: 16px;
   }
   .floating-credential {
@@ -1189,7 +1246,7 @@ hr {
   }
 }
 @media (max-width: 750px) {
-  header {
+  header.site-header {
     height: 72px;
     padding: 0 6%;
   }
@@ -1199,7 +1256,7 @@ hr {
   .brand-icon img {
     height: 42px;
   }
-  footer .brand img {
+  footer.site-footer .brand img {
     height: 32px;
   }
   .nav-actions {
@@ -1356,15 +1413,15 @@ hr {
     font-size: 8px;
     line-height: 1.8;
   }
-  footer {
+  footer.site-footer {
     padding: 35px 6%;
     display: block;
   }
-  footer > div:nth-child(2) {
+  footer.site-footer > div:nth-child(2) {
     margin: 25px 0;
     flex-wrap: wrap;
   }
-  footer small {
+  footer.site-footer small {
     display: block;
   }
   .app-page h1 {
@@ -1401,11 +1458,17 @@ hr {
     font-size: 27px;
   }
   .primary {
-    font-size: 11px;
-    gap: 16px;
+    font-size: 14px;
+    gap: 8px;
+    white-space: normal;
   }
-  .form-row {
-    grid-template-columns: 1fr 1fr;
+  .form-row,
+  .quote-editor-row {
+    grid-template-columns: 1fr;
+  }
+  .form-row > *,
+  .quote-editor-row > * {
+    min-width: 0;
   }
   .provider-bottom .primary {
     padding: 14px;
@@ -1626,8 +1689,15 @@ hr {
     border-top: 1px solid var(--line);
   }
   .site-header .brand {
-    min-width: 0;
-    overflow: hidden;
+    flex: 0 1 auto;
+    min-width: min-content;
+    overflow: visible;
+    font-size: clamp(16px, 4.8vw, 22px);
+    letter-spacing: -0.06em;
+  }
+  .site-header .brand-icon,
+  .site-header .brand-icon img {
+    flex-shrink: 0;
   }
   .theme.header-theme,
   .site-header .mobile-menu {

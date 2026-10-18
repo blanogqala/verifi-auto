@@ -70,7 +70,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
         ) : (
           <Empty
             title="No invoices due yet."
-            text="Invoices appear when approved repairs are completed in the mechanic preview."
+            text="Invoices appear after approved work is finished."
           />
         )}
       </Card>

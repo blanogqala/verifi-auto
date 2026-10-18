@@ -29,10 +29,10 @@
 .nav-actions {
   gap: 12px;
 }
-header {
+header.site-header {
   gap: 18px;
 }
-nav {
+.site-header nav {
   gap: 21px;
 }
 .toast {
@@ -43,14 +43,15 @@ nav {
   font-size: 13px;
 }
 .secondary {
-  padding: 13px 18px;
+  min-height: var(--control);
+  padding: 10px 16px;
   border: 1px solid var(--line);
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 14px;
   background: var(--surface);
 }
 .secondary:hover {
@@ -161,13 +162,14 @@ button:disabled {
 .field-label textarea {
   display: block;
   width: 100%;
+  min-width: 0;
   margin-top: 9px;
   padding: 13px 14px;
   border-radius: 6px;
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--ink);
-  font-size: 13px;
+  font-size: var(--field-font);
 }
 .auth-sub {
   display: flex;
@@ -535,9 +537,11 @@ button.workspace-identity.active:active {
   min-height: 0;
   flex: 1 1 auto;
   align-self: stretch;
-  overflow-x: hidden;
+  overflow-x: clip;
   overflow-y: auto;
   background: var(--bg);
+  scroll-padding-top: calc(80px + env(safe-area-inset-top));
+  scroll-padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 .workspace.drawer-open .workspace-main,
 .workspace.dialog-open .workspace-main,
@@ -548,15 +552,18 @@ body:has(.workspace.drawer-open),
 body:has(.modal-backdrop) {
   overflow: hidden;
 }
+.workspace-mark {
+  display: none;
+}
 .workspace-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  gap: 15px;
-  border-bottom: 1px solid var(--purple);
-  padding: 18px 35px;
-  height: 72px;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 12px 35px;
+  min-height: 72px;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -852,15 +859,16 @@ body:has(.modal-backdrop) {
 .workspace-body {
   display: flex;
   flex-direction: column;
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
-  padding: 36px 36px 0 36px;
+  padding: var(--space-6) var(--gutter) 0;
   max-width: 1450px;
   margin: 0 auto;
 }
 .workspace-grow {
-  flex: 1 0 45px;
+  flex: 1 0 24px;
 }
 .workspace-heading {
   display: flex;
@@ -869,23 +877,15 @@ body:has(.modal-backdrop) {
   gap: 25px;
   margin-bottom: 30px;
 }
-.workspace-heading .eyebrow {
-  font-size: 8px;
-  margin-bottom: 13px;
-}
 .workspace-heading h1 {
-  font-size: 31px;
-  line-height: 1.3;
-}
-.workspace-heading p {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 8px 0 0;
+  font-size: clamp(1.75rem, 2.4vw, 2.15rem);
+  line-height: 1.2;
 }
 .workspace-heading .primary {
-  font-size: 10px;
-  padding: 13px 17px;
-  gap: 15px;
+  min-height: var(--control);
+  font-size: 14px;
+  padding: 10px 16px;
+  gap: 8px;
 }
 .dashboard-banner {
   border: 1px solid #9658e82b;
@@ -986,7 +986,7 @@ body:has(.modal-backdrop) {
   letter-spacing: -0.03em;
 }
 .dash-panel > p {
-  font-size: 12px;
+  font-size: 15px;
 }
 .panel-title {
   display: flex;
@@ -1032,7 +1032,8 @@ body:has(.modal-backdrop) {
   border-radius: 5px;
   background: var(--surface2);
   color: var(--muted);
-  font-size: 8px;
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
 }
 .status-awaiting-approval,
@@ -1200,24 +1201,20 @@ body:has(.modal-backdrop) {
 }
 .workspace-footer {
   background: var(--bg);
-  border-top: 1px solid var(--purple);
+  border-top: 1px solid var(--line);
   margin-top: 0;
   flex-shrink: 0;
-  padding: 20px 35px;
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
+  padding: 16px var(--gutter) calc(16px + env(safe-area-inset-bottom));
+  position: static;
   display: flex;
-  gap: 7px;
+  gap: 8px;
   align-items: center;
-  font-size: 8px;
+  font-size: 13px;
   color: var(--muted);
-}
-.workspace-footer > span {
-  margin-left: auto;
 }
 .workspace-footer svg {
   color: var(--soft);
+  flex-shrink: 0;
 }
 .job-grid {
   display: grid;
@@ -1237,8 +1234,10 @@ body:has(.modal-backdrop) {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 7px;
-  padding: 12px 15px;
+  min-height: var(--control);
+  padding: 8px 12px;
   flex: 1;
+  min-width: 0;
   color: var(--muted);
 }
 .search-input input {
@@ -1246,16 +1245,18 @@ body:has(.modal-backdrop) {
   border: 0;
   outline: 0;
   color: var(--ink);
-  font-size: 11px;
+  font-size: var(--field-font);
   width: 100%;
+  min-width: 0;
 }
 .table-controls > select {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 7px;
   width: 190px;
+  min-width: 0;
   padding: 12px;
-  font-size: 11px;
+  font-size: var(--field-font);
 }
 .quote-card > h2 {
   font-size: 21px;
@@ -1297,9 +1298,10 @@ body:has(.modal-backdrop) {
 }
 .button-row .primary,
 .button-row .secondary {
-  font-size: 10px;
-  padding: 13px 15px;
-  gap: 10px;
+  font-size: 14px;
+  min-height: var(--control);
+  padding: 10px 16px;
+  gap: 8px;
 }
 .button-row .text-link {
   font-size: 10px;
@@ -1748,19 +1750,18 @@ td .text-link {
   font-size: 12px;
 }
 .workspace .empty {
-  padding: 35px 15px;
+  padding: 20px 16px;
   background: var(--bg);
 }
 .workspace .empty h3 {
-  font-size: 15px;
+  font-size: 1.05rem;
 }
 .workspace .empty p {
-  font-size: 11px;
+  font-size: 15px;
 }
 @media (min-width: 1600px) {
   .workspace-body {
-    padding: 45px;
-    height: 100%;
+    padding: 45px 45px 0;
   }
 }
 @media (max-width: 1200px) {
@@ -1826,8 +1827,9 @@ td .text-link {
     font-size: 26px;
   }
   .workspace-heading .primary {
-    padding: 11px;
-    font-size: 9px;
+    min-height: var(--control);
+    padding: 10px 14px;
+    font-size: 14px;
   }
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1890,7 +1892,6 @@ td .text-link {
     font-size: 12px;
   }
   .workspace-heading > .primary {
-    max-width: 150px;
     white-space: normal;
   }
   .dashboard-banner h2 {
@@ -2023,19 +2024,42 @@ td .text-link {
   }
   .workspace-top {
     height: auto;
-    min-height: calc(65px + env(safe-area-inset-top));
-    padding: calc(14px + env(safe-area-inset-top)) calc(6% + env(safe-area-inset-right)) 14px
-      calc(6% + env(safe-area-inset-left));
-    gap: 12px;
+    min-height: calc(64px + env(safe-area-inset-top));
+    padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px
+      calc(12px + env(safe-area-inset-left));
+    gap: 8px;
+  }
+  .workspace-menu,
+  .workspace-mark,
+  .workspace-top .theme,
+  .workspace-top button.profile-link,
+  .workspace-top button.customer-notify,
+  .workspace-top button.mechanic-notify,
+  .workspace-top button.admin-notify {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
   }
   .workspace-menu {
     display: grid !important;
+  }
+  .workspace-mark {
+    display: grid;
+    place-items: center;
+    margin-right: auto;
+    padding: 0;
+  }
+  .workspace-mark img {
+    height: 32px;
+    width: auto;
+    display: block;
   }
   .workspace-top .workspace-crumb {
     display: none;
   }
   .workspace-top > div {
-    gap: 10px;
+    gap: 4px;
+    margin-left: auto;
   }
   .workspace-top .chip {
     display: none;
@@ -2043,8 +2067,8 @@ td .text-link {
   .workspace-top .avatar,
   .workspace-top button.profile-link {
     display: grid;
-    width: 28px;
-    height: 28px;
+    width: 44px;
+    height: 44px;
     flex-shrink: 0;
   }
   .workspace-top button.customer-notify,
@@ -2055,8 +2079,7 @@ td .text-link {
   }
   .workspace-body {
     width: 100%;
-
-    padding: 28px 28px 0 28px;
+    padding: var(--space-4) var(--gutter) 0;
   }
   .workspace-heading {
     display: block;
@@ -2075,14 +2098,12 @@ td .text-link {
   .workspace-heading h1 {
     font-size: 27px;
   }
-  .workspace-heading .eyebrow {
-    font-size: 7px;
-  }
   .workspace-heading .primary {
-    margin-top: 20px;
+    margin-top: 16px;
     max-width: none;
-    padding: 12px 16px;
-    font-size: 10px;
+    min-height: var(--control);
+    padding: 10px 16px;
+    font-size: 14px;
   }
   .workspace-heading-garage .primary {
     margin-top: 0;
@@ -2131,13 +2152,13 @@ td .text-link {
   }
   .table-controls > select {
     width: 100%;
-    font-size: 12px;
+    font-size: 16px;
   }
   .search-input {
-    padding: 14px;
+    padding: 8px 12px;
   }
   .search-input input {
-    font-size: 12px;
+    font-size: 16px;
   }
   .job-grid {
     grid-template-columns: 1fr;
@@ -2152,12 +2173,8 @@ td .text-link {
     font-size: 11px;
   }
   .workspace-footer {
-    font-size: 7px;
+    font-size: 13px;
     flex-wrap: wrap;
-  }
-  .workspace-footer > span {
-    margin-left: 21px;
-    flex-basis: 100%;
   }
   .form-row {
     grid-template-columns: 1fr;
@@ -2236,16 +2253,13 @@ td .text-link {
     padding: 35px 23px;
   }
   .quote-editor-row {
-    grid-template-columns: 1fr 80px 18px;
-  }
-  .quote-editor-row label {
-    font-size: 10px;
+    grid-template-columns: 1fr;
   }
   .workspace-dialog .form-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
   .workspace-heading .primary {
-    white-space: nowrap;
+    white-space: normal;
   }
   .auth-sub {
     gap: 5px;
@@ -2259,8 +2273,9 @@ td .text-link {
   }
 }
 @media (max-width: 380px) {
-  header {
-    padding: 0 4%;
+  header.site-header {
+    padding: 0 12px;
+    gap: 8px;
   }
   .brand {
     font-size: 22px;

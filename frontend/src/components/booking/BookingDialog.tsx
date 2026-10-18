@@ -136,30 +136,30 @@ export function BookingDialog({
             }}
           >
             <h2>Add vehicle</h2>
-            <p className="muted">Your professional and appointment details stay on this request.</p>
+            <p className="muted">Enter the vehicle for this appointment. Make, model, year, and registration are required.</p>
             <div className="form-row">
               <label>
                 Make
-                <input name="make" required />
+                <input name="make" required autoComplete="off" />
               </label>
               <label>
                 Model
-                <input name="model" required />
+                <input name="model" required autoComplete="off" />
               </label>
             </div>
             <div className="form-row">
               <label>
                 Year
-                <input name="year" type="number" min="1900" max="2027" required defaultValue={2020} />
+                <input name="year" type="number" inputMode="numeric" autoComplete="off" min="1900" max="2027" required defaultValue={2020} />
               </label>
               <label>
                 Mileage (km)
-                <input name="mileage" type="number" min="0" required defaultValue={0} />
+                <input name="mileage" type="number" inputMode="numeric" autoComplete="off" min="0" required defaultValue={0} />
               </label>
             </div>
             <label>
               Registration
-              <input name="registration" required defaultValue="DEMO 002" />
+              <input name="registration" required autoComplete="off" defaultValue="DEMO 002" />
             </label>
             <div className="form-row">
               <label>
@@ -187,7 +187,7 @@ export function BookingDialog({
               Paint colour
               <input name="paintColor" type="color" defaultValue="#f2f2f2" />
             </label>
-            <p className="muted">The vehicle is saved even when no matching 3D model is published.</p>
+            <p className="muted">Paint colour and body style are saved with the vehicle.</p>
             {error ? (
               <p className="form-error" role="alert">
                 {error}

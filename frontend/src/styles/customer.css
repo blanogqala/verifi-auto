@@ -365,10 +365,19 @@
   outline-offset: 2px;
 }
 .detail-header {
+  position: static;
+  top: auto;
+  height: auto;
+  min-height: 0;
+  z-index: auto;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 16px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
 }
 .detail-header h1 {
   margin: 0;
@@ -552,8 +561,8 @@
   grid-column: 2;
   margin: 4px 0 12px;
 }
-.progress-step:not(:last-child) .progress-mark {
-  box-shadow: inset 0 0 0 0 transparent;
+.progress-step.is-current .progress-mark {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--purple) 25%, transparent);
 }
 .progress-list {
   display: grid;
@@ -583,6 +592,16 @@
   gap: 12px;
   align-items: center;
   padding: 8px 0;
+}
+.quote-head-qty,
+.quote-line-qty {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+input,
+textarea,
+select {
+  scroll-margin-top: 96px;
+  scroll-margin-bottom: 140px;
 }
 .quote-head {
   color: var(--muted);
@@ -629,16 +648,185 @@
   padding-top: 12px;
   border-top: 1px solid var(--line);
 }
+.detail-header-aside {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.vehicle-identity {
+  align-items: center;
+}
+.vehicle-identity-art,
+.booking-card-art {
+  width: 96px;
+  height: 64px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--purple) 10%, var(--surface2));
+  color: var(--soft);
+}
+.vehicle-identity-art img,
+.booking-card-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.vehicle-identity-art .garage-card-silhouette,
+.booking-card-art .garage-card-silhouette {
+  width: 88px;
+  height: 48px;
+}
+.next-action {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.next-action h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.next-action p {
+  margin: 0;
+  color: var(--muted);
+}
+.ui-card.booking-card {
+  padding: 0;
+}
+.booking-card-hit {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'art copy status'
+    'art copy arrow';
+  gap: 8px 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  text-align: left;
+  color: inherit;
+}
+.booking-card-art {
+  grid-area: art;
+}
+.booking-card-copy {
+  grid-area: copy;
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.booking-card-copy strong,
+.booking-card-copy span {
+  overflow-wrap: anywhere;
+}
+.booking-card-copy strong {
+  font-size: 1.05rem;
+}
+.booking-card-copy span,
+.booking-card-note {
+  color: var(--muted);
+  font-size: var(--text-secondary);
+}
+.booking-card .status {
+  grid-area: status;
+  justify-self: end;
+  font-size: 12px;
+}
+.booking-card-arrow {
+  grid-area: arrow;
+  justify-self: end;
+  color: var(--soft);
+}
+.booking-card-note {
+  margin: 0;
+  padding: 0 12px 12px 120px;
+}
+.fold {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 4px 16px 12px;
+}
+.fold > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+.fold > summary::-webkit-details-marker {
+  display: none;
+}
+.fold[open] > summary {
+  margin-bottom: 8px;
+}
+.pro-banner h1 {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.pro-banner p,
+.pro-contact a,
+.detail-fields dd {
+  overflow-wrap: anywhere;
+}
+.model-caption {
+  font-size: 13px;
+}
 @media (max-width: 900px) {
   .detail-layout,
   .detail-layout.pro-layout {
     grid-template-columns: 1fr;
   }
-  .detail-header {
+  .detail-header,
+  .vehicle-identity {
     align-items: flex-start;
     flex-direction: column;
   }
   .detail-fields {
     grid-template-columns: 1fr;
+  }
+  .booking-card-hit {
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-areas:
+      'status status'
+      'art copy'
+      'art arrow';
+  }
+  .booking-card .status {
+    justify-self: start;
+  }
+  .booking-card-note {
+    padding: 0 12px 12px;
+  }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not([type='submit']):not([type='reset']):not([type='hidden']),
+  textarea,
+  select,
+  .modal input,
+  .modal textarea,
+  .modal select,
+  .auth-card input,
+  .settings-form input:not([type='checkbox']),
+  .settings-form textarea,
+  .settings-form select,
+  .field-label select,
+  .field-label textarea,
+  .search-input input,
+  .search-panel select,
+  .filters select,
+  .table-controls > select,
+  .workspace-dialog input,
+  .workspace-dialog textarea,
+  .workspace-dialog select {
+    font-size: 16px;
   }
 }

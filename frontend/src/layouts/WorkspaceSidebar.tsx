@@ -152,6 +152,7 @@ export function WorkspaceSidebar({
       aria-modal={dialog ? true : undefined}
       aria-label={dialog ? 'Workspace navigation' : undefined}
       tabIndex={dialog ? -1 : undefined}
+      inert={drawer && !side ? true : undefined}
     >
       <div className="sidebar-head">
         <button

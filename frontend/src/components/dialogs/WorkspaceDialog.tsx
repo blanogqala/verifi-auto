@@ -82,20 +82,16 @@ export function WorkspaceDialog({
               }
             }}
           >
-            <span className="chip">MY GARAGE</span>
-            <h2>{dialog.vehicle ? 'Edit vehicle' : 'Add your vehicle'}</h2>
-            <p className="muted">
-              These details identify the vehicle and look up a published model. They do not generate accurate geometry,
-              and the vehicle is saved even when no 3D file is available.
-            </p>
+            <h2>{dialog.vehicle ? 'Edit vehicle' : 'Add vehicle'}</h2>
+            <p className="muted">Enter the vehicle details you want to keep with this garage.</p>
             <div className="form-row">
               <label>
                 Make
-                <input name="make" required defaultValue={dialog.vehicle?.make} />
+                <input name="make" required autoComplete="off" defaultValue={dialog.vehicle?.make} />
               </label>
               <label>
                 Model
-                <input name="model" required defaultValue={dialog.vehicle?.model} />
+                <input name="model" required autoComplete="off" defaultValue={dialog.vehicle?.model} />
               </label>
             </div>
             <div className="form-row">
@@ -129,6 +125,8 @@ export function WorkspaceDialog({
                 <input
                   name="year"
                   type="number"
+                  inputMode="numeric"
+                  autoComplete="off"
                   min="1900"
                   max="2027"
                   required
@@ -140,6 +138,8 @@ export function WorkspaceDialog({
                 <input
                   name="mileage"
                   type="number"
+                  inputMode="numeric"
+                  autoComplete="off"
                   min="0"
                   max="9999999"
                   required
@@ -148,10 +148,11 @@ export function WorkspaceDialog({
               </label>
             </div>
             <label>
-              Sample registration
+              Registration
               <input
                 name="registration"
                 required
+                autoComplete="off"
                 defaultValue={dialog.vehicle?.registration || 'DEMO 002'}
               />
             </label>

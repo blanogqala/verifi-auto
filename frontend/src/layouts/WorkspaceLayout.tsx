@@ -45,6 +45,8 @@ import {
   Users,
 } from 'lucide-react';
 import { customerFullName } from '../features/account/customerIdentity';
+import { resolveVehicleAsset } from '../features/garage/assetResolution';
+import { vehicleCardImage } from '../features/garage/garageSelection';
 import { followDetail, readBookingFilters, writeBookingFilters } from '../features/navigation/returnPath';
 import {
   Role,
@@ -199,8 +201,8 @@ export function Workspace({
     const el = document.querySelector('.workspace-dialog') as HTMLElement;
     const fs = () =>
       Array.from(
-        el.querySelectorAll<HTMLElement>('button,input,select,textarea,[tabindex="0"]'),
-      ).filter((e) => !e.hasAttribute('disabled'));
+        el.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,summary,[tabindex="0"]'),
+      ).filter((e) => !e.hasAttribute('disabled') && !e.closest('[hidden],[inert]'));
     fs()[0]?.focus();
     const key = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setDialog(null);
@@ -404,6 +406,9 @@ export function Workspace({
           key={j.id}
           job={j}
         registration={(data.vehicles || []).find((vehicle: any) => vehicle.id === j.vehicleId)?.registration || ''}
+        image={vehicleCardImage(
+          resolveVehicleAsset((data.vehicles || []).find((vehicle: any) => vehicle.id === j.vehicleId)),
+        )}
         viewLabel={role === 'customer' ? 'View booking' : 'View details'}
         onView={() => {
           if (role === 'customer') {
@@ -447,6 +452,7 @@ export function Workspace({
         <WorkspaceTopbar
           accountName={accountName}
           accountPhoto={accountPhoto}
+          goHome={goHome}
           heading={heading}
           sectionLabel={sectionLabel}
           menuButtonRef={menuButtonRef}
@@ -462,29 +468,11 @@ export function Workspace({
         <div className="workspace-body">
           {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && !(role === 'customer' && (tab.startsWith('garage/') || tab.startsWith('bookings/'))) && (
             <div className={'workspace-heading' + (role === 'customer' && tab === 'garage' ? ' workspace-heading-garage' : '')}>
-              <div>
-                {role === 'customer' && tab === 'garage' ? null : (
-                  <div className="eyebrow">
-                    {role === 'customer'
-                      ? 'YOUR JOURNEY, SIMPLIFIED'
-                      : role === 'mechanic'
-                        ? 'KEEP GOOD WORK MOVING'
-                        : 'A CLEARER STANDARD OF CARE'}
-                  </div>
-                )}
-                <h1>
-                  {tab === 'overview'
-                    ? `Welcome${role === 'customer' ? ' back' : ''}, ${name}.`
-                    : heading}
-                </h1>
-                {role === 'customer' && tab === 'garage' ? null : (
-                  <p>
-                    {tab === 'overview'
-                      ? 'Here’s what needs your attention today.'
-                      : 'Manage everything you need, in one place.'}
-                  </p>
-                )}
-              </div>
+              <h1>
+                {tab === 'overview'
+                  ? `Welcome${role === 'customer' ? ' back' : ''}, ${name}.`
+                  : heading}
+              </h1>
               {role === 'customer' && tab === 'garage' ? (
                 <button className="primary" type="button" onClick={() => setDialog({ kind: 'vehicle' })}>
                   Add vehicle <Plus size={17} />
@@ -528,6 +516,8 @@ export function Workspace({
           {tab === 'bookings' && role === 'customer' && (
             <JobsPage
               cardJobs={cardJobs}
+              emptyText="Try another status or search."
+              emptyTitle="No bookings match."
               filter={filter}
               jobs={bookingsForCustomer(jobs, data.settings?.id || 'cust-01')}
               query={query}
@@ -755,12 +745,11 @@ export function Workspace({
               update={update}
             />
           )}
-          <div className="workspace-grow" />
-          <div className="workspace-footer">
-            <ShieldCheck size={14} /> Verifi Auto · Connected design preview{' '}
-            <span>Sample data · No live payments</span>
-          </div>
         </div>
+        <div className="workspace-grow" />
+        <footer className="workspace-footer">
+          <ShieldCheck size={14} aria-hidden="true" /> Demo · No live payments
+        </footer>
       </main>
       {dialog && (
         <WorkspaceDialog

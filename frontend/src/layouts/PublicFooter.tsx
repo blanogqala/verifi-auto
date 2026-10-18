@@ -1,7 +1,7 @@
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function PublicFooter({ anchor, go, setModal }: any) {
   return (
-    <footer>
+    <footer className="site-footer">
       <div>
         <button className="brand" onClick={() => go('home')}>
           <img src="/logo.png" alt="" />

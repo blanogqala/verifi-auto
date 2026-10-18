@@ -31,14 +31,19 @@ export function JobsPage({
   return (
     <>
       <div className="table-controls">
-        <div className="search-input">
-          <Search size={17} />
+        <label className="search-input">
+          <Search size={17} aria-hidden="true" />
+          <span className="visually-hidden">Search</span>
           <input
-            placeholder="Search vehicle, reference, or professional"
+            type="search"
+            inputMode="search"
+            autoComplete="off"
+            aria-label="Search"
+            placeholder="Search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-        </div>
+        </label>
         <select
           aria-label="Filter job status"
           value={options.includes(filter) ? filter : 'All'}

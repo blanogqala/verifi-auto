@@ -91,12 +91,14 @@ export function SettingsPage({ data, notify, update }: any) {
         <div className="form-row">
           <label>
             Full name
-            <input value={name} required onChange={(event) => setName(event.target.value)} />
+            <input autoComplete="name" value={name} required onChange={(event) => setName(event.target.value)} />
           </label>
           <label>
             Email address
             <input
               type="email"
+              autoComplete="email"
+              inputMode="email"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}

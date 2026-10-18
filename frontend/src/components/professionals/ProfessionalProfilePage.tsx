@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { ArrowRight, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { Card } from '../ui/Card';
-import { DetailBack, DetailCard, DetailFields } from '../ui/DetailChrome';
+import { DetailBack, DetailCard } from '../ui/DetailChrome';
 import { RoadLoader } from '../ui/RoadLoader';
 import { demoCustomerId } from '../../features/admin/customerRecords';
 import { customerRecords } from '../../features/admin/customerRecords';
@@ -20,6 +20,17 @@ import {
 
 function stars(rating: number) {
   return Array.from({ length: 5 }, (_, index) => (index < rating ? '★' : '☆')).join('');
+}
+
+function ReviewCopy({ text }: { text: string }) {
+  if (!text) return <p>No written review was saved.</p>;
+  if (text.length <= 180) return <p>{text}</p>;
+  return (
+    <details className="fold">
+      <summary>Read full review</summary>
+      <p>{text}</p>
+    </details>
+  );
 }
 
 export function ProfessionalProfilePage({
@@ -142,13 +153,14 @@ export function ProfessionalProfilePage({
             <MapPin size={16} aria-hidden="true" /> {profile.area || 'Location not recorded'} · {profile.type || 'Type not recorded'}
           </p>
           <p>
-            <ShieldCheck size={16} aria-hidden="true" /> {profile.applicationStatus || 'Verification not recorded'}
+            <ShieldCheck size={16} aria-hidden="true" /> {verificationCopy(profile)}
           </p>
           {average != null ? (
             <p>
               <Star size={16} aria-hidden="true" /> {average.toFixed(1)} from {reviews.length} review{reviews.length === 1 ? '' : 's'}
             </p>
           ) : null}
+          {profile.fee != null ? <p>Assessment fee R{profile.fee}</p> : null}
           <button
             className="primary"
             type="button"
@@ -169,9 +181,10 @@ export function ProfessionalProfilePage({
       </section>
       <div className="detail-layout pro-layout">
         <div className="detail-main">
-          <DetailCard title="About">
-            <p>{profile.bio || (profile.sample ? 'Sample profile. No about text has been recorded.' : 'No about text has been recorded.')}</p>
-          </DetailCard>
+          <details className="fold">
+            <summary>About</summary>
+            <p>{profile.bio || 'No about text has been recorded.'}</p>
+          </details>
           <DetailCard title="Services">
             {profile.services.length ? (
               <ul className="pro-services">
@@ -197,7 +210,7 @@ export function ProfessionalProfilePage({
                       {stars(review.rating)} · {name}
                     </p>
                     <p className="muted">{review.createdAt ? formatDay(review.createdAt) : 'Date not recorded'}</p>
-                    <p>{review.text}</p>
+                    <ReviewCopy text={review.text} />
                     {review.photos?.length ? (
                       <div className="review-photos">
                         {review.photos.map((photo: string) => (
@@ -300,28 +313,6 @@ export function ProfessionalProfilePage({
           </DetailCard>
         </div>
         <div className="detail-side">
-          <DetailCard title="Book an assessment">
-            <p className="muted">The fee is for the assessment. Repair costs are quoted afterwards.</p>
-            <button
-              className="primary"
-              type="button"
-              onClick={() =>
-                book({
-                  id: profile.id,
-                  name: profile.name,
-                  area: profile.area,
-                  type: profile.type,
-                  fee: profile.fee,
-                  special: profile.services.join(' · '),
-                })
-              }
-            >
-              Book assessment <ArrowRight size={18} />
-            </button>
-          </DetailCard>
-          <DetailCard title="Assessment pricing">
-            <DetailFields items={[{ label: 'Assessment fee', value: profile.fee != null ? `R${profile.fee}` : 'Not recorded' }]} />
-          </DetailCard>
           <DetailCard title="Contact">
             {profile.phone || profile.email || profile.website ? (
               <ul className="pro-contact">
@@ -346,12 +337,6 @@ export function ProfessionalProfilePage({
             ) : (
               <p>No public phone, email, or website has been recorded.</p>
             )}
-          </DetailCard>
-          <DetailCard title="Verification">
-            <div className="notice">
-              <ShieldCheck size={20} aria-hidden="true" />
-              <p>{verificationCopy(profile)}</p>
-            </div>
           </DetailCard>
         </div>
       </div>
