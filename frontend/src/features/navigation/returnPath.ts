@@ -22,7 +22,10 @@ export function customerReturnAllowed(path: string) {
     if (slash < 1) return false;
     const section = tab.slice(0, slash);
     if (!['find', 'bookings', 'garage'].includes(section)) return false;
-    return safeRouteId(tab.slice(slash + 1)) !== null;
+    const rest = tab.slice(slash + 1).split('/');
+    if (!rest[0] || rest.length > 2) return false;
+    if (rest[1] && !(section === 'bookings' && (rest[1] === 'quote' || rest[1] === 'messages'))) return false;
+    return safeRouteId(rest[0]) !== null;
   }
   if (path === 'find') return true;
   if (path.startsWith('professional/')) return safeRouteId(path.slice('professional/'.length)) !== null && !path.slice('professional/'.length).includes('/');

@@ -1,0 +1,214 @@
+import { demoCustomerId } from '../admin/customerRecords';
+import { textValue } from '../demo/links';
+import { customerIdOf, jobProfessionalId, participantId } from '../identity/participants';
+import { bookingReference, isAcceptedJob, isCancelledRequest, isRejectedRequest } from '../jobs/jobViews';
+import { canVisit } from '../../routes/access';
+
+export type NotificationRecord = {
+  id: string;
+  recipientId: string;
+  recipientRole: string;
+  type: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
+  bookingId: string;
+  panel: string;
+  eventKey: string;
+  section: string;
+  legacy: boolean;
+  text: string;
+};
+
+export const notificationTypeLabel: Record<string, string> = {
+  request: 'Requests',
+  accepted: 'Accepted',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+  quote: 'Quotations',
+  'quote-revised': 'Quotations',
+  approved: 'Approvals',
+  changes: 'Changes',
+  started: 'Work',
+  completed: 'Work',
+  payment: 'Payments',
+  message: 'Messages',
+  account: 'Account',
+};
+
+export function notificationLabel(type: string) {
+  return notificationTypeLabel[type] || 'Updates';
+}
+
+export function appendNotification(data: any, input: any) {
+  const notifications = Array.isArray(data?.notifications) ? data.notifications : [];
+  const eventKey = textValue(input?.eventKey);
+  if (eventKey && notifications.some((item: any) => item?.eventKey === eventKey)) return data;
+  const message = textValue(input?.message) || textValue(input?.text);
+  const record = {
+    id: textValue(input?.id) || crypto.randomUUID(),
+    recipientId: textValue(input?.recipientId),
+    recipientRole: textValue(input?.recipientRole),
+    type: textValue(input?.type) || 'account',
+    title: textValue(input?.title) || 'Update',
+    message,
+    text: message,
+    createdAt: typeof input?.createdAt === 'string' ? input.createdAt : new Date().toISOString(),
+    read: input?.read === true,
+    bookingId: textValue(input?.bookingId),
+    panel: textValue(input?.panel),
+    eventKey,
+    section: textValue(input?.section),
+    legacy: input?.legacy === true,
+  };
+  return { ...data, notifications: [record, ...notifications] };
+}
+
+export function normalizeNotification(item: any, customerId: string): NotificationRecord | null {
+  if (!item || typeof item !== 'object') return null;
+  const id = textValue(item.id);
+  if (!id) return null;
+  const role = textValue(item.recipientRole);
+  const known = role === 'customer' || role === 'mechanic' || role === 'admin';
+  const message = typeof item.message === 'string' && item.message.trim() ? item.message.trim() : textValue(item.text);
+  return {
+    id,
+    recipientRole: known ? role : 'customer',
+    recipientId: known ? textValue(item.recipientId) : customerId,
+    type: textValue(item.type) || 'account',
+    title: textValue(item.title) || (message ? 'Update' : 'Update'),
+    message,
+    text: typeof item.text === 'string' ? item.text : message,
+    createdAt: typeof item.createdAt === 'string' ? item.createdAt : '',
+    read: item.read === true,
+    bookingId: textValue(item.bookingId),
+    panel: textValue(item.panel),
+    eventKey: textValue(item.eventKey),
+    section: textValue(item.section),
+    legacy: !known,
+  };
+}
+
+export function notificationsFor(data: any, role: string, id: string) {
+  const customerId = customerIdOf(data);
+  return (Array.isArray(data?.notifications) ? data.notifications : []).filter((item: any) => {
+    if (!item || typeof item !== 'object') return false;
+    if (item.recipientRole && item.recipientId) return item.recipientRole === role && item.recipientId === id;
+    return !item.recipientRole && role === 'customer' && id === customerId;
+  });
+}
+
+export function unreadNotificationCount(data: any, role: string, id = participantId(data, role)) {
+  return notificationsFor(data, role, id).filter((item: any) => item.read !== true).length;
+}
+
+export function markNotificationsRead(data: any, input: { role: string; id: string; ids?: string[] | 'all' }) {
+  const mine = new Set(notificationsFor(data, input.role, input.id).map((item: any) => item.id));
+  const chosen =
+    input.ids === 'all' || !input.ids ? mine : new Set(input.ids.filter((id) => mine.has(id)));
+  if (!chosen.size) return data;
+  let changed = false;
+  const notifications = (data.notifications || []).map((item: any) => {
+    if (!chosen.has(item?.id) || item.read === true) return item;
+    changed = true;
+    return { ...item, read: true };
+  });
+  return changed ? { ...data, notifications } : data;
+}
+
+function encodeId(id: string) {
+  return encodeURIComponent(id);
+}
+
+/** Internal dashboard path. External URLs are never returned. */
+export function notificationDestination(data: any, role: string, note: any) {
+  if (!note || note.recipientRole !== role) return null;
+  const self = participantId(data, role);
+  if (note.recipientId && note.recipientId !== self) return null;
+  if (role === 'admin') {
+    const section = textValue(note.section) || 'reports/support';
+    const path = `dashboard/${section}`;
+    return canVisit('admin', path) ? path : null;
+  }
+  const bookingId = textValue(note.bookingId);
+  if (!bookingId) return null;
+  const job = (data?.jobs || []).find((item: any) => item?.id === bookingId);
+  if (!job) return null;
+  const panel = note.panel === 'messages' || note.panel === 'quote' ? note.panel : '';
+  const suffix = panel ? `/${panel}` : '';
+  if (role === 'customer') {
+    if ((textValue(job.customerId) || demoCustomerId) !== self) return null;
+    const path = `dashboard/bookings/${encodeId(bookingId)}${suffix}`;
+    return canVisit('customer', path) ? path : null;
+  }
+  if (role === 'mechanic') {
+    if (jobProfessionalId(job, data) !== self) return null;
+    if (!isAcceptedJob(job)) {
+      const section = isRejectedRequest(job) ? 'rejected' : isCancelledRequest(job) ? 'cancelled' : 'pending';
+      const path = `dashboard/appointments/${section}/${encodeId(bookingId)}`;
+      return canVisit('mechanic', path) ? path : null;
+    }
+    const path = `dashboard/jobs/${encodeId(bookingId)}${suffix}`;
+    return canVisit('mechanic', path) ? path : null;
+  }
+  return null;
+}
+
+export function notificationDay(value: string) {
+  if (!value || Number.isNaN(new Date(value).getTime())) return 'Date not recorded';
+  const date = new Date(value);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium' }).format(date);
+}
+
+export function transitionNotifications(before: any, job: any, action: string) {
+  const reference = bookingReference(job);
+  const customerId = textValue(job.customerId) || demoCustomerId;
+  const professionalId = textValue(job.professionalId);
+  const at = Array.isArray(job.events) && job.events.length ? job.events[job.events.length - 1].at : new Date().toISOString();
+  const version = job.quoteVersion || 1;
+  const customer = (input: any) => ({ recipientRole: 'customer', recipientId: customerId, createdAt: at, bookingId: job.id, ...input });
+  const mechanic = (input: any) =>
+    professionalId ? [{ recipientRole: 'mechanic', recipientId: professionalId, createdAt: at, bookingId: job.id, ...input }] : [];
+  if (action === 'confirm') {
+    return [customer({ type: 'accepted', title: 'Request accepted', message: `${reference} is confirmed.`, panel: 'overview', eventKey: `accepted:${job.id}` })];
+  }
+  if (action === 'reject') {
+    return [customer({ type: 'rejected', title: 'Request rejected', message: job.rejectionReason ? `${reference}: ${job.rejectionReason}` : `${reference} was rejected.`, panel: 'overview', eventKey: `rejected:${job.id}` })];
+  }
+  if (action === 'cancel') {
+    return mechanic({ type: 'cancelled', title: 'Request cancelled', message: `${reference} was cancelled by the customer.`, panel: 'overview', eventKey: `cancelled:${job.id}` });
+  }
+  if (action === 'quote') {
+    const revised = ['Awaiting approval', 'Changes requested'].includes(before?.status);
+    return [customer({
+      type: revised ? 'quote-revised' : 'quote',
+      title: revised ? 'Quotation updated' : 'Quotation ready',
+      message: revised ? `${reference} has a revised quotation to review.` : `${reference} has a quotation to review.`,
+      panel: 'quote',
+      eventKey: `quote:${job.id}:v${version}`,
+    })];
+  }
+  if (action === 'approve') {
+    return mechanic({ type: 'approved', title: 'Quotation approved', message: `${reference} was approved.`, panel: 'quote', eventKey: `approved:${job.id}:v${version}` });
+  }
+  if (action === 'changes') {
+    const feedback = textValue(job.changeRequest);
+    return mechanic({ type: 'changes', title: 'Changes requested', message: feedback ? `${reference}: ${feedback}` : `${reference} needs a revised quotation.`, panel: 'quote', eventKey: `changes:${job.id}:v${version}` });
+  }
+  if (action === 'start') {
+    return [customer({ type: 'started', title: 'Work started', message: `${reference} is in progress.`, panel: 'overview', eventKey: `started:${job.id}` })];
+  }
+  if (action === 'complete') {
+    return [customer({ type: 'completed', title: 'Work finished', message: `${reference} is ready for payment.`, panel: 'quote', eventKey: `completed:${job.id}` })];
+  }
+  if (action === 'pay') {
+    return mechanic({ type: 'payment', title: 'Demo payment recorded', message: `${reference} has a recorded demo payment.`, panel: 'quote', eventKey: `payment:${job.id}` });
+  }
+  return [];
+}

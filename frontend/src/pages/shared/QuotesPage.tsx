@@ -6,7 +6,7 @@ import { bookingReference } from '../../features/jobs/jobViews';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
-export function QuotesPage({ filter, jobs, name, quoteEditor, role, setDialog }: any) {
+export function QuotesPage({ filter, jobs, name, onEdit, quoteEditor, role, setDialog }: any) {
   return (
     <>
       <div className="workspace-note">
@@ -60,7 +60,7 @@ export function QuotesPage({ filter, jobs, name, quoteEditor, role, setDialog }:
                   </>
                 ) : role === 'mechanic' &&
                   ['Confirmed', 'Awaiting approval', 'Changes requested'].includes(j.status) ? (
-                  <button className="primary" onClick={() => quoteEditor(j)}>
+                  <button className="primary" onClick={() => (onEdit ? onEdit(j) : quoteEditor(j))}>
                     {j.items?.length ? 'Edit quote' : 'Create quote'}
                     <FileText size={16} />
                   </button>

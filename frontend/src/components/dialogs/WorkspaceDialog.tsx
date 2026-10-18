@@ -1,5 +1,5 @@
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
-import { quoteTotal } from '../../demo';
+import { activeMechanicProfessionalId, quoteTotal } from '../../demo';
 import { commitUpdate } from '../../features/demo/commitUpdate';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
 import { bodyStyleOptions } from '../../features/garage/vehicleCatalogue';
@@ -306,7 +306,7 @@ export function WorkspaceDialog({
               )}
             </div>
             {role === 'mechanic'
-              ? sharedRecordsForProfessional(data, dialog.job, data?.profile?.id || 'pro-own').map(
+              ? sharedRecordsForProfessional(data, dialog.job, activeMechanicProfessionalId(data)).map(
                   (record: any) => (
                     <p key={record.id}>
                       Shared history: {record.title} · {record.date}

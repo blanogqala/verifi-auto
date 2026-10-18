@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { initialData } from '../data/fixtures';
+import { withMechanicShowcase } from '../data/mechanicShowcase';
 import { normalizeDemoData } from '../data/normalizeDemoData';
 
 export const demoStorageKey = 'verifi-demo-v2';
 
 export function readDemoState(storage: Pick<Storage, 'getItem'>) {
   const raw = storage.getItem(demoStorageKey);
-  return raw ? normalizeDemoData(JSON.parse(raw)) : normalizeDemoData(structuredClone(initialData));
+  const parsed = raw ? JSON.parse(raw) : structuredClone(initialData);
+  return normalizeDemoData(withMechanicShowcase(parsed));
 }
 
 /** Returns false when the browser refuses the write. Callers must not claim a persistent save. */

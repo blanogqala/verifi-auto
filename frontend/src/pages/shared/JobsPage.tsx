@@ -9,6 +9,7 @@ export function JobsPage({
   emptyText = 'Try a different search or status filter.',
   emptyTitle = 'No appointments match.',
   filter,
+  hint,
   jobs,
   query,
   setFilter,
@@ -28,6 +29,11 @@ export function JobsPage({
     'Completed',
     'Cancelled',
   ];
+  const visible = jobs.filter(
+    (j: any) =>
+      (filter === 'All' || j.status === filter) &&
+      `${bookingReference(j)} ${j.provider || ''} ${j.vehicle || ''} ${hint ? hint(j) : ''}`.toLowerCase().includes(query.toLowerCase()),
+  );
   return (
     <>
       <div className="table-controls">
@@ -55,19 +61,9 @@ export function JobsPage({
         </select>
       </div>
       <div className="job-grid">
-        {cardJobs(
-          jobs.filter(
-            (j: any) =>
-              (filter === 'All' || j.status === filter) &&
-              `${bookingReference(j)} ${j.provider} ${j.vehicle}`.toLowerCase().includes(query.toLowerCase()),
-          ),
-        )}
+        {cardJobs(visible)}
       </div>
-      {!jobs.some(
-        (j: any) =>
-          (filter === 'All' || j.status === filter) &&
-          `${bookingReference(j)} ${j.provider} ${j.vehicle}`.toLowerCase().includes(query.toLowerCase()),
-      ) && <Empty title={emptyTitle} text={emptyText} />}
+      {!visible.length && <Empty title={emptyTitle} text={emptyText} />}
     </>
   );
 }

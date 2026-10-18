@@ -24,10 +24,40 @@ export function JobCard({
   registration = '',
   viewLabel = 'View details',
   image = '',
+  audience = '',
+  person = '',
 }: any) {
   const vehicleName = j.vehicleLabel || j.vehicle || 'Vehicle not recorded';
   const when = `${j.date ? formatDay(j.date) : 'Date not recorded'}${j.time ? ` at ${j.time}` : ''}`;
   const professional = j.provider || 'Professional not recorded';
+  const quoteAmount = j.items?.length ? `R${quoteTotal(j).toLocaleString()}` : '';
+
+  if (audience === 'mechanic') {
+    return (
+      <Card as="article" className="job-card booking-card mechanic-job-card">
+        <button
+          type="button"
+          className="booking-card-hit"
+          onClick={onView}
+          aria-label={`Open job ${bookingReference(j)}, ${vehicleName}`}
+        >
+          <span className="booking-card-art">
+            <VehicleArt image={image} />
+          </span>
+          <span className="booking-card-copy">
+            <strong>{vehicleName}</strong>
+            <span>{person || 'Customer not recorded'}</span>
+            <span>{when}</span>
+            {registration ? <span>{registration}</span> : null}
+            <span className="reference">{bookingReference(j)}</span>
+            {quoteAmount ? <span className="mechanic-job-amount">Quote {quoteAmount}</span> : null}
+          </span>
+          <Status value={j.status} />
+          <ArrowRight className="booking-card-arrow" size={18} aria-hidden="true" />
+        </button>
+      </Card>
+    );
+  }
 
   if (!quoteAction) {
     return (

@@ -1,3 +1,5 @@
+import { quoteTotalCents } from './quotations';
+
 const eventLabels: Record<string, string> = {
   confirm: 'Request accepted',
   quote: 'Quotation updated',
@@ -18,7 +20,8 @@ function withEvent(job: any, patch: any, type: string) {
 }
 
 export function quoteTotal(job: any) {
-  return (job.items || []).reduce((s: number, i: any) => s + Number(i.amount), 0);
+  const cents = quoteTotalCents(job?.items || []);
+  return Number.isFinite(cents) ? cents / 100 : NaN;
 }
 export function transitionJob(job: any, action: string, extra: any = {}) {
   switch (action) {

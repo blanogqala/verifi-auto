@@ -84,7 +84,22 @@ export const initialData = {
     },
   ],
   notifications: [
-    { id: 'n1', text: 'A sample repair quote is ready for your review.', read: false },
+    {
+      id: 'n1',
+      text: 'A sample repair quote is ready for your review.',
+      title: 'Quotation ready',
+      message: 'A sample repair quote is ready for your review.',
+      read: false,
+      createdAt: '',
+      recipientId: 'cust-01',
+      recipientRole: 'customer',
+      type: 'quote',
+      bookingId: 'VA-2026-1042',
+      panel: 'quote',
+      eventKey: 'quote:VA-2026-1042:legacy',
+      section: '',
+      legacy: false,
+    },
   ],
   reports: [
     {
@@ -119,6 +134,7 @@ export const initialData = {
     name: 'Sam Okonkwo',
     email: 'sam@example.com',
     emailUpdates: true,
+    professionalId: 'pro-precision-motorworks',
   },
   mechanicBanking: {
     bankName: '',

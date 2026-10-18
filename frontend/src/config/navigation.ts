@@ -198,6 +198,7 @@ export function pageTitle(role: Role, tab: string) {
   const visible = navLeaves(role).find(([id]) => id === tab);
   if (visible) return visible[1];
   if (role === 'mechanic' && (tab.startsWith('profile/') || tab === 'profile')) return 'Profile';
+  if (role === 'mechanic' && tab.startsWith('jobs/')) return 'Job';
   if (role === 'mechanic' && tab.startsWith('appointments')) return 'Appointments';
   if (role === 'admin' && (tab === 'profile' || tab.startsWith('profile/') || tab === 'settings'))
     return 'Admin profile';

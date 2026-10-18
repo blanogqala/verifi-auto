@@ -1,7 +1,9 @@
 import { rememberApproval } from '../features/admin/applicationRecords';
 import { demoCustomerId } from '../features/admin/customerRecords';
-import { professionalOptions, withRecordLinks } from '../features/demo/links';
+import { professionalOptions, textValue, withRecordLinks } from '../features/demo/links';
+import { activeMechanicProfessionalId } from '../features/identity/participants';
 import { migrateJob } from '../features/jobs/jobViews';
+import { normalizeNotification } from '../features/notifications/inbox';
 import { initialData } from './fixtures';
 
 function accountFrom(value: any, fallback: any) {
@@ -69,7 +71,18 @@ function normalizeSettings(base: any, linkedId: string) {
 export function normalizeDemoData(saved: any) {
   const base = saved && typeof saved === 'object' ? saved : {};
   const fallback = initialData.mechanicAccount;
-  const mechanicAccount = accountFrom(base.mechanicAccount || base.merchantAccount, fallback);
+  const mechanicSource = base.mechanicAccount || base.merchantAccount || {};
+  const mechanicAccount = {
+    ...accountFrom(mechanicSource, fallback),
+    professionalId: text(mechanicSource.professionalId),
+  };
+  if (!mechanicAccount.professionalId) {
+    mechanicAccount.professionalId = activeMechanicProfessionalId({
+      ...base,
+      mechanicAccount,
+      profile: base.profile,
+    });
+  }
   const banking = base.mechanicBanking;
   const mechanicBanking =
     banking && typeof banking === 'object'
@@ -95,6 +108,24 @@ export function normalizeDemoData(saved: any) {
     customers,
     customerReviews: Array.isArray(base.customerReviews) ? base.customerReviews : [],
     historyAccess: Array.isArray(base.historyAccess) ? base.historyAccess : [],
+    messages: Array.isArray(base.messages)
+      ? base.messages.filter(
+          (message: any) =>
+            message &&
+            textValue(message.id) &&
+            textValue(message.bookingId) &&
+            typeof message.body === 'string' &&
+            (message.senderRole === 'customer' || message.senderRole === 'mechanic') &&
+            typeof message.createdAt === 'string',
+        )
+      : [],
+    conversationReads:
+      base.conversationReads && typeof base.conversationReads === 'object' ? base.conversationReads : {},
+    notifications: Array.isArray(base.notifications)
+      ? base.notifications
+          .map((item: any) => normalizeNotification(item, settings.id))
+          .filter(Boolean)
+      : [],
     adminAccount,
     mechanicAccount,
     mechanicBanking,

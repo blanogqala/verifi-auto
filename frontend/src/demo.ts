@@ -58,7 +58,7 @@ export {
   navLeaves,
   pageTitle,
 } from './config/navigation';
-export { canVisit, canonicalPage, detailId, safeRouteId } from './routes/access';
+export { appointmentTarget, canVisit, canonicalPage, detailId, detailPanel, safeRouteId } from './routes/access';
 export { phoneError } from './features/account/phoneNumber';
 export { persistDemoState } from './hooks/useDemoStore';
 export { commitUpdate, storageFailureMessage } from './features/demo/commitUpdate';
@@ -67,10 +67,33 @@ export {
   createBooking,
   removeOrArchiveVehicle,
   saveCustomerProfile,
+  saveQuoteDraft,
   saveVehicle,
   resolveHistoryVehicle,
   updateRequestedBooking,
 } from './features/demo/demoActions';
+export {
+  activeMechanicProfessionalId,
+  customerOwnsJob,
+  jobProfessionalId,
+  jobsForMechanic,
+  mechanicOwnsJob,
+  participantId,
+} from './features/identity/participants';
+export { formatZar, quoteTotalCents } from './features/jobs/quotations';
+export {
+  conversationLocked,
+  markConversationRead,
+  sendMessage,
+  unreadMessageCount,
+} from './features/messages/conversation';
+export {
+  appendNotification,
+  markNotificationsRead,
+  notificationDestination,
+  notificationsFor,
+  unreadNotificationCount,
+} from './features/notifications/inbox';
 export {
   canOfferHistoryAccess,
   grantHistoryAccess,

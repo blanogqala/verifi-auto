@@ -3,6 +3,7 @@ import { type KeyboardEvent, type ReactNode } from 'react';
 export type DetailTab = {
   id: string;
   label: string;
+  badge?: number;
 };
 
 export function detailTabId(scope: string, tabId: string) {
@@ -55,6 +56,11 @@ export function DetailTabs({
             onClick={() => onChange(tab.id)}
           >
             {tab.label}
+            {tab.badge ? (
+              <span className="tab-badge" aria-label={`${tab.badge} unread`}>
+                {tab.badge}
+              </span>
+            ) : null}
           </button>
         );
       })}

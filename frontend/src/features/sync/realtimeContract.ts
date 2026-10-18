@@ -9,7 +9,7 @@
  * the browser. localStorage in this preview only shares one browser profile
  * across tabs. It does not synchronise users or devices.
  */
-export type RealtimeTopic = 'booking' | 'quotation' | 'status' | 'payment' | 'history-access';
+export type RealtimeTopic = 'booking' | 'quotation' | 'status' | 'payment' | 'history-access' | 'message';
 
 export type RealtimeEvent = {
   id: string;

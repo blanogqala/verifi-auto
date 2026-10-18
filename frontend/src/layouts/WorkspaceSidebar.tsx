@@ -31,6 +31,7 @@ function itemSelected(id: string, tab: string) {
   if (id === 'garage' && tab.startsWith('garage/')) return true;
   if (id === 'applications' && tab.startsWith('applications/')) return true;
   if (id === 'reports' && (tab === 'reports' || tab.startsWith('reports/'))) return true;
+  if (id === 'jobs' && (tab === 'jobs' || tab.startsWith('jobs/'))) return true;
   if (id.startsWith('appointments') && tab.startsWith('appointments')) return true;
   return false;
 }

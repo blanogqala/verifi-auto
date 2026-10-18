@@ -1,7 +1,10 @@
 import { phoneError, normalizePhone } from '../account/phoneNumber';
 import { demoCustomerId } from '../admin/customerRecords';
 import { grantHistoryAccess, revokeHistoryAccess, settleHistoryAccess } from '../garage/historyAccess';
+import { customerOwnsJob, jobProfessionalId, type Actor } from '../identity/participants';
+import { assertQuoteNotes, buildQuoteSubmission, quoteEditable, quoteTotalCents, rowsToLines } from '../jobs/quotations';
 import { transitionJob } from '../jobs/jobWorkflow';
+import { appendNotification, transitionNotifications } from '../notifications/inbox';
 import { deleteCustomerReview, saveCustomerReview } from '../reviews/customerReviews';
 import { activeVehicles, historyCouldBelongTo, textValue, vehicleOptionLabel, vehicleSnapshot } from './links';
 
@@ -70,18 +73,34 @@ export function createBooking(
     createdAt: now,
     events: [{ at: now, type: 'request', label: 'Assessment requested' }],
   };
-  return {
-    data: {
-      ...data,
-      jobs: [job, ...(data.jobs || [])],
-      notifications: [
-        { id: crypto.randomUUID(), text: 'Your sample assessment request was created.', read: false },
-        ...(data.notifications || []),
-      ],
-    },
-    job,
-    duplicate: false,
+  const reference = job.reference;
+  let next = {
+    ...data,
+    jobs: [job, ...(data.jobs || [])],
   };
+  next = appendNotification(next, {
+    recipientRole: 'customer',
+    recipientId: customerId,
+    type: 'request',
+    title: 'Request sent',
+    message: `${reference} was sent to ${input.professional.name}.`,
+    createdAt: now,
+    bookingId: job.id,
+    panel: 'overview',
+    eventKey: `request-customer:${job.id}`,
+  });
+  next = appendNotification(next, {
+    recipientRole: 'mechanic',
+    recipientId: professionalId,
+    type: 'request',
+    title: 'New request',
+    message: `${reference} is waiting for your response.`,
+    createdAt: now,
+    bookingId: job.id,
+    panel: 'overview',
+    eventKey: `request:${job.id}`,
+  });
+  return { data: next, job, duplicate: false };
 }
 
 export function updateRequestedBooking(
@@ -124,9 +143,89 @@ export function updateRequestedBooking(
   };
 }
 
-export function applyJobTransition(data: any, job: any, action: string, extra: any = {}) {
-  const current = (data.jobs || []).find((item: any) => item.id === job?.id) || job;
-  const changed = transitionJob(current, action, extra);
+const mechanicActions = new Set(['confirm', 'reject', 'quote', 'start', 'complete']);
+const customerActions = new Set(['approve', 'changes', 'pay', 'cancel']);
+
+function assertActor(data: any, job: any, action: string, actor?: Actor) {
+  if (!actor?.role || !actor.id) throw Error('Choose who is making this change.');
+  if (actor.role === 'admin') throw Error('Admin preview cannot change this booking.');
+  if (actor.role === 'mechanic') {
+    if (!mechanicActions.has(action)) throw Error('This action is not available to the mechanic.');
+    const professionalId = jobProfessionalId(job, data);
+    if (!professionalId || actor.id !== professionalId) throw Error('This booking is not assigned to you.');
+    return;
+  }
+  if (actor.role === 'customer') {
+    if (!customerActions.has(action)) throw Error('This action is not available to the customer.');
+    if (!customerOwnsJob(data, job, actor.id)) throw Error('This booking is not yours.');
+    return;
+  }
+  throw Error('Choose who is making this change.');
+}
+
+export function saveQuoteDraft(
+  data: any,
+  input: { bookingId: string; rows: any[]; notes: string; now?: string },
+  actor?: Actor,
+) {
+  const job = (data.jobs || []).find((item: any) => item.id === input.bookingId);
+  if (!job) throw Error('Booking not found.');
+  assertActor(data, job, 'quote', actor);
+  if (!quoteEditable(job.status)) throw Error('A quotation draft can be saved before the customer approves it.');
+  const items = rowsToLines(input.rows);
+  const notes = assertQuoteNotes(input.notes);
+  const quoteDraft = { items, notes, updatedAt: input.now || new Date().toISOString() };
+  return {
+    ...data,
+    jobs: data.jobs.map((item: any) => (item.id === job.id ? { ...item, quoteDraft } : item)),
+  };
+}
+
+export function applyJobTransition(data: any, job: any, action: string, extra: any = {}, actor?: Actor) {
+  const current = (data.jobs || []).find((item: any) => item.id === job?.id);
+  if (!current) throw Error('Booking not found.');
+  assertActor(data, current, action, actor);
+  let payload = extra;
+  if (action === 'quote') {
+    if (current.quoteApproved && current.status === 'Approved') throw Error('An approved quotation cannot be overwritten.');
+    const prepared = buildQuoteSubmission(current, extra);
+    if (prepared.duplicate) return { data, job: current, duplicate: true };
+    payload = prepared.patch;
+  }
+  const changed = transitionJob(current, action, payload);
+  if (action === 'approve') {
+    const versions = Array.isArray(changed.quoteVersions) ? changed.quoteVersions : [];
+    const version = changed.quoteVersion || (versions.length ? versions[versions.length - 1].version : 1);
+    if (!versions.some((item: any) => item.version === version)) {
+      changed.quoteVersions = [
+        ...versions,
+        {
+          version,
+          submittedAt: changed.events?.[changed.events.length - 1]?.at || new Date().toISOString(),
+          items: Array.isArray(changed.items) ? changed.items.map((item: any) => ({ ...item })) : [],
+          notes: changed.notes || '',
+          totalCents: quoteTotalCents(changed.items || []),
+        },
+      ];
+      changed.quoteVersion = version;
+    } else {
+      changed.quoteVersions = versions.map((item: any) => (item.version === version ? { ...item, state: 'approved' } : item));
+    }
+    changed.approvedQuoteVersion = version;
+  }
+  if (action === 'changes') {
+    const version = changed.quoteVersion;
+    changed.quoteVersions = (Array.isArray(changed.quoteVersions) ? changed.quoteVersions : []).map((item: any) =>
+      item.version === version ? { ...item, changeRequest: changed.changeRequest, state: 'changes' } : item,
+    );
+  }
+  let nextData = {
+    ...data,
+    jobs: (data.jobs || []).map((item: any) => (item.id === changed.id ? changed : item)),
+  };
+  for (const notice of transitionNotifications(current, changed, action)) {
+    nextData = appendNotification(nextData, notice);
+  }
   const last = Array.isArray(changed.events) ? changed.events[changed.events.length - 1] : null;
   const at = last?.at || new Date().toISOString();
   let records = Array.isArray(data.records) ? data.records : [];
@@ -153,12 +252,12 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
   }
   return {
     data: {
-      ...data,
-      jobs: (data.jobs || []).map((item: any) => (item.id === changed.id ? changed : item)),
+      ...nextData,
       records,
-      historyAccess: settleHistoryAccess(data, changed, action, at),
+      historyAccess: settleHistoryAccess(nextData, changed, action, at),
     },
     job: changed,
+    duplicate: false,
   };
 }
 

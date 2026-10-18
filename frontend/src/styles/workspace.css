@@ -2345,3 +2345,242 @@ td .text-link {
   font-size: 10px;
   color: var(--soft);
 }
+.appointment-hit {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px;
+  text-align: left;
+  color: inherit;
+}
+.appointment-card {
+  padding: 12px;
+}
+.appointment-hit .panel-title {
+  margin: 0;
+}
+.mechanic-job-amount {
+  color: var(--ink);
+  font-weight: 800;
+}
+.tab-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--purple);
+  color: #140b22;
+  font-size: 11px;
+}
+.quote-editor,
+.quote-summary,
+.conversation {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.quote-editor-line {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr) 88px minmax(110px, 140px) auto;
+  gap: 8px;
+  align-items: end;
+  min-width: 0;
+}
+.quote-editor-line label,
+.conversation-compose label,
+.quote-editor label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.quote-editor input,
+.quote-editor select,
+.quote-editor textarea,
+.conversation-compose textarea,
+.appointment-hit textarea,
+.mechanic-job-detail input,
+.mechanic-job-detail textarea,
+.detail-page textarea,
+.detail-page input,
+.detail-page select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 16px;
+}
+.quote-editor-line button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.quote-editor-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  font-size: 16px;
+}
+.conversation-log {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-height: min(420px, 55vh);
+  overflow: auto;
+  min-width: 0;
+}
+.conversation-day {
+  margin: 8px 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.bubble {
+  max-width: min(100%, 420px);
+  padding: 10px 12px;
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.bubble p,
+.bubble time {
+  margin: 0;
+}
+.bubble-name {
+  font-size: 12px;
+  font-weight: 800;
+}
+.bubble-body {
+  white-space: pre-wrap;
+}
+.bubble time {
+  display: block;
+  margin-top: 4px;
+  color: inherit;
+  font-size: 11px;
+  opacity: 0.75;
+}
+.bubble.mine {
+  margin-left: auto;
+  background: var(--purple);
+  color: #140b22;
+}
+.bubble.theirs {
+  background: var(--surface2);
+  color: var(--ink);
+}
+.conversation-compose {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding-top: 8px;
+  background: var(--card-background, var(--surface));
+}
+.conversation-compose textarea {
+  flex: 1;
+  resize: vertical;
+  max-height: 140px;
+}
+.conversation-jump {
+  justify-self: center;
+}
+.inbox {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+}
+.inbox-list,
+.inbox-detail,
+.inbox-thread,
+.inbox-item {
+  min-width: 0;
+}
+.inbox-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.inbox-filters button {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.inbox-filters button.selected,
+.inbox-thread.selected {
+  border-color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 18%, var(--surface));
+}
+.inbox-threads {
+  display: grid;
+}
+.inbox-thread,
+.inbox-item {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 4px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+}
+.inbox-thread b,
+.inbox-item b,
+.inbox-thread small,
+.inbox-item small,
+.inbox-item p {
+  display: block;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.inbox-thread.unread b,
+.inbox-item.unread b {
+  color: var(--ink);
+}
+.inbox-thread i {
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--purple);
+}
+.detail-page,
+.workspace-body,
+.quote-table,
+.quote-line,
+.quote-head {
+  min-width: 0;
+}
+@media (max-width: 1000px) {
+  .quote-editor-line {
+    grid-template-columns: 1fr 1fr;
+  }
+  .quote-editor-description,
+  .quote-editor > label {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 800px) {
+  .inbox {
+    grid-template-columns: 1fr;
+  }
+  .inbox.is-reading .inbox-list,
+  .inbox:not(.is-reading) .inbox-detail {
+    display: none;
+  }
+  .detail-tabs button {
+    font-size: 13px;
+    padding: 8px;
+  }
+}

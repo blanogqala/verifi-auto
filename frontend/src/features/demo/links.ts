@@ -131,8 +131,12 @@ export function historyCouldBelongTo(item: any, vehicle: any) {
 }
 
 export function unresolvedHistory(data: any) {
+  const owner = textValue(data?.settings?.id) || 'cust-01';
   const jobs = (Array.isArray(data?.jobs) ? data.jobs : [])
-    .filter((item: any) => item?.vehicleLink === 'ambiguous' || item?.vehicleLink === 'unmatched')
+    .filter((item: any) => {
+      const customerId = textValue(item?.customerId) || 'cust-01';
+      return customerId === owner && (item?.vehicleLink === 'ambiguous' || item?.vehicleLink === 'unmatched');
+    })
     .map((item: any) => ({ ...item, historyKind: 'job' }));
   const records = (Array.isArray(data?.records) ? data.records : [])
     .filter((item: any) => item?.vehicleLink === 'ambiguous' || item?.vehicleLink === 'unmatched')

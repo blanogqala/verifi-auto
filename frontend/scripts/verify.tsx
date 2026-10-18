@@ -59,7 +59,21 @@ import {
   detailId,
   bookingReference,
   saveVehicle,
+  activeMechanicProfessionalId,
+  jobsForMechanic,
+  mechanicOwnsJob,
+  saveQuoteDraft,
+  sendMessage,
+  unreadMessageCount,
+  notificationsFor,
+  unreadNotificationCount,
+  notificationDestination,
+  markNotificationsRead,
+  formatZar,
+  quoteTotalCents,
+  customerOwnsJob,
 } from '../src/demo';
+import { withMechanicShowcase } from '../src/data/mechanicShowcase';
 import { bookingProgress } from '../src/features/jobs/bookingProgress';
 import { customerReturnAllowed, rememberReturn, resolveReturn } from '../src/features/navigation/returnPath';
 import { providers } from '../src/data/professionals';
@@ -482,8 +496,11 @@ assert.ok(!mechanicBanking.includes('CVV'));
 assert.ok(!mechanicBanking.includes('PIN'));
 const mechanicJobs = screen('mechanic', 'jobs');
 assert.ok(mechanicJobs.includes('VA-2026-1042'));
-assert.ok(mechanicJobs.includes('Edit quote'));
-assert.ok(!mechanicJobs.includes('Accept'));
+assert.ok(mechanicJobs.includes('Alex Morgan'));
+assert.ok(mechanicJobs.includes('Open job'));
+assert.ok(!mechanicJobs.includes('Edit quote'));
+assert.ok(!mechanicJobs.includes('View quote'));
+assert.ok(!mechanicJobs.includes('>Accept<'));
 assert.ok(!mechanicJobs.includes('Review &amp; pay'));
 const mechanicAppointments = screen('mechanic', 'appointments/pending');
 assert.ok(mechanicAppointments.includes('No pending requests'));
@@ -695,8 +712,12 @@ const pendingData = structuredClone(initialData);
 pendingData.jobs = [request];
 const pendingHtml = screen('mechanic', 'appointments/pending', pendingData);
 assert.ok(pendingHtml.includes('VA-REQ'));
-assert.ok(pendingHtml.includes('Accept'));
-assert.ok(pendingHtml.includes('does not approve a repair quote'));
+assert.ok(pendingHtml.includes('Open appointment'));
+assert.ok(!/>\s*Accept\s*</.test(pendingHtml));
+const pendingDetail = screen('mechanic', 'appointments/pending/VA-REQ', pendingData);
+assert.ok(pendingDetail.includes('Accept'));
+assert.ok(pendingDetail.includes('does not approve a repair quote'));
+assert.ok(pendingDetail.includes('Back to Pending'));
 const movedData = structuredClone(initialData);
 movedData.jobs = [acceptedSame];
 const movedJobs = screen('mechanic', 'jobs', movedData);
@@ -1179,13 +1200,14 @@ const payable = {
   paid: false,
 };
 assert.throws(() => transitionJob({ ...payable, status: 'Awaiting approval', quoteApproved: false }, 'pay'));
-const paidOnce = applyJobTransition({ ...initialData, jobs: [payable], records: [] }, payable, 'pay');
+const customerActor = { role: 'customer' as const, id: 'cust-01' };
+const paidOnce = applyJobTransition({ ...initialData, jobs: [payable], records: [] }, payable, 'pay', {}, customerActor);
 assert.equal(paidOnce.job.status, 'Completed');
 assert.equal(paidOnce.job.paid, true);
 assert.ok(paidOnce.job.paidAt);
 assert.equal(paidOnce.job.paymentReference, `DEMO-${payable.id}`);
 assert.equal(paidOnce.data.records.filter((record: any) => record.id === payable.id).length, 1);
-assert.throws(() => applyJobTransition(paidOnce.data, paidOnce.job, 'pay'));
+assert.throws(() => applyJobTransition(paidOnce.data, paidOnce.job, 'pay', {}, customerActor));
 assert.equal(recordedCustomerPayments(paidOnce.data.jobs).length, 1);
 const archived = removeOrArchiveVehicle(initialData, 'v1');
 assert.equal(archived.vehicles.find((vehicle: any) => vehicle.id === 'v1').archived, true);
@@ -1236,7 +1258,7 @@ assert.equal(granted.historyAccess[0].professionalId, 'pro-precision-motorworks'
 const revoked = revokeHistoryAccess(granted, granted.historyAccess[0].id, 'cust-01');
 assert.equal(revoked.historyAccess[0].status, 'revoked');
 assert.throws(() => revokeHistoryAccess(granted, granted.historyAccess[0].id, 'cust-02'));
-const cancelledAccess = applyJobTransition(granted, historyJob, 'cancel');
+const cancelledAccess = applyJobTransition(granted, historyJob, 'cancel', {}, customerActor);
 assert.equal(cancelledAccess.data.historyAccess[0].status, 'revoked');
 const payableHistory = {
   ...historyData,
@@ -1247,7 +1269,7 @@ const grantedPayment = grantHistoryAccess(payableHistory, {
   customerId: 'cust-01',
   recordIds: ['r1'],
 });
-const expiredAccess = applyJobTransition(grantedPayment, payableHistory.jobs[0], 'pay');
+const expiredAccess = applyJobTransition(grantedPayment, payableHistory.jobs[0], 'pay', {}, customerActor);
 assert.equal(expiredAccess.data.historyAccess[0].status, 'expired');
 assert.equal(expiredAccess.data.historyAccess[0].expiresAt, expiredAccess.job.paidAt);
 const reviewData = {
@@ -1371,6 +1393,8 @@ const paidRecord = applyJobTransition(
   { ...initialData, jobs: [{ ...firstBooking.job, status: 'Awaiting payment', quoteApproved: true, items: [{ name: 'Labour', amount: 80 }] }], records: [] },
   { ...firstBooking.job, status: 'Awaiting payment', quoteApproved: true },
   'pay',
+  {},
+  customerActor,
 );
 assert.equal(paidRecord.data.records[0].id, firstBooking.job.id);
 assert.equal(safeRouteId('%E0%A4%A'), null);
@@ -1570,6 +1594,182 @@ assert.equal(resolveReturn({}, 'dashboard/bookings/VA-2026-1042', 'dashboard/boo
 assert.equal(customerReturnAllowed('https://example.com'), false);
 assert.equal(customerReturnAllowed('dashboard/jobs/VA-1'), false);
 assert.equal(rememberReturn({}, 'dashboard/find/pro-precision-motorworks', 'dashboard/bookings/VA-2026-1042')['dashboard/find/pro-precision-motorworks'], 'dashboard/bookings/VA-2026-1042');
+const mechanicActor = { role: 'mechanic' as const, id: 'pro-precision-motorworks' };
+const otherMechanic = { role: 'mechanic' as const, id: 'pro-on-the-move-auto' };
+assert.equal(activeMechanicProfessionalId(initialData), 'pro-precision-motorworks');
+assert.equal(jobsForMechanic(initialData.jobs, initialData).length, 1);
+assert.equal(mechanicOwnsJob({ ...initialData, mechanicAccount: { professionalId: 'pro-on-the-move-auto' } }, initialData.jobs[0]), false);
+assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042'), true);
+assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/messages'), true);
+assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/quote'), true);
+assert.equal(canVisit('customer', 'dashboard/jobs/VA-2026-1042'), false);
+assert.equal(canVisit('mechanic', 'dashboard/appointments/pending/VA-2026-1042'), true);
+assert.equal(canVisit('customer', 'dashboard/bookings/VA-2026-1042/messages'), true);
+assert.equal(canVisit('customer', 'dashboard/bookings/a/b'), false);
+assert.equal(pageTitle('mechanic', 'jobs/VA-2026-1042'), 'Job');
+const missingJob = screen('mechanic', 'jobs/does-not-exist');
+assert.ok(missingJob.includes('Job unavailable'));
+const foreign = {
+  ...initialData,
+  jobs: [{ ...initialData.jobs[0], id: 'other-shop', provider: 'On the Move Auto', professionalId: 'pro-on-the-move-auto', professionalLink: 'resolved' }],
+};
+assert.ok(screen('mechanic', 'jobs/other-shop', foreign).includes('Job unavailable'));
+assert.ok(!screen('mechanic', 'jobs', foreign).includes('other-shop'));
+const requested = {
+  ...initialData.jobs[0],
+  id: 'req-1',
+  status: 'Requested',
+  accepted: false,
+  items: [],
+  quoteApproved: false,
+  professionalId: 'pro-precision-motorworks',
+  customerId: 'cust-01',
+  description: 'Brake noise',
+};
+const requestData = { ...initialData, jobs: [requested] };
+assert.ok(screen('mechanic', 'appointments/pending', requestData).includes('Open appointment'));
+assert.ok(!screen('mechanic', 'jobs', requestData).includes('req-1'));
+const accepted = applyJobTransition(requestData, requested, 'confirm', {}, mechanicActor);
+assert.equal(accepted.job.status, 'Confirmed');
+assert.equal(accepted.data.jobs.filter((job: any) => job.status === 'Requested').length, 0);
+assert.ok(notificationsFor(accepted.data, 'customer', 'cust-01').some((note: any) => note.type === 'accepted' && note.bookingId === 'req-1'));
+assert.throws(() => applyJobTransition(requestData, requested, 'confirm', {}, otherMechanic));
+const rejectedRequest = applyJobTransition(requestData, requested, 'reject', { reason: 'Fully booked that morning' }, mechanicActor);
+assert.equal(rejectedRequest.job.status, 'Rejected');
+assert.equal(rejectedRequest.job.rejectionReason, 'Fully booked that morning');
+assert.ok(notificationsFor(rejectedRequest.data, 'customer', 'cust-01').some((note: any) => note.message.includes('Fully booked')));
+const legacyLine = { name: 'Front brake pads', amount: 950 };
+const quantityLine = { id: 'line-1', name: 'Labour', category: 'labour', quantity: 2, unitPriceCents: 45000, amount: 900 };
+assert.equal(quoteTotalCents([legacyLine, quantityLine]), 185000);
+assert.equal(formatZar(quoteTotalCents([legacyLine])), 'R950');
+assert.equal(quoteTotal({ items: [legacyLine, { name: 'Labour & brake inspection', amount: 450 }] }), 1400);
+const draft = saveQuoteDraft(accepted.data, {
+  bookingId: 'req-1',
+  rows: [{ id: 'd1', name: 'Pads', category: 'parts', quantity: '', price: '950' }],
+  notes: 'Replace the front pads.',
+}, mechanicActor);
+assert.equal(draft.jobs[0].status, 'Confirmed');
+assert.equal(draft.jobs[0].items.length, 0);
+assert.equal(draft.jobs[0].quoteDraft.items[0].amount, 950);
+const quoted = applyJobTransition(draft, draft.jobs[0], 'quote', {
+  clientSubmitId: 'submit-1',
+  rows: [{ id: 'd1', name: 'Pads', category: 'parts', quantity: '2', price: '475' }],
+  notes: 'Replace the front pads.',
+}, mechanicActor);
+assert.equal(quoted.job.status, 'Awaiting approval');
+assert.equal(quoted.job.quoteVersion, 1);
+assert.equal(quoteTotal(quoted.job), 950);
+assert.equal(quoted.job.items[0].quantity, 2);
+assert.equal(quoted.job.items[0].unitPriceCents, 47500);
+const quotedAgain = applyJobTransition(quoted.data, quoted.job, 'quote', {
+  clientSubmitId: 'submit-1',
+  rows: [{ id: 'd1', name: 'Pads', category: 'parts', quantity: '2', price: '475' }],
+  notes: 'Replace the front pads.',
+}, mechanicActor);
+assert.equal(quotedAgain.duplicate, true);
+assert.equal(quotedAgain.job.quoteVersions.length, 1);
+const changed = applyJobTransition(quoted.data, quoted.job, 'changes', { changeRequest: 'Please split labour.' }, customerActor);
+assert.equal(changed.job.status, 'Changes requested');
+assert.equal(changed.job.quoteVersions[0].changeRequest, 'Please split labour.');
+const revised = applyJobTransition(changed.data, changed.job, 'quote', {
+  clientSubmitId: 'submit-2',
+  rows: [
+    { id: 'd1', name: 'Pads', category: 'parts', quantity: '', price: '700' },
+    { id: 'd2', name: 'Labour', category: 'labour', quantity: '', price: '250' },
+  ],
+  notes: 'Pads and labour are listed separately.',
+}, mechanicActor);
+assert.equal(revised.job.quoteVersion, 2);
+assert.equal(revised.job.quoteApproved, false);
+assert.equal(revised.job.quoteVersions.length, 2);
+assert.equal(quoteTotal(revised.job), 950);
+const approved = applyJobTransition(revised.data, revised.job, 'approve', {}, customerActor);
+assert.equal(approved.job.status, 'Approved');
+assert.equal(approved.job.approvedQuoteVersion, 2);
+assert.throws(() => applyJobTransition(approved.data, approved.job, 'quote', {
+  rows: [{ id: 'd1', name: 'Secret', category: '', quantity: '', price: '10' }],
+  notes: 'Should not replace an approval.',
+}, mechanicActor));
+assert.throws(() => applyJobTransition(approved.data, approved.job, 'approve', {}, mechanicActor));
+const started = applyJobTransition(approved.data, approved.job, 'start', {}, mechanicActor);
+const finished = applyJobTransition(started.data, started.job, 'complete', { completionNotes: 'Pads replaced.', completedMileage: '69000' }, mechanicActor);
+assert.equal(finished.job.status, 'Awaiting payment');
+assert.throws(() => applyJobTransition(finished.data, finished.job, 'pay', {}, mechanicActor));
+const paid = applyJobTransition(finished.data, finished.job, 'pay', {}, customerActor);
+assert.equal(paid.job.status, 'Completed');
+assert.ok(notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks').some((note: any) => note.type === 'payment'));
+assert.ok(!notificationDestination(paid.data, 'customer', notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks')[0]));
+const customerQuote = notificationsFor(quoted.data, 'customer', 'cust-01').find((note: any) => note.type === 'quote');
+assert.equal(notificationDestination(quoted.data, 'customer', customerQuote), 'dashboard/bookings/req-1/quote');
+assert.equal(notificationDestination(quoted.data, 'mechanic', customerQuote), null);
+const firstMessage = sendMessage(accepted.data, {
+  bookingId: 'req-1',
+  role: 'customer',
+  id: 'cust-01',
+  name: 'Alex Morgan',
+  body: 'It squeals at low speed.',
+  clientMessageId: 'msg-1',
+  now: '2026-10-18T08:00:00.000Z',
+});
+const sameMessage = sendMessage(firstMessage.data, {
+  bookingId: 'req-1',
+  role: 'customer',
+  id: 'cust-01',
+  name: 'Alex Morgan',
+  body: 'It squeals at low speed.',
+  clientMessageId: 'msg-1',
+});
+assert.equal(sameMessage.duplicate, true);
+assert.equal(firstMessage.data.messages.length, 1);
+assert.equal(unreadMessageCount(firstMessage.data, 'req-1', 'mechanic'), 1);
+assert.equal(unreadMessageCount(firstMessage.data, 'req-1', 'customer'), 0);
+assert.throws(() => sendMessage(firstMessage.data, {
+  bookingId: 'req-1',
+  role: 'mechanic',
+  id: 'pro-on-the-move-auto',
+  name: 'Other',
+  body: 'Hello',
+  clientMessageId: 'msg-2',
+}));
+const otherBooking = sendMessage({
+  ...firstMessage.data,
+  jobs: [...firstMessage.data.jobs, { ...requested, id: 'req-2', professionalId: 'pro-precision-motorworks' }],
+}, {
+  bookingId: 'req-2',
+  role: 'mechanic',
+  id: 'pro-precision-motorworks',
+  name: 'Precision Motorworks',
+  body: 'Different booking.',
+  clientMessageId: 'msg-3',
+  now: '2026-10-18T09:00:00.000Z',
+});
+assert.equal(otherBooking.data.messages.filter((message: any) => message.bookingId === 'req-1').length, 1);
+const messageNote = notificationsFor(firstMessage.data, 'mechanic', 'pro-precision-motorworks').find((note: any) => note.type === 'message');
+assert.equal(notificationDestination(firstMessage.data, 'mechanic', messageNote), 'dashboard/jobs/req-1/messages');
+assert.ok(!String(notificationDestination(firstMessage.data, 'mechanic', messageNote)).includes('http'));
+const marked = markNotificationsRead(firstMessage.data, { role: 'mechanic', id: 'pro-precision-motorworks', ids: 'all' });
+assert.equal(unreadNotificationCount(marked, 'mechanic', 'pro-precision-motorworks'), 0);
+assert.equal(unreadNotificationCount(marked, 'customer', 'cust-01'), unreadNotificationCount(firstMessage.data, 'customer', 'cust-01'));
+assert.equal(customerOwnsJob(initialData, { customerId: 'cust-02' }, 'cust-01'), false);
+const failed: string[] = [];
+assert.equal(commitUpdate(() => false, (data) => saveQuoteDraft(data, {
+  bookingId: 'req-1',
+  rows: [{ id: 'd1', name: 'Pads', category: 'parts', quantity: '', price: '950' }],
+  notes: 'Replace the front pads.',
+}, mechanicActor), (message) => failed.push(message), ''), false);
+assert.equal(accepted.data.jobs[0].items.length, 0);
+assert.equal(failed.length, 1);
+const showcaseGarage = normalizeDemoData(withMechanicShowcase(structuredClone(initialData)));
+assert.ok(!screen('customer', 'garage', showcaseGarage).includes('History not linked to a vehicle'));
+assert.ok(!screen('customer', 'garage', showcaseGarage).includes('Thandi Mbeki'));
+assert.throws(() => sendMessage(paid.data, {
+  bookingId: 'req-1',
+  role: 'customer',
+  id: 'cust-01',
+  name: 'Alex Morgan',
+  body: 'Thanks',
+  clientMessageId: 'msg-closed',
+}));
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );

@@ -901,7 +901,15 @@ select {
   .table-controls > select,
   .workspace-dialog input,
   .workspace-dialog textarea,
-  .workspace-dialog select {
+  .workspace-dialog select,
+  .quote-editor input,
+  .quote-editor select,
+  .quote-editor textarea,
+  .conversation-compose textarea,
+  .detail-page textarea,
+  .detail-page input,
+  .detail-page select,
+  .inbox input {
     font-size: 16px;
   }
 }

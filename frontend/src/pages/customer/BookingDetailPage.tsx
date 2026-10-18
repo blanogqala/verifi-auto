@@ -1,4 +1,7 @@
-import { quoteTotal } from '../../features/jobs/jobWorkflow';
+import { JobConversation } from '../../components/jobs/JobConversation';
+import { QuoteSummary } from '../../components/jobs/QuoteSummary';
+import { customerIdentityLabel } from '../../features/account/customerIdentity';
+import { unreadMessageCount } from '../../features/messages/conversation';
 import { Card } from '../../components/ui/Card';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
@@ -16,31 +19,23 @@ function ownerId(job: any, fallback: string) {
   return typeof job?.customerId === 'string' && job.customerId ? job.customerId : fallback;
 }
 
-function lineKind(item: any) {
-  const kind = String(item?.category || item?.kind || '').toLowerCase();
-  if (kind === 'part' || kind === 'parts') return 'Part';
-  if (kind === 'labour' || kind === 'labor') return 'Labour';
-  return '';
-}
-
-function lineQty(item: any) {
-  const value = Number(item?.quantity ?? item?.qty);
-  return Number.isFinite(value) ? value : null;
-}
-
-export function BookingDetailPage({ data, go, notify, setDialog, update, bookingId }: any) {
+export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview', setDialog, update, bookingId }: any) {
   const customerId = data?.settings?.id || demoCustomerId;
   const job = (data.jobs || []).find((item: any) => item.id === bookingId);
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(panel || 'overview');
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
   const here = 'dashboard/bookings/' + encodeURIComponent(bookingId || '');
   const back = backTarget(here, 'dashboard/bookings');
   useEffect(() => {
-    setTab('overview');
+    setTab(panel || 'overview');
     setSelected([]);
     setError('');
-  }, [bookingId]);
+  }, [bookingId, panel]);
+  function choose(next: string) {
+    setTab(next);
+    onPanel?.(next);
+  }
   if (!job || ownerId(job, demoCustomerId) !== customerId) {
     return (
       <div className="detail-page">
@@ -57,9 +52,7 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
   const grant = activeGrantForBooking(data, job.id);
   const payable = job.status === 'Awaiting payment' && job.quoteApproved && job.paid !== true;
   const events = Array.isArray(job.events) ? job.events : [];
-  const total = quoteTotal(job);
   const paymentLabel = job.paid ? 'Demo paid' : payable ? 'Awaiting payment' : 'Not payable yet';
-  const showQty = Array.isArray(job.items) && job.items.some((item: any) => lineQty(item) != null);
 
   return (
     <div className="detail-page booking-detail">
@@ -84,10 +77,11 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
         id="booking-detail"
         label="Booking details"
         value={tab}
-        onChange={setTab}
+        onChange={choose}
         tabs={[
           { id: 'overview', label: 'Overview' },
           { id: 'quote', label: 'Quote & payment' },
+          { id: 'messages', label: 'Messages', badge: job ? unreadMessageCount(data, job.id, 'customer') || undefined : undefined },
         ]}
       />
       <DetailPanel scope="booking-detail" tabId="overview" value={tab}>
@@ -232,32 +226,7 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
       </DetailPanel>
       <DetailPanel scope="booking-detail" tabId="quote" value={tab}>
       <DetailCard title="Quote and payment">
-        {job.items?.length ? (
-          <div className="quote-table">
-            <div className={'quote-head' + (showQty ? ' quote-head-qty' : '')}>
-              <span>Description</span>
-              {showQty ? <span>Qty</span> : null}
-              <span>Amount</span>
-            </div>
-            {job.items.map((item: any) => (
-              <div className={'quote-line' + (showQty ? ' quote-line-qty' : '')} key={item.name + item.amount}>
-                <span>
-                  {lineKind(item) ? <small>{lineKind(item)}</small> : null}
-                  {item.name}
-                </span>
-                {showQty ? <span>{lineQty(item) ?? '—'}</span> : null}
-                <b>R{Number(item.amount).toLocaleString()}</b>
-              </div>
-            ))}
-            <div className={'quote-line quote-total' + (showQty ? ' quote-line-qty' : '')}>
-              <span>Total</span>
-              {showQty ? <span /> : null}
-              <b>R{total.toLocaleString()}</b>
-            </div>
-          </div>
-        ) : (
-          <p>No repair quotation has been recorded.</p>
-        )}
+        <QuoteSummary job={job} />
         <DetailFields
           items={[
             { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
@@ -268,8 +237,6 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
           ]}
         />
         <p className="muted">The assessment fee is separate from the quotation total.</p>
-        {job.notes ? <p>{job.notes}</p> : null}
-        {job.changeRequest ? <p>Change request: {job.changeRequest}</p> : null}
         {job.completionNotes ? <p>Completion: {job.completionNotes}</p> : null}
         {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
         <div className="button-row">
@@ -299,6 +266,21 @@ export function BookingDetailPage({ data, go, notify, setDialog, update, booking
           ) : null}
         </div>
       </DetailCard>
+      </DetailPanel>
+      <DetailPanel scope="booking-detail" tabId="messages" value={tab}>
+        <DetailCard title="Messages">
+          <JobConversation
+            active={tab === 'messages'}
+            bookingId={job.id}
+            data={data}
+            job={job}
+            notify={notify}
+            update={update}
+            viewerId={customerId}
+            viewerName={customerIdentityLabel(data.settings?.name)}
+            viewerRole="customer"
+          />
+        </DetailCard>
       </DetailPanel>
     </div>
   );

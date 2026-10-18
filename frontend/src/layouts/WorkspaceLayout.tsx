@@ -11,6 +11,8 @@ import { VehiclePage } from '../pages/customer/VehiclePage';
 import { BookingDetailPage } from '../pages/customer/BookingDetailPage';
 import { PaymentsPage } from '../pages/customer/PaymentsPage';
 import { AppointmentsPage } from '../pages/mechanic/AppointmentsPage';
+import { AppointmentDetailPage } from '../pages/mechanic/AppointmentDetailPage';
+import { JobDetailPage } from '../pages/mechanic/JobDetailPage';
 import { MechanicPaymentsPage } from '../pages/mechanic/MechanicPaymentsPage';
 import { MerchantProfilePage } from '../pages/mechanic/MerchantProfilePage';
 import { ApplicationsPage } from '../pages/admin/ApplicationsPage';
@@ -57,8 +59,16 @@ import {
   appointmentSection,
   customerRecords,
   bookingsForCustomer,
+  customerNameForJob,
+  jobsForMechanic,
+  participantId,
+  unreadNotificationCount,
   decideApplication,
   isAcceptedJob,
+  isCancelledRequest,
+  isPendingRequest,
+  isRejectedRequest,
+  activeMechanicProfessionalId,
   isManagedProfessional,
   isPendingApplication,
   isReviewHistory,
@@ -68,6 +78,9 @@ import {
   applyJobTransition,
   commitUpdate,
   detailId,
+  detailPanel,
+  appointmentTarget,
+  appendNotification,
 } from '../demo';
 
 export type DirectoryProps = {
@@ -226,7 +239,14 @@ export function Workspace({
     };
   }, [dialog?.kind]);
   const jobs = data.jobs;
-  const unread = data.notifications.filter((n: any) => !n.read).length;
+  const selfId = participantId(data, role);
+  const unread = unreadNotificationCount(data, role, selfId);
+  const scopedJobs =
+    role === 'mechanic'
+      ? jobsForMechanic(jobs, data)
+      : role === 'customer'
+        ? bookingsForCustomer(jobs, data.settings?.id || 'cust-01')
+        : jobs;
   const accountName =
     role === 'customer'
       ? data.settings?.name
@@ -259,7 +279,10 @@ export function Workspace({
   const professionalId = detailId(tab, 'find');
   const bookingId = detailId(tab, 'bookings');
   const vehicleDetailId = detailId(tab, 'garage');
-  const invalidDetail = professionalId === null || bookingId === null || vehicleDetailId === null;
+  const mechanicJobId = role === 'mechanic' ? detailId(tab, 'jobs') : undefined;
+  const appointmentDetail = role === 'mechanic' ? appointmentTarget(tab) : undefined;
+  const invalidDetail =
+    professionalId === null || bookingId === null || vehicleDetailId === null || mechanicJobId === null || appointmentDetail === null;
   const hideFindCta =
     role === 'customer' && ['profile', 'settings', 'garage', 'payments'].includes(sectionRoot);
   const accountPhoto =
@@ -275,27 +298,43 @@ export function Workspace({
     setSide(false);
     go('home');
   }
-  function note(d: any, text: string) {
-    return {
-      ...d,
-      notifications: [{ id: crypto.randomUUID(), text, read: false }, ...d.notifications],
-    };
+  function note(d: any, text: string, audience?: { role: string; id: string }) {
+    const recipientRole = audience?.role || (role === 'admin' ? 'admin' : role);
+    const recipientId = audience?.id || participantId(d, recipientRole);
+    return appendNotification(d, {
+      recipientRole,
+      recipientId,
+      type: 'account',
+      title: 'Update',
+      message: text,
+      section: recipientRole === 'admin' ? 'reports/support' : '',
+    });
+  }
+  function actor() {
+    if (role === 'mechanic') return { role: 'mechanic' as const, id: activeMechanicProfessionalId(data) };
+    if (role === 'customer') return { role: 'customer' as const, id: data.settings?.id || 'cust-01' };
+    return { role: 'admin' as const, id: 'admin' };
   }
   function jobAction(job: any, action: string, extra: any = {}) {
     let status = '';
+    let duplicate = false;
     const saved = commitUpdate(
       update,
       (d: any) => {
-        const result = applyJobTransition(d, job, action, extra);
+        const result = applyJobTransition(d, job, action, extra, actor());
         status = result.job.status;
-        return note(result.data, `${job.id}: ${result.job.status}.`);
+        duplicate = result.duplicate === true;
+        return result.duplicate ? d : result.data;
       },
       notify,
       '',
     );
-    if (!saved) return;
+    if (!saved) return false;
     setDialog(null);
-    notify('Demo job updated: ' + status);
+    if (!duplicate) notify('Demo job updated: ' + status);
+    if (action === 'confirm') route('jobs/' + encodeURIComponent(job.id));
+    if (action === 'reject') route('appointments/rejected/' + encodeURIComponent(job.id));
+    return true;
   }
   function review(app: any, status: string) {
     if (status === 'Approved' && checks.length < 3) {
@@ -386,18 +425,6 @@ export function Workspace({
     setUploadError('');
     e.target.value = '';
   }
-  function quoteActionFor(job: any) {
-    if (role !== 'mechanic') return null;
-    if (['Confirmed', 'Awaiting approval', 'Changes requested'].includes(job.status)) {
-      return {
-        label: job.items?.length ? 'Edit quote' : 'Create quote',
-        onClick: () => quoteEditor(job),
-      };
-    }
-    if (job.items?.length)
-      return { label: 'View quote', onClick: () => setDialog({ kind: 'job', job }) };
-    return null;
-  }
   const cardJobs = (list: any[], limit?: number) =>
     list
       .slice(0, limit || list.length)
@@ -405,6 +432,8 @@ export function Workspace({
         <JobCard
           key={j.id}
           job={j}
+          audience={role === 'mechanic' ? 'mechanic' : ''}
+          person={role === 'mechanic' ? customerNameForJob(j, customers) : ''}
         registration={(data.vehicles || []).find((vehicle: any) => vehicle.id === j.vehicleId)?.registration || ''}
         image={vehicleCardImage(
           resolveVehicleAsset((data.vehicles || []).find((vehicle: any) => vehicle.id === j.vehicleId)),
@@ -416,9 +445,19 @@ export function Workspace({
             setSide(false);
             return;
           }
+          if (role === 'mechanic') {
+            const section = isPendingRequest(j)
+              ? 'pending'
+              : isRejectedRequest(j)
+                ? 'rejected'
+                : isCancelledRequest(j)
+                  ? 'cancelled'
+                  : '';
+            route(section ? `appointments/${section}/${encodeURIComponent(j.id)}` : `jobs/${encodeURIComponent(j.id)}`);
+            return;
+          }
           setDialog({ kind: 'job', job: j });
         }}
-          quoteAction={quoteActionFor(j)}
         />
       ));
   return (
@@ -466,7 +505,7 @@ export function Workspace({
           unread={unread}
         />
         <div className="workspace-body">
-          {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && !(role === 'customer' && (tab.startsWith('garage/') || tab.startsWith('bookings/'))) && (
+          {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && !(role === 'customer' && (tab.startsWith('garage/') || tab.startsWith('bookings/'))) && !mechanicJobId && !appointmentDetail && (
             <div className={'workspace-heading' + (role === 'customer' && tab === 'garage' ? ' workspace-heading-garage' : '')}>
               <h1>
                 {tab === 'overview'
@@ -496,7 +535,7 @@ export function Workspace({
               cardJobs={cardJobs}
               data={data}
               filter={filter}
-              jobs={jobs}
+              jobs={scopedJobs}
               name={name}
               note={note}
               openReview={openReview}
@@ -506,9 +545,9 @@ export function Workspace({
           )}
           {appointmentView && (
             <AppointmentsPage
-              jobs={jobs}
-              onAccept={(job: any) => jobAction(job, 'confirm')}
-              onReject={(job: any) => setDialog({ kind: 'reject', job })}
+              customerName={(job: any) => customerNameForJob(job, customers)}
+              jobs={scopedJobs}
+              onOpen={(job: any) => route('appointments/' + appointmentView + '/' + encodeURIComponent(job.id))}
               route={route}
               section={appointmentView}
             />
@@ -516,6 +555,7 @@ export function Workspace({
           {tab === 'bookings' && role === 'customer' && (
             <JobsPage
               cardJobs={cardJobs}
+              hint={(job: any) => customerNameForJob(job, customers)}
               emptyText="Try another status or search."
               emptyTitle="No bookings match."
               filter={filter}
@@ -544,17 +584,34 @@ export function Workspace({
               data={data}
               go={go}
               notify={notify}
+              onPanel={(next: string) =>
+                route(next === 'overview' ? 'bookings/' + encodeURIComponent(bookingId) : 'bookings/' + encodeURIComponent(bookingId) + '/' + next)
+              }
+              panel={detailPanel(tab, 'bookings')}
               setDialog={setDialog}
+              update={update}
+            />
+          )}
+          {appointmentDetail && role === 'mechanic' && (
+            <AppointmentDetailPage
+              data={data}
+              job={scopedJobs.find((item: any) => item.id === appointmentDetail.id) || null}
+              notify={notify}
+              onAccept={(job: any) => jobAction(job, 'confirm')}
+              onReject={(job: any, reason: string) => jobAction(job, 'reject', { reason })}
+              route={route}
+              section={appointmentDetail.section}
               update={update}
             />
           )}
           {tab === 'jobs' && role === 'mechanic' && (
             <JobsPage
               cardJobs={cardJobs}
+              hint={(job: any) => customerNameForJob(job, customers)}
               emptyText="Accepted appointments appear here, including work cancelled after you accepted it."
               emptyTitle="No jobs match."
               filter={filter}
-              jobs={jobs.filter(isAcceptedJob)}
+              jobs={scopedJobs.filter(isAcceptedJob)}
               query={query}
               setFilter={setFilter}
               setQuery={setQuery}
@@ -594,11 +651,24 @@ export function Workspace({
               ]}
             />
           )}
+          {mechanicJobId && role === 'mechanic' && (
+            <JobDetailPage
+              data={data}
+              go={go}
+              job={scopedJobs.find((item: any) => item.id === mechanicJobId && isAcceptedJob(item)) || null}
+              notify={notify}
+              onAction={jobAction}
+              panel={detailPanel(tab, 'jobs')}
+              route={route}
+              update={update}
+            />
+          )}
           {tab === 'quotes' && (
             <QuotesPage
               filter={filter}
-              jobs={jobs}
+              jobs={scopedJobs}
               name={name}
+              onEdit={(job: any) => route('jobs/' + encodeURIComponent(job.id) + '/quote')}
               quoteEditor={quoteEditor}
               role={role}
               setDialog={setDialog}
@@ -618,10 +688,10 @@ export function Workspace({
             />
           )}
           {tab === 'payments' && role === 'customer' && (
-            <PaymentsPage go={go} jobs={bookingsForCustomer(jobs, data.settings?.id || 'cust-01')} setDialog={setDialog} />
+            <PaymentsPage go={go} jobs={scopedJobs} setDialog={setDialog} />
           )}
           {tab === 'payments' && role === 'mechanic' && (
-            <MechanicPaymentsPage jobs={jobs} setDialog={setDialog} />
+            <MechanicPaymentsPage jobs={scopedJobs} setDialog={setDialog} />
           )}
           {tab === 'find' && role === 'customer' && (
             <ProfessionalsPage
@@ -724,7 +794,9 @@ export function Workspace({
               setQuery={setQuery}
             />
           )}
-          {tab === 'notifications' && <NotificationsPage data={data} notify={notify} update={update} />}
+          {tab === 'notifications' && (
+            <NotificationsPage data={data} go={go} notify={notify} role={role} update={update} />
+          )}
           {adminSection && (
             <AdminProfilePage
               data={data}
