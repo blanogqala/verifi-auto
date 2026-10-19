@@ -1,5 +1,5 @@
 import { SecurityActivityPage } from './SecurityActivityPage';
-import { AdminOverviewPage } from './AdminOverviewPage';
+import { AdminAnalyticsOverviewPage } from './AdminOverviewPage';
 import { ReportsPage } from './ReportsPage';
 import type { AnalyticsSection } from '../../config/navigation';
 
@@ -38,7 +38,7 @@ export function AnalyticsPage({ apps, data, route, section, setDialog }: any) {
       {section === 'security' ? (
         <SecurityActivityPage data={data} />
       ) : (
-        <AdminOverviewPage
+        <AdminAnalyticsOverviewPage
           apps={apps}
           data={data}
           route={route}

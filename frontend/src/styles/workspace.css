@@ -2709,3 +2709,16 @@ td .text-link {
   .admin-filter-row select { flex: 1 1 calc(50% - 12px); width: 0; }
 }
 @media (max-width: 380px) { .admin-filter-row select { flex-basis: 100%; width: 100%; } }
+.admin-chart { min-width: 0; }
+.admin-donut { display: block; width: min(100%, 300px); margin: 0 auto 18px; }
+.chart-total { fill: var(--ink); font-size: 34px; font-weight: 700; }
+.chart-label { fill: var(--muted); font-size: 12px; }
+.chart-value { fill: var(--ink); font-size: 13px; font-weight: 600; }
+.chart-gridline { stroke: var(--line); stroke-width: 1; stroke-dasharray: 4 4; }
+.admin-chart-legend { padding: 0; margin: 0 0 18px; list-style: none; display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-chart-legend li { display: flex; align-items: center; gap: 8px; font-size: 12px; min-width: 0; }
+.admin-chart-legend i { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.admin-chart-legend b { margin-left: auto; }
+.admin-chart-scroll { overflow-x: auto; max-width: 100%; margin-bottom: 18px; }
+.admin-chart-scroll svg { display: block; width: 100%; }
+.admin-chart-scroll:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }

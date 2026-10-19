@@ -158,7 +158,7 @@ export function OverviewPage({
             />
             <Metric
               label="Active jobs"
-              value={jobs.filter((j: any) => !['Cancelled', 'Completed'].includes(j.status)).length}
+              value={jobs.filter((j: any) => !['Cancelled', 'Completed', 'Rejected'].includes(j.status)).length}
               note="Across the demo platform"
               Icon={Wrench}
             />
@@ -251,7 +251,7 @@ export function OverviewPage({
                 ]
               : [
                   ['professionals', 'Professionals', 'Approved and suspended profiles', Users],
-                  ['reports/support', 'Analytics & support', 'Resolve outstanding questions', AlertCircle],
+                  ['reports', 'Analytics & support', 'Explore platform insights', AlertCircle],
                 ]
           ).map(([t, a, b, I]: any) => (
             <button key={t} onClick={() => route(t)}>

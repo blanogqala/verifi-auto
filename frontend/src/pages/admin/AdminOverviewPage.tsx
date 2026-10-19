@@ -1,3 +1,4 @@
+import { StatusChart, CityChart } from './AdminCharts';
 import {
   Users,
   ShieldCheck,
@@ -24,31 +25,7 @@ function counts(rows: any[], key: string) {
   });
   return [...result.entries()].sort((a, b) => b[1] - a[1]);
 }
-function Bars({ rows, label }: { rows: [string, number][]; label: string }) {
-  const max = Math.max(1, ...rows.map((r) => r[1]));
-  return rows.length ? (
-    <div
-      className="admin-bars"
-      role="img"
-      aria-label={`${label}: ${rows.map(([name, value]) => `${name}: ${value}`).join(', ')}`}
-    >
-      {rows.map(([name, value]) => (
-        <div className="admin-bar-row" key={name}>
-          <div>
-            <span>{name}</span>
-            <b>{value}</b>
-          </div>
-          <div className="admin-bar-track">
-            <span style={{ width: `${(value / max) * 100}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p>No records available yet.</p>
-  );
-}
-export function AdminOverviewPage({ apps, data, route, openReview }: any) {
+export function AdminAnalyticsOverviewPage({ apps, data }: any) {
   const jobs = uniqueJobs(data.jobs);
   const stats = accountMetrics(jobs);
   const customers = customerRecords(data);
@@ -110,64 +87,13 @@ export function AdminOverviewPage({ apps, data, route, openReview }: any) {
       </div>
       <div className="admin-detail-grid">
         <DetailCard title="Bookings by status">
-          <Bars rows={counts(jobs, 'status')} label="Bookings by status" />
+          <StatusChart rows={counts(jobs, 'status')} label="Bookings by status" />
         </DetailCard>
         <DetailCard title="Bookings by customer city">
-          <Bars rows={cities} label="Bookings by customer city" />
+          <CityChart rows={cities} label="Bookings by customer city" />
           <p className="muted">
             Based on recorded customer cities. Missing locations stay visible.
           </p>
-        </DetailCard>
-      </div>
-      <div className="admin-detail-grid">
-        <DetailCard
-          title="Application queue"
-          action={
-            <button className="text-link" onClick={() => route('applications')}>
-              View all
-            </button>
-          }
-        >
-          {pending.length ? (
-            pending.slice(0, 4).map((a: any) => (
-              <button className="admin-record-link" key={a.id} onClick={() => openReview(a)}>
-                <span>
-                  <b>{a.name}</b>
-                  <small>
-                    {a.city} · {a.type}
-                  </small>
-                </span>
-                <span>Review</span>
-              </button>
-            ))
-          ) : (
-            <p>No applications waiting for review.</p>
-          )}
-        </DetailCard>
-        <DetailCard title="Needs attention">
-          <div className="admin-record-list">
-            <button className="admin-record-link" onClick={() => route('jobs/disputes')}>
-              <span>
-                <b>Disputes</b>
-                <small>{disputes.length} unresolved cases</small>
-              </span>
-              <span>View</span>
-            </button>
-            <button className="admin-record-link" onClick={() => route('reports/security')}>
-              <span>
-                <b>Security & activity</b>
-                <small>Recent sign-ins and administrative decisions</small>
-              </span>
-              <span>View</span>
-            </button>
-            <button className="admin-record-link" onClick={() => route('notifications')}>
-              <span>
-                <b>Notifications</b>
-                <small>Read platform updates</small>
-              </span>
-              <span>View</span>
-            </button>
-          </div>
         </DetailCard>
       </div>
     </div>

@@ -1,4 +1,3 @@
-import { AdminOverviewPage } from '../pages/admin/AdminOverviewPage';
 import { AdminJobsPage, AdminDisputePage } from '../pages/admin/AdminJobsPage';
 import { appendAdminActivity } from '../features/admin/detailRecords';
 import { ApplicationDetailPage, ProfessionalAdminDetailPage, CustomerAdminDetailPage, AdminJobDetailPage } from '../pages/admin/AdminDetailPages';
@@ -560,9 +559,8 @@ export function Workspace({
           {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} />}
           {adminDetailKind === 'customers' && <CustomerAdminDetailPage key={adminDetailId} customer={customers.find((c: any) => c.id === adminDetailId)} data={data} route={route} />}
           {adminDetailKind === 'jobs' && <AdminJobDetailPage key={adminDetailId} job={jobs.find((j: any) => j.id === adminDetailId)} data={data} route={route} />}
-          {role === 'admin' && tab === 'overview' && <AdminOverviewPage apps={apps} data={data} route={route} openReview={openReview} />}
           {adminDetailKind === 'disputes' && <AdminDisputePage key={adminDetailId} id={adminDetailId} data={data} route={route} update={update} notify={notify} />}
-          {tab === 'overview' && role !== 'admin' && (
+          {tab === 'overview' && (
             <OverviewPage
               apps={apps}
               cardJobs={cardJobs}
