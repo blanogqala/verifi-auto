@@ -45,6 +45,14 @@ export function JobConversation({
   const latest = messages[messages.length - 1]?.id || '';
 
   useEffect(() => {
+    setDraft('');
+    setError('');
+    setAway(false);
+    pendingId.current = '';
+    stick.current = true;
+  }, [bookingId]);
+
+  useEffect(() => {
     if (!active) return;
     if (!unreadMessages(data, bookingId, viewerRole).length) return;
     commitUpdate(

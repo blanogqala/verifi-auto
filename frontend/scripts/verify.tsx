@@ -1770,6 +1770,26 @@ for (const status of ['Requested', 'Rejected', 'Cancelled', 'Confirmed', 'Awaiti
 const editedShowcase = structuredClone(showcaseGarage);
 editedShowcase.jobs.find((job: any) => job.id === 'VA-2026-1101').status = 'Confirmed';
 assert.equal(withMechanicShowcase(editedShowcase).jobs.find((job: any) => job.id === 'VA-2026-1101').status, 'Confirmed');
+const alexPending = showcaseGarage.jobs.find((job: any) => job.id === 'VA-2026-1201');
+assert.equal(alexPending.status, 'Requested');
+assert.equal(alexPending.customerId, 'cust-01');
+assert.equal(alexPending.vehicleId, 'v1');
+assert.equal(alexPending.professionalId, 'pro-precision-motorworks');
+const removedPending = { ...showcaseGarage, jobs: showcaseGarage.jobs.filter((job: any) => job.id !== 'VA-2026-1201') };
+assert.equal(withMechanicShowcase(removedPending).jobs.some((job: any) => job.id === 'VA-2026-1201'), false);
+const alexRequest = screen('mechanic', 'appointments/pending/VA-2026-1201', showcaseGarage);
+assert.ok(alexRequest.includes('Accept appointment'));
+assert.ok(alexRequest.includes('Request details'));
+assert.ok(!alexRequest.includes('Rejection reason'));
+assert.ok(!alexRequest.includes('Confirm rejection'));
+assert.ok(screen('customer', 'bookings/VA-2026-1201', showcaseGarage).includes('front suspension'));
+const isolatedDraft = saveQuoteDraft(showcaseGarage, {
+  bookingId: 'VA-2026-1105',
+  rows: [{ id: 'd1', name: 'Oil', category: 'parts', quantity: '', price: '680' }],
+  notes: 'Private service draft.',
+}, mechanicActor);
+assert.equal(isolatedDraft.jobs.find((job: any) => job.id === 'VA-2026-1201').items.length, 0);
+assert.equal(isolatedDraft.jobs.find((job: any) => job.id === 'VA-2026-1201').quoteDraft, undefined);
 assert.equal(quoteTotal(sampleJobs.find((job: any) => job.id === 'VA-2026-1112')), 1130);
 for (const route of ['appointments/pending', 'appointments/pending/VA-2026-1101', 'jobs', 'jobs/VA-2026-1112', 'jobs/VA-2026-1112/quote', 'jobs/VA-2026-1106/messages']) {
   const html = screen('mechanic', route, showcaseGarage);

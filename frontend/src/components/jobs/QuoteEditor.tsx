@@ -86,7 +86,7 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
         save('send');
       }}
     >
-      <p className="muted">Saving a draft does not change the quotation the customer can see.</p>
+      <p className="muted">This draft stays private until you send it for approval.</p>
       {rows.map((row, index) => (
         <div className="quote-editor-line" key={row.id}>
           <label>

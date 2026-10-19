@@ -13,7 +13,7 @@
 }
 [data-theme='light'] {
   --card-surface: #f3eafa;
-  --card-background: linear-gradient(145deg, #fbf8ff 0%, #f0e8fc 52%, #e7dcf8 100%);
+  --card-background: var(--tint);
   --card-shadow: 0 10px 24px rgb(90 50 140 / 9%);
   --card-quiet-background: #fff;
   --card-quiet-border: color-mix(in srgb, var(--purple) 24%, #e4dcf0);
@@ -38,9 +38,9 @@
 }
 .ui-card.ui-card.empty,
 .ui-card.ui-card.detail-card-quiet {
-  background: var(--card-quiet-background);
-  border: var(--card-quiet-border-width) dashed var(--card-quiet-border);
-  box-shadow: none;
+  background: var(--card-background);
+  border: var(--card-border-width) solid var(--card-border);
+  box-shadow: var(--card-shadow);
 }
 .ui-card.empty {
   text-align: center;

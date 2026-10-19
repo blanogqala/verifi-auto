@@ -49,6 +49,12 @@ import {
 import { customerFullName } from '../features/account/customerIdentity';
 import { resolveVehicleAsset } from '../features/garage/assetResolution';
 import { vehicleCardImage } from '../features/garage/garageSelection';
+import {
+  enterMechanicPreview,
+  leaveMechanicPreview,
+  mechanicPreviewActive,
+  showcaseProfessionalId,
+} from '../data/mechanicShowcase';
 import { followDetail, readBookingFilters, writeBookingFilters } from '../features/navigation/returnPath';
 import {
   Role,
@@ -146,6 +152,7 @@ export function Workspace({
   const [profile, setProfile] = useState<any>(data.profile);
   const [editItems, setEditItems] = useState<any[]>([]);
   const [quoteNotes, setQuoteNotes] = useState('');
+  const [previewing] = useState(mechanicPreviewActive);
   useEffect(() => {
     setDialog(null);
     const keepBookingList = role === 'customer' && (tab === 'bookings' || tab.startsWith('bookings/'));
@@ -505,6 +512,21 @@ export function Workspace({
           unread={unread}
         />
         <div className="workspace-body">
+          {role === 'mechanic' && previewing ? (
+            <div className="preview-bar">
+              <p>Precision Motorworks demo preview. Your previous session is kept until you leave.</p>
+              <button className="secondary" type="button" onClick={() => leaveMechanicPreview()}>
+                Return to saved session
+              </button>
+            </div>
+          ) : role === 'mechanic' && activeMechanicProfessionalId(data) !== showcaseProfessionalId ? (
+            <div className="preview-bar">
+              <p>This saved workshop is not the Precision Motorworks sample, so those bookings stay hidden.</p>
+              <button className="secondary" type="button" onClick={() => enterMechanicPreview()}>
+                Open Precision Motorworks preview
+              </button>
+            </div>
+          ) : null}
           {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && !(role === 'customer' && (tab.startsWith('garage/') || tab.startsWith('bookings/'))) && !mechanicJobId && !appointmentDetail && (
             <div className={'workspace-heading' + (role === 'customer' && tab === 'garage' ? ' workspace-heading-garage' : '')}>
               <h1>
@@ -550,6 +572,7 @@ export function Workspace({
               onOpen={(job: any) => route('appointments/' + appointmentView + '/' + encodeURIComponent(job.id))}
               route={route}
               section={appointmentView}
+              vehicles={data.vehicles || []}
             />
           )}
           {tab === 'bookings' && role === 'customer' && (
@@ -594,6 +617,7 @@ export function Workspace({
           )}
           {appointmentDetail && role === 'mechanic' && (
             <AppointmentDetailPage
+              key={appointmentDetail.id}
               data={data}
               job={scopedJobs.find((item: any) => item.id === appointmentDetail.id) || null}
               notify={notify}
@@ -653,6 +677,7 @@ export function Workspace({
           )}
           {mechanicJobId && role === 'mechanic' && (
             <JobDetailPage
+              key={mechanicJobId}
               data={data}
               go={go}
               job={scopedJobs.find((item: any) => item.id === mechanicJobId && isAcceptedJob(item)) || null}

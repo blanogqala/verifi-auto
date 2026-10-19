@@ -25,8 +25,13 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const bookingId = job?.id || '';
   useEffect(() => {
     setTab(panel || 'overview');
-    setError('');
   }, [bookingId, panel]);
+  useEffect(() => {
+    setNotes('');
+    setMileage('');
+    setError('');
+    setBusy(false);
+  }, [bookingId]);
   if (!job) {
     return (
       <div className="detail-page">
@@ -92,104 +97,134 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         ]}
       />
       <DetailPanel scope="mechanic-job" tabId="overview" value={tab}>
-        <DetailCard title="Appointment">
-          <p>{job.description || 'No request description was saved.'}</p>
-          <DetailFields
-            items={[
-              { label: 'Customer', value: customer },
-              { label: 'Vehicle', value: job.vehicleLabel || job.vehicle || 'Not recorded' },
-              { label: 'Registration', value: registration },
-              { label: 'Requested', value: `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}` },
-              { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
-            ]}
-          />
-        </DetailCard>
-        <DetailCard title="Service history">
-          {history.length ? (
-            history.map((record: any) => (
-              <p key={record.id}>
-                {record.title || 'Service record'}
-                {record.date ? ` · ${formatDay(record.date)}` : ''}
-                {record.notes ? ` · ${record.notes}` : ''}
-              </p>
-            ))
-          ) : (
-            <p>No service history has been shared for this booking.</p>
-          )}
-        </DetailCard>
-        <DetailCard title="Work">
-          {job.status === 'Confirmed' ? <p>Prepare the quotation in Quote & payment.</p> : null}
-          {job.status === 'Awaiting approval' ? <p>The quotation has been sent and is waiting for the customer.</p> : null}
-          {job.status === 'Changes requested' ? (
-            <p>The customer asked for changes. Review the feedback in Quote & payment, then send a revision.</p>
-          ) : null}
-          {job.status === 'Approved' ? (
-            <button className="primary" type="button" disabled={busy} onClick={() => run('start')}>
-              Start work
-            </button>
-          ) : null}
-          {job.status === 'In progress' ? (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const saved = run('complete', { completionNotes: notes, completedMileage: mileage });
-                if (!saved) setError('Could not record the completed work. Your notes are still here.');
-              }}
-            >
-              <label>
-                Completed work
-                <textarea value={notes} onChange={(event) => setNotes(event.target.value)} required />
-              </label>
-              <label>
-                Mileage (km)
-                <input inputMode="numeric" value={mileage} onChange={(event) => setMileage(event.target.value)} required />
-              </label>
-              <button className="primary" type="submit" disabled={busy}>
-                Mark work finished
-              </button>
-            </form>
-          ) : null}
-          {job.status === 'Awaiting payment' ? <p>The invoice is unpaid. Waiting for the customer to record a demo payment.</p> : null}
-          {job.completionNotes ? <p>Completed work: {job.completionNotes}</p> : null}
-          {job.paid ? (
-            <p>
-              Demo payment recorded
-              {job.paymentReference ? ` · ${job.paymentReference}` : ''}
-              {job.paidAt ? ` · ${formatWhen(job.paidAt)}` : ''}
-            </p>
-          ) : null}
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-        </DetailCard>
-        <details className="fold">
-          <summary>Activity history</summary>
-          {events.length ? (
-            <ol className="activity-list">
-              {events.map((event: any) => (
-                <li key={(event.at || '') + event.type}>
-                  <time dateTime={event.at}>{formatWhen(event.at) || 'Time not recorded'}</time>
-                  <span>{event.label || event.type}</span>
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p>No dated activity was stored for this job.</p>
-          )}
-        </details>
+        <div className="split-detail">
+          <div className="split-main">
+            <DetailCard title="Customer request">
+              <p>{job.description || 'No request description was saved.'}</p>
+              <DetailFields
+                items={[
+                  { label: 'Requested', value: `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}` },
+                  { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
+                ]}
+              />
+              {job.status === 'Confirmed' ? (
+                <button className="primary" type="button" onClick={() => choose('quote')}>
+                  Prepare quotation
+                </button>
+              ) : null}
+              {job.status === 'Awaiting approval' ? <p>Quotation sent. Waiting for the customer.</p> : null}
+              {job.status === 'Changes requested' ? (
+                <>
+                  <p>Change request: {job.changeRequest || 'The customer asked for a revision.'}</p>
+                  <button className="primary" type="button" onClick={() => choose('quote')}>
+                    Revise quotation
+                  </button>
+                </>
+              ) : null}
+              {job.status === 'Approved' ? (
+                <button className="primary" type="button" disabled={busy} onClick={() => run('start')}>
+                  Start work
+                </button>
+              ) : null}
+              {job.status === 'In progress' ? (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const saved = run('complete', { completionNotes: notes, completedMileage: mileage });
+                    if (!saved) setError('Could not record the completed work. Your notes are still here.');
+                  }}
+                >
+                  <label>
+                    Completed work
+                    <textarea value={notes} onChange={(event) => setNotes(event.target.value)} required />
+                  </label>
+                  <label>
+                    Mileage (km)
+                    <input inputMode="numeric" value={mileage} onChange={(event) => setMileage(event.target.value)} required />
+                  </label>
+                  <button className="primary" type="submit" disabled={busy}>
+                    Mark work finished
+                  </button>
+                </form>
+              ) : null}
+              {job.status === 'Awaiting payment' ? (
+                <>
+                  <p>The invoice is unpaid.</p>
+                  <button className="secondary" type="button" onClick={() => choose('quote')}>
+                    View quotation
+                  </button>
+                </>
+              ) : null}
+              {job.completionNotes ? <p>Completed work: {job.completionNotes}</p> : null}
+              {job.paid ? (
+                <p>
+                  Demo payment recorded
+                  {job.paymentReference ? ` · ${job.paymentReference}` : ''}
+                  {job.paidAt ? ` · ${formatWhen(job.paidAt)}` : ''}
+                </p>
+              ) : null}
+              {error ? (
+                <p className="form-error" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </DetailCard>
+            <details className="fold">
+              <summary>Activity history</summary>
+              {events.length ? (
+                <ol className="activity-list">
+                  {events.map((event: any) => (
+                    <li key={(event.at || '') + event.type}>
+                      <time dateTime={event.at}>{formatWhen(event.at) || 'Time not recorded'}</time>
+                      <span>{event.label || event.type}</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p>No dated activity was stored for this job.</p>
+              )}
+            </details>
+          </div>
+          <div className="split-side">
+            <DetailCard quiet title="Booking">
+              <DetailFields
+                items={[
+                  { label: 'Customer', value: customer },
+                  { label: 'Vehicle', value: job.vehicleLabel || job.vehicle || 'Not recorded' },
+                  { label: 'Registration', value: registration },
+                  { label: 'Mileage', value: vehicle?.mileage ? `${vehicle.mileage} km` : 'Not recorded' },
+                ]}
+              />
+            </DetailCard>
+            {history.length ? (
+              <DetailCard quiet title="Service history">
+                {history.map((record: any) => (
+                  <p key={record.id}>
+                    {record.title || 'Service record'}
+                    {record.date ? ` · ${formatDay(record.date)}` : ''}
+                  </p>
+                ))}
+              </DetailCard>
+            ) : (
+              <p className="muted">No service history has been shared for this booking.</p>
+            )}
+          </div>
+        </div>
       </DetailPanel>
       <DetailPanel scope="mechanic-job" tabId="quote" value={tab}>
         <DetailCard title="Quote & payment">
           {editable ? (
-            <QuoteEditor
-              actor={{ role: 'mechanic', id: professionalId }}
-              job={job}
-              notify={notify}
-              onSent={() => choose('quote')}
-              update={update}
-            />
+            <>
+              <h3>Draft</h3>
+              <QuoteEditor
+                key={job.id}
+                actor={{ role: 'mechanic', id: professionalId }}
+                job={job}
+                notify={notify}
+                onSent={() => choose('quote')}
+                update={update}
+              />
+            </>
           ) : null}
           {job.status === 'Approved' ? <p>This quotation is approved. It cannot be replaced from here.</p> : null}
           {job.status === 'Awaiting payment' ? <p>Unpaid invoice. You cannot mark this invoice paid.</p> : null}

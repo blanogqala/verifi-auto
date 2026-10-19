@@ -230,7 +230,7 @@
   height: 84px;
   object-fit: cover;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--purple) 10%, var(--surface2));
+  background: var(--purple);
 }
 .garage-card-silhouette {
   display: block;
@@ -238,8 +238,8 @@
 .garage-card-silhouette path,
 .garage-card-silhouette circle {
   fill: none;
-  stroke: var(--purple);
-  stroke-width: 3;
+  stroke: var(--line);
+  stroke-width: 4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -756,7 +756,7 @@ select {
   place-items: center;
   overflow: hidden;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--purple) 10%, var(--surface2));
+  background: color-mix(in srgb, var(--purple) 80%, transparent);
   color: var(--soft);
 }
 .vehicle-identity-art img,
@@ -787,7 +787,7 @@ select {
   text-align: left;
   color: inherit;
 }
-.booking-card-art {
+.booking-card-hit > .booking-card-art {
   grid-area: art;
 }
 .booking-card-copy {
@@ -865,7 +865,7 @@ select {
   .detail-header,
   .vehicle-identity {
     align-items: flex-start;
-    flex-direction: column;
+    flex-direction: inherit;
   }
   .detail-fields {
     grid-template-columns: 1fr;

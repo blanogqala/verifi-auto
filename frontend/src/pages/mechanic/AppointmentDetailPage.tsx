@@ -1,15 +1,33 @@
 import { useState } from 'react';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
+import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { JobConversation } from '../../components/jobs/JobConversation';
 import { customerRecords, customerNameForJob } from '../../features/admin/customerRecords';
+import { merchantIdentityLabel } from '../../features/account/customerIdentity';
+import { resolveVehicleAsset } from '../../features/garage/assetResolution';
+import { vehicleCardImage } from '../../features/garage/garageSelection';
 import { formatDay } from '../../features/jobs/bookingProgress';
 import { bookingReference, isAcceptedJob, isCancelledRequest, isPendingRequest, isRejectedRequest } from '../../features/jobs/jobViews';
 import { activeMechanicProfessionalId } from '../../features/identity/participants';
-import { merchantIdentityLabel } from '../../features/account/customerIdentity';
+import { unreadMessageCount } from '../../features/messages/conversation';
+
+function VehicleArt({ image }: { image: string }) {
+  if (image) return <img src={image} alt="" />;
+  return (
+    <svg className="garage-card-silhouette" viewBox="0 0 200 96" aria-hidden="true">
+      <path d="M34 58h132c6 0 10 4 10 8v2H24v-2c0-4 4-8 10-8z" />
+      <path d="M52 58 70 38c2-3 6-6 10-6h48c5 0 9 2 12 6l16 20" />
+      <circle cx="68" cy="70" r="8" />
+      <circle cx="138" cy="70" r="8" />
+    </svg>
+  );
+}
 
 export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, route, section, update }: any) {
+  const [tab, setTab] = useState('request');
+  const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,13 +66,28 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
       </div>
     );
   }
-  const customer = customerNameForJob(job, customerRecords(data));
+  const records = customerRecords(data);
+  const customer = customerNameForJob(job, records);
+  const contact = records.find((item) => item.id === (job.customerId || 'cust-01'));
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
+  const image = vehicle ? vehicleCardImage(resolveVehicleAsset(vehicle)) : '';
   const registration = vehicle?.registration || job.registration || 'Not recorded';
+  const when = `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}`;
   const pending = job.status === 'Requested';
+  const unread = unreadMessageCount(data, job.id, 'mechanic');
+  const vehicleName = [vehicle?.year, vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || job.vehicleLabel || job.vehicle || 'Not recorded';
+
+  function accept() {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    const saved = onAccept(job);
+    setBusy(false);
+    if (!saved) setError('Could not accept this request.');
+  }
 
   return (
-    <div className="detail-page">
+    <div className="detail-page appointment-detail">
       <DetailBack
         label={section === 'rejected' ? 'Back to Rejected' : section === 'cancelled' ? 'Back to Cancelled' : 'Back to Pending'}
         onClick={() => route(back)}
@@ -62,87 +95,123 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
       <DetailHeader
         kicker={bookingReference(job)}
         title={job.vehicleLabel || job.vehicle || 'Appointment'}
-        summary={
-          <span>
-            {customer}
-            {' · '}
-            {job.date ? formatDay(job.date) : 'Date not recorded'}
-            {job.time ? ` at ${job.time}` : ''}
-          </span>
-        }
+        summary={<span>{customer}</span>}
         aside={<Status value={job.status} />}
       />
-      <DetailCard title="Request">
-        <p>{job.description || 'No request description was saved.'}</p>
-        <p className="muted">Assessment fee R{Number(job.fee || 0).toLocaleString()}. Accepting does not approve a repair quote.</p>
-        <DetailFields
-          items={[
-            { label: 'Customer', value: customer },
-            { label: 'Vehicle', value: job.vehicleLabel || job.vehicle || 'Not recorded' },
-            { label: 'Registration', value: registration },
-            { label: 'Requested', value: `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}` },
-            { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
-          ]}
-        />
-        {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
-        {pending ? (
-          <div className="button-row">
-            <button
-              className="primary"
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                if (busy) return;
-                setBusy(true);
-                const saved = onAccept(job);
-                setBusy(false);
-                if (!saved) setError('Could not accept this request.');
-              }}
-            >
-              Accept
-            </button>
+      <DetailTabs
+        id="mechanic-appointment"
+        label="Appointment"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: 'request', label: 'Request details' },
+          { id: 'messages', label: 'Messages', badge: unread || undefined },
+        ]}
+      />
+      <DetailPanel scope="mechanic-appointment" tabId="request" value={tab}>
+        <div className="split-detail">
+          <div className="split-main">
+            <DetailCard title="Customer request">
+              <p>{job.description || 'No request description was saved.'}</p>
+              <DetailFields
+                items={[
+                  { label: 'Requested', value: when },
+                  { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
+                ]}
+              />
+              {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
+              {pending ? (
+                <div className="decision-actions">
+                  {rejecting ? (
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        if (busy) return;
+                        setError('');
+                        setBusy(true);
+                        const saved = onReject(job, reason);
+                        setBusy(false);
+                        if (!saved) setError('Could not reject this request. Your reason is still here.');
+                      }}
+                    >
+                      <label>
+                        Rejection reason
+                        <textarea value={reason} onChange={(event) => setReason(event.target.value)} required minLength={3} maxLength={240} />
+                      </label>
+                      <div className="button-row">
+                        <button className="secondary" type="submit" disabled={busy}>
+                          Confirm rejection
+                        </button>
+                        <button className="text-link" type="button" onClick={() => setRejecting(false)}>
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="button-row">
+                      <button className="primary" type="button" disabled={busy} onClick={accept}>
+                        Accept appointment
+                      </button>
+                      <button className="secondary" type="button" disabled={busy} aria-expanded={false} onClick={() => setRejecting(true)}>
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                  <p className="muted">Accepting does not approve a repair quote.</p>
+                  {error ? (
+                    <p className="form-error" role="alert">
+                      {error}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </DetailCard>
           </div>
-        ) : null}
-        {pending ? (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (busy) return;
-              setError('');
-              setBusy(true);
-              const saved = onReject(job, reason);
-              setBusy(false);
-              if (!saved) setError('Could not reject this request. Your reason is still here.');
-            }}
-          >
-            <label>
-              Rejection reason
-              <textarea value={reason} onChange={(event) => setReason(event.target.value)} required minLength={3} maxLength={240} />
-            </label>
-            <button className="secondary" type="submit" disabled={busy}>
-              Reject
-            </button>
-          </form>
-        ) : null}
-        {error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-      </DetailCard>
-      <DetailCard title="Messages">
-        <JobConversation
-          active
-          bookingId={job.id}
-          data={data}
-          job={job}
-          notify={notify}
-          update={update}
-          viewerId={activeMechanicProfessionalId(data)}
-          viewerName={merchantIdentityLabel(data.profile?.name)}
-          viewerRole="mechanic"
-        />
-      </DetailCard>
+          <div className="split-side">
+            <DetailCard quiet title="Vehicle">
+              <div className="vehicle-summary">
+                <span className="booking-card-art">
+                  <VehicleArt image={image} />
+                </span>
+                <div>
+                  <strong>{vehicleName}</strong>
+                  <DetailFields
+                    items={[
+                      { label: 'Registration', value: registration },
+                      { label: 'Mileage', value: vehicle?.mileage ? `${vehicle.mileage} km` : 'Not recorded' },
+                    ]}
+                  />
+                </div>
+              </div>
+            </DetailCard>
+            <DetailCard quiet title="Customer">
+              <DetailFields
+                items={[
+                  { label: 'Name', value: customer },
+                  { label: 'Email', value: contact?.email || 'Not recorded' },
+                  { label: 'Phone', value: contact?.phone || 'Not recorded' },
+                  { label: 'City', value: contact?.city || 'Not recorded' },
+                ]}
+              />
+            </DetailCard>
+          </div>
+        </div>
+      </DetailPanel>
+      <DetailPanel scope="mechanic-appointment" tabId="messages" value={tab}>
+        <DetailCard title="Messages">
+          <JobConversation
+            active={tab === 'messages'}
+            bookingId={job.id}
+            data={data}
+            job={job}
+            notify={notify}
+            update={update}
+            viewerId={activeMechanicProfessionalId(data)}
+            viewerName={merchantIdentityLabel(data.profile?.name)}
+            viewerRole="mechanic"
+          />
+        </DetailCard>
+      </DetailPanel>
     </div>
   );
 }

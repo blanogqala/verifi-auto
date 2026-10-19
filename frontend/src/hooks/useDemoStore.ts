@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { initialData } from '../data/fixtures';
-import { withMechanicShowcase } from '../data/mechanicShowcase';
+import { mechanicShowcaseVersion, withMechanicShowcase } from '../data/mechanicShowcase';
 import { normalizeDemoData } from '../data/normalizeDemoData';
 
 export const demoStorageKey = 'verifi-demo-v2';
@@ -23,9 +23,14 @@ export function persistDemoState(storage: Pick<Storage, 'setItem'>, value: unkno
 
 function loadInitial() {
   try {
-    return readDemoState(localStorage);
+    const raw = localStorage.getItem(demoStorageKey);
+    const parsed = raw ? JSON.parse(raw) : structuredClone(initialData);
+    const alreadySeeded = parsed?.demoShowcase?.version === mechanicShowcaseVersion;
+    const next = normalizeDemoData(withMechanicShowcase(parsed));
+    if (!alreadySeeded) persistDemoState(localStorage, next);
+    return next;
   } catch {
-    return normalizeDemoData(structuredClone(initialData));
+    return normalizeDemoData(withMechanicShowcase(structuredClone(initialData)));
   }
 }
 

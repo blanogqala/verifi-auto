@@ -1,8 +1,14 @@
 /**
  * Extra Precision Motorworks bookings so the mechanic preview has something
- * in each appointment and job state. Missing sample ids are added on load.
- * An existing booking with the same id is left as the browser saved it.
+ * in each appointment and job state. Sample ids are added once. Later loads
+ * keep saved edits and do not restore bookings the browser has removed.
  */
+
+export const mechanicShowcaseVersion = 1;
+export const showcaseProfessionalId = 'pro-precision-motorworks';
+export const demoStorageKey = 'verifi-demo-v2';
+export const previewFlag = 'verifi-mechanic-preview';
+export const previewBackup = 'verifi-mechanic-preview-backup';
 
 const workshop = {
   provider: 'Precision Motorworks',
@@ -25,6 +31,24 @@ const customers = [
 ];
 
 const jobs = [
+  {
+    ...workshop,
+    id: 'VA-2026-1201',
+    customerId: 'cust-01',
+    vehicleId: 'v1',
+    vehicleLink: 'resolved',
+    vehicle: '2020 Volkswagen Polo',
+    vehicleLabel: '2020 Volkswagen Polo',
+    registration: 'DEMO 001',
+    date: '2026-10-25',
+    time: '11:00',
+    status: 'Requested',
+    accepted: false,
+    description: 'There is a dull knock from the front suspension over speed bumps. It started this week.',
+    items: [],
+    quoteApproved: false,
+    paid: false,
+  },
   {
     ...workshop,
     id: 'VA-2026-1101',
@@ -341,6 +365,26 @@ const jobs = [
 
 const messages = [
   {
+    id: 'show-msg-1201-a',
+    clientMessageId: 'show-msg-1201-a',
+    bookingId: 'VA-2026-1201',
+    senderId: 'cust-01',
+    senderRole: 'customer',
+    senderName: 'Alex Morgan',
+    body: 'The knock is louder on the left. I can bring it in on Saturday.',
+    createdAt: '2026-10-18T09:00:00.000Z',
+  },
+  {
+    id: 'show-msg-1201-b',
+    clientMessageId: 'show-msg-1201-b',
+    bookingId: 'VA-2026-1201',
+    senderId: 'pro-precision-motorworks',
+    senderRole: 'mechanic',
+    senderName: 'Sam Okonkwo',
+    body: 'Thanks. We can look at the suspension before quoting any parts.',
+    createdAt: '2026-10-18T09:20:00.000Z',
+  },
+  {
     id: 'show-msg-1042-a',
     clientMessageId: 'show-msg-1042-a',
     bookingId: 'VA-2026-1042',
@@ -383,6 +427,21 @@ const messages = [
 ];
 
 const notifications = [
+  {
+    id: 'show-note-request-1201',
+    recipientRole: 'mechanic',
+    recipientId: 'pro-precision-motorworks',
+    type: 'request',
+    title: 'New request',
+    message: 'VA-2026-1201: Alex Morgan asked about a front suspension knock.',
+    text: 'VA-2026-1201: Alex Morgan asked about a front suspension knock.',
+    createdAt: '2026-10-18T09:00:00.000Z',
+    read: false,
+    bookingId: 'VA-2026-1201',
+    panel: '',
+    eventKey: 'request:VA-2026-1201',
+    section: '',
+  },
   {
     id: 'show-note-request-1101',
     recipientRole: 'mechanic',
@@ -473,16 +532,27 @@ function enrichKnownBooking(job: any) {
   };
 }
 
-/** Add sample mechanic bookings that this browser does not already have. */
+function showcaseReady(data: any) {
+  return data?.demoShowcase?.version === mechanicShowcaseVersion;
+}
+
+import { initialData } from './fixtures';
+import { normalizeDemoData } from './normalizeDemoData';
+
+export function mechanicPreviewDataset() {
+  return normalizeDemoData(withMechanicShowcase(structuredClone(initialData)));
+}
+
+/** Add sample mechanic bookings once. A later call leaves removed or edited records alone. */
 export function withMechanicShowcase(data: any) {
   const source = data && typeof data === 'object' ? data : {};
+  if (showcaseReady(source)) return source;
   const jobsNow = list(source.jobs).map(enrichKnownBooking);
   const jobIds = new Set(jobsNow.map((job: any) => job?.id));
   const customerIds = new Set(list(source.customers).map((customer: any) => customer?.id));
   const messageIds = new Set(list(source.messages).map((message: any) => message?.id));
   const noteIds = new Set(list(source.notifications).map((note: any) => note?.id));
   const noteKeys = new Set(list(source.notifications).map((note: any) => note?.eventKey).filter(Boolean));
-  const grants = list(source.historyAccess);
   return {
     ...source,
     customers: [...list(source.customers), ...customers.filter((customer) => !customerIds.has(customer.id))],
@@ -492,6 +562,35 @@ export function withMechanicShowcase(data: any) {
       ...list(source.notifications),
       ...notifications.filter((note) => !noteIds.has(note.id) && !noteKeys.has(note.eventKey)),
     ],
-    historyAccess: grants,
+    historyAccess: list(source.historyAccess),
+    demoShowcase: { version: mechanicShowcaseVersion },
   };
+}
+
+export function mechanicPreviewActive() {
+  try {
+    return sessionStorage.getItem(previewFlag) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Swap in the default Precision Motorworks sample and keep the previous save for later. */
+export function enterMechanicPreview() {
+  const current = localStorage.getItem(demoStorageKey) || '';
+  sessionStorage.setItem(previewBackup, current);
+  sessionStorage.setItem(previewFlag, '1');
+  localStorage.setItem(demoStorageKey, JSON.stringify(mechanicPreviewDataset()));
+  location.hash = 'dashboard/appointments/pending';
+  location.reload();
+}
+
+export function leaveMechanicPreview() {
+  const backup = sessionStorage.getItem(previewBackup);
+  if (backup) localStorage.setItem(demoStorageKey, backup);
+  else localStorage.removeItem(demoStorageKey);
+  sessionStorage.removeItem(previewBackup);
+  sessionStorage.removeItem(previewFlag);
+  location.hash = 'dashboard/overview';
+  location.reload();
 }
