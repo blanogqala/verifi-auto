@@ -1,3 +1,4 @@
+import { appendAdminActivity } from './features/admin/detailRecords';
 import { photo, shop } from './config/assets';
 import { demoAreaByLabel } from './data/demoAreas';
 import { providers } from './data/professionals';
@@ -179,6 +180,9 @@ export default function App() {
         return;
       }
     }
+    try {
+      if (update((d: any) => appendAdminActivity(d, { action: register ? 'Demo account registered' : 'Signed in', actor: r === 'customer' ? d.settings?.name || 'Customer' : r === 'mechanic' ? d.profile?.name || 'Mechanic' : d.adminAccount?.name || 'Admin', role: r })) === false) setToast(storageFailureMessage);
+    } catch { setToast(storageFailureMessage); }
     setRole(r);
     try {
       sessionStorage.setItem('verifi-demo-role', r);
@@ -205,6 +209,11 @@ export default function App() {
     window.scrollTo(0, 0);
   }
   function logout() {
+    if (role) {
+      try {
+        if (update((d: any) => appendAdminActivity(d, { action: 'Signed out', actor: role === 'customer' ? d.settings?.name || 'Customer' : role === 'mechanic' ? d.profile?.name || 'Mechanic' : d.adminAccount?.name || 'Admin', role })) === false) setToast(storageFailureMessage);
+      } catch { setToast(storageFailureMessage); }
+    }
     setRole(null);
     setModal(null);
     setPending(null);

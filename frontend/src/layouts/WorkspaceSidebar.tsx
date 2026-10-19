@@ -29,6 +29,7 @@ function itemSelected(id: string, tab: string) {
   if (id === 'find' && tab.startsWith('find/')) return true;
   if (id === 'bookings' && tab.startsWith('bookings/')) return true;
   if (id === 'garage' && tab.startsWith('garage/')) return true;
+  if (['professionals', 'customers'].includes(id) && tab.startsWith(id + '/')) return true;
   if (id === 'applications' && tab.startsWith('applications/')) return true;
   if (id === 'reports' && (tab === 'reports' || tab.startsWith('reports/'))) return true;
   if (id === 'jobs' && (tab === 'jobs' || tab.startsWith('jobs/'))) return true;
@@ -78,7 +79,7 @@ function UsersGroup({
   tab: string;
   unread: number;
 }) {
-  const activeChild = items.some(([id]) => tab === id);
+  const activeChild = items.some(([id]) => tab === id || tab.startsWith(id + '/'));
   const [open, setOpen] = useState(activeChild);
   const UsersIcon = icons.users;
   useEffect(() => {

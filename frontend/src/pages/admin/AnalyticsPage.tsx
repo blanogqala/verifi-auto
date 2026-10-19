@@ -1,3 +1,4 @@
+import { SecurityActivityPage } from './SecurityActivityPage';
 import { AlertCircle, ClipboardCheck, ShieldCheck, UserRound, Wrench } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { MetricCard as Metric } from '../../components/ui/MetricCard';
@@ -7,7 +8,8 @@ import { isManagedProfessional, isPendingApplication } from '../../features/admi
 import { uniqueJobs } from '../../features/admin/paymentRecords';
 
 const tabs: { id: AnalyticsSection; label: string; target: string }[] = [
-  { id: 'analytics', label: 'Analytics', target: 'reports' },
+  { id: 'analytics', label: 'Overview', target: 'reports' },
+  { id: 'security', label: 'Security & activity', target: 'reports/security' },
   { id: 'support', label: 'Support cases', target: 'reports/support' },
 ];
 
@@ -40,7 +42,7 @@ export function AnalyticsPage({ apps, customers, data, jobs, route, section, set
           );
         })}
       </div>
-      {section === 'support' ? (
+      {section === 'security' ? <SecurityActivityPage data={data} /> : section === 'support' ? (
         <ReportsPage data={data} setDialog={setDialog} />
       ) : (
         <>
@@ -82,6 +84,7 @@ export function AnalyticsPage({ apps, customers, data, jobs, route, section, set
                   <div key={status}>
                     <b>{status}</b>
                     <span>{count}</span>
+                    <meter min={0} max={Math.max(unique.length, 1)} value={count} aria-label={status + ' jobs'} />
                   </div>
                 ))}
               </div>

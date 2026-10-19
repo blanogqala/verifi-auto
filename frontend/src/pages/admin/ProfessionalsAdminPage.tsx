@@ -65,7 +65,7 @@ export function ProfessionalsAdminPage({
             </thead>
             <tbody>
               {visible.map((professional: any) => (
-                <tr key={professional.id}>
+                <tr className="admin-clickable-row" key={professional.id} onClick={() => openReview(professional)}>
                   <td>
                     <b>{professional.name}</b>
                     <small>{professional.own ? 'Your demo application' : 'Sample record'}</small>
@@ -77,7 +77,7 @@ export function ProfessionalsAdminPage({
                   </td>
                   <td>{contactLine(professional)}</td>
                   <td>
-                    <button className="text-link" type="button" onClick={() => openReview(professional)}>
+                    <button className="text-link" type="button" onClick={(event) => { event.stopPropagation(); openReview(professional); }}>
                       View profile <ArrowUpRight size={15} />
                     </button>
                   </td>

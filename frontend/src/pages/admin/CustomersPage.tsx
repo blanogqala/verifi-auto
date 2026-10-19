@@ -43,7 +43,7 @@ export function CustomersPage({ customers, jobs, query, setDialog, setQuery }: a
               {visible.map((customer: any) => {
                 const bookings = bookingsForCustomer(jobs, customer.id);
                 return (
-                  <tr key={customer.id}>
+                  <tr className="admin-clickable-row" key={customer.id} onClick={() => setDialog({ kind: 'customer', customer, bookings })}>
                     <td>
                       <b>{customer.name || 'Name not recorded'}</b>
                       <small>
@@ -58,7 +58,7 @@ export function CustomersPage({ customers, jobs, query, setDialog, setQuery }: a
                       <button
                         className="text-link"
                         type="button"
-                        onClick={() => setDialog({ kind: 'customer', customer, bookings })}
+                        onClick={(event) => { event.stopPropagation(); setDialog({ kind: 'customer', customer, bookings }); }}
                       >
                         View details <ArrowUpRight size={15} />
                       </button>

@@ -1,3 +1,5 @@
+import { appendAdminActivity } from '../features/admin/detailRecords';
+import { ApplicationDetailPage, ProfessionalAdminDetailPage, CustomerAdminDetailPage, AdminJobDetailPage } from '../pages/admin/AdminDetailPages';
 import { JobCard } from '../components/jobs/JobCard';
 import { Card } from '../components/ui/Card';
 import { WorkspaceSidebar } from '../layouts/WorkspaceSidebar';
@@ -293,6 +295,9 @@ export function Workspace({
     role === 'customer' ? data.settings?.photo || '' : role === 'mechanic' ? data.profile?.photo || '' : '';
   const heading = pageTitle(role, tab);
   const apps = applicationRecords(data);
+  const adminDetailKind = role === 'admin' && ['applications', 'professionals', 'customers', 'jobs'].includes(sectionRoot) && tab.includes('/') && tab !== 'applications/history' ? sectionRoot : '';
+  const adminDetailId = adminDetailKind ? detailId(tab, adminDetailKind) : undefined;
+  useEffect(() => { setChecks([]); setReviewNote(apps.find((a: any) => a.id === adminDetailId)?.note || ''); }, [adminDetailId]);
   const customers = customerRecords(data);
   function route(t: string) {
     go('dashboard/' + t);
@@ -302,7 +307,7 @@ export function Workspace({
     setSide(false);
     go('home');
   }
-  function note(d: any, text: string, audience?: { role: string; id: string }) {
+  function note(d: any, text: string, audience?: { role: string; id: string; section?: string }) {
     const recipientRole = audience?.role || (role === 'admin' ? 'admin' : role);
     const recipientId = audience?.id || participantId(d, recipientRole);
     return appendNotification(d, {
@@ -311,7 +316,7 @@ export function Workspace({
       type: 'account',
       title: 'Update',
       message: text,
-      section: recipientRole === 'admin' ? 'reports/support' : '',
+      section: audience?.section || (recipientRole === 'admin' ? 'reports/support' : ''),
     });
   }
   function actor() {
@@ -353,7 +358,7 @@ export function Workspace({
     const saved = commitUpdate(
       update,
       (d: any) =>
-        note(
+        appendAdminActivity(note(
           app.own
             ? {
                 ...d,
@@ -378,7 +383,8 @@ export function Workspace({
                 ),
               },
           `${app.name}: application ${status.toLowerCase()}.`,
-        ),
+          { role: 'admin', id: 'admin', section: 'applications/' + encodeURIComponent(app.id) },
+        ), { action: 'Application ' + status.toLowerCase(), actor: data.adminAccount?.name || 'Admin', role: 'admin', target: app.id }),
       notify,
       '',
     );
@@ -389,7 +395,7 @@ export function Workspace({
   function openReview(a: any) {
     setChecks([]);
     setReviewNote(a.note || '');
-    setDialog({ kind: 'review', app: a });
+    route((tab === 'professionals' ? 'professionals/' : 'applications/') + encodeURIComponent(a.id));
   }
   function quoteEditor(j: any) {
     setEditItems(j.items?.length ? j.items.map((i: any) => ({ ...i })) : [{ name: '', amount: 0 }]);
@@ -460,7 +466,7 @@ export function Workspace({
             route(section ? `appointments/${section}/${encodeURIComponent(j.id)}` : `jobs/${encodeURIComponent(j.id)}`);
             return;
           }
-          setDialog({ kind: 'job', job: j });
+          route('jobs/' + encodeURIComponent(j.id));
         }}
         />
       ));
@@ -524,7 +530,7 @@ export function Workspace({
               </button>
             </div>
           ) : null}
-          {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && !(role === 'customer' && (tab.startsWith('garage/') || tab.startsWith('bookings/'))) && !mechanicJobId && !appointmentDetail && (
+          {tab !== 'find' && !tab.startsWith('find/') && !merchantSection && !(role === 'customer' && (tab.startsWith('garage/') || tab.startsWith('bookings/'))) && !mechanicJobId && !appointmentDetail && !adminDetailKind && (
             <div className={'workspace-heading' + (role === 'customer' && tab === 'garage' ? ' workspace-heading-garage' : '')}>
               <h1>
                 {tab === 'overview'
@@ -548,6 +554,10 @@ export function Workspace({
               <p>The address could not be read. Open the page again from the menu.</p>
             </Card>
           ) : null}
+          {adminDetailKind === 'applications' && <ApplicationDetailPage key={adminDetailId} record={apps.find((a: any) => a.id === adminDetailId)} data={data} route={route} review={review} checks={checks} setChecks={setChecks} reviewNote={reviewNote} setReviewNote={setReviewNote} />}
+          {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} />}
+          {adminDetailKind === 'customers' && <CustomerAdminDetailPage key={adminDetailId} customer={customers.find((c: any) => c.id === adminDetailId)} data={data} route={route} />}
+          {adminDetailKind === 'jobs' && <AdminJobDetailPage key={adminDetailId} job={jobs.find((j: any) => j.id === adminDetailId)} data={data} route={route} />}
           {tab === 'overview' && (
             <OverviewPage
               apps={apps}
@@ -788,7 +798,7 @@ export function Workspace({
               customers={customers}
               jobs={jobs}
               query={query}
-              setDialog={setDialog}
+              setDialog={(value: any) => route('customers/' + encodeURIComponent(value.customer.id))}
               setQuery={setQuery}
             />
           )}

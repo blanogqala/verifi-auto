@@ -1,3 +1,4 @@
+import { accountMetrics, professionalJobs, appendAdminActivity } from '../src/features/admin/detailRecords';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -973,7 +974,8 @@ const supportHtml = screen('admin', 'reports/support');
 assert.ok(supportHtml.includes('Support cases'));
 assert.ok(supportHtml.includes('Clarification requested on sample quote'));
 assert.ok(supportHtml.includes('Review case'));
-assert.ok(supportHtml.includes('admin-notify active'));
+assert.ok(!supportHtml.includes('admin-notify active'));
+assert.ok(screen('admin', 'notifications').includes('admin-notify active'));
 assert.equal(migrated.jobs[0].customerId, 'cust-01');
 const publicHeader = renderToString(
   <PublicHeader
@@ -1955,3 +1957,32 @@ for (const html of [customerFind, publicFind]) {
   assert.ok(!html.includes('Return to nearby search'));
   assert.ok(!html.includes('Browse all areas'));
 }
+
+// Admin full-page routes cannot be opened by other roles.
+for (const path of ['applications/app-02', 'professionals/app-03', 'customers/cust-01', 'jobs/VA-2026-1042', 'reports/security', 'notifications']) {
+  assert.equal(canVisit('admin', 'dashboard/' + path), true);
+}
+for (const role of ['customer', 'mechanic'] as const) {
+  for (const path of ['applications/app-02', 'professionals/app-03', 'customers/cust-01', 'reports/security']) assert.equal(canVisit(role, 'dashboard/' + path), false);
+}
+assert.equal(canVisit('admin', 'dashboard/customers/%2F'), false);
+assert.equal(canVisit('admin', 'dashboard/jobs/a/b'), false);
+assert.ok(screen('admin', 'applications/app-02').includes('Business profile'));
+assert.ok(screen('admin', 'applications/app-02').includes('Urban Auto Care'));
+assert.ok(!screen('admin', 'applications/app-02').includes('role="dialog"'));
+assert.ok(screen('admin', 'professionals/app-03').includes('Platform activity'));
+assert.ok(screen('admin', 'customers/cust-01').includes('Customer account'));
+assert.ok(screen('admin', 'jobs/VA-2026-1042').includes('Job progress'));
+assert.ok(screen('admin', 'jobs/missing').includes('Record not found'));
+assert.ok(screen('admin', 'reports/security').includes('not a server security audit'));
+const paidOnlyMetrics = accountMetrics([{ id: 'a', paid: true, status: 'Completed', items: [{ name: 'Work', amount: 100 }] }, { id: 'a', paid: true, status: 'Completed', items: [{ name: 'Work', amount: 100 }] }, { id: 'b', paid: false, status: 'Awaiting payment', items: [{ name: 'Work', amount: 900 }] }]);
+assert.equal(paidOnlyMetrics.total, 2);
+assert.equal(paidOnlyMetrics.completed, 1);
+assert.equal(paidOnlyMetrics.paid, 100);
+assert.deepEqual(professionalJobs(initialData, { name: 'Unknown professional' }), []);
+const activityData = appendAdminActivity(initialData, { action: 'Signed in', actor: 'Demo Admin', role: 'admin' }, '2026-10-19T12:00:00Z');
+assert.equal(activityData.adminActivity[0].source, 'browser-demo');
+assert.ok(screen('admin', 'reports/security', activityData).includes('Demo Admin'));
+assert.equal((initialData as any).adminActivity, undefined);
+const cappedActivity = appendAdminActivity({ adminActivity: Array.from({ length: 500 }, (_, id) => ({ id })) }, { action: 'Signed out', actor: 'Demo', role: 'customer' });
+assert.equal(cappedActivity.adminActivity.length, 500);

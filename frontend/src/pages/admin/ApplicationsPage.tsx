@@ -50,7 +50,7 @@ export function ApplicationsPage({ apps, history, openReview, query, route, setQ
             </thead>
             <tbody>
               {visible.map((application: any) => (
-                <tr key={application.id}>
+                <tr className="admin-clickable-row" key={application.id} onClick={() => openReview(application)}>
                   <td>
                     <b>{application.name}</b>
                     <small>
@@ -73,7 +73,7 @@ export function ApplicationsPage({ apps, history, openReview, query, route, setQ
                     )}
                   </td>
                   <td>
-                    <button className="text-link" type="button" onClick={() => openReview(application)}>
+                    <button className="text-link" type="button" onClick={(event) => { event.stopPropagation(); openReview(application); }}>
                       View application <ArrowUpRight size={15} />
                     </button>
                   </td>

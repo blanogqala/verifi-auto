@@ -48,9 +48,7 @@ export function WorkspaceTopbar({
     : merchant
       ? merchantProfileSection(tab) !== null
       : adminProfileSection(tab) !== null;
-  const notificationsActive = admin
-    ? analyticsSection(tab) === 'support'
-    : (customer || merchant) && tab === 'notifications';
+  const notificationsActive = tab === 'notifications';
   const notifyClass = customer
     ? 'customer-notify'
     : merchant
@@ -100,7 +98,7 @@ export function WorkspaceTopbar({
           className={notifyClass ? notifyClass + (notificationsActive ? ' active' : '') : undefined}
           aria-label="Notifications"
           aria-current={notificationsActive ? 'page' : undefined}
-          onClick={() => (admin ? route('reports/support') : route('notifications'))}
+          onClick={() => route('notifications')}
         >
           <Bell size={19} />
           {unread > 0 && <i />}

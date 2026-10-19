@@ -220,7 +220,7 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
                 })}
               </section>
             ))}
-            {active.latest.type === 'message' && active.latest.bookingId ? (
+            {role !== 'admin' && active.latest.type === 'message' && active.latest.bookingId ? (
               <JobConversation
                 active
                 bookingId={active.latest.bookingId}

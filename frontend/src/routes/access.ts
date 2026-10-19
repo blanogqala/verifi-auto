@@ -49,6 +49,7 @@ export function appointmentTarget(tab: string): { section: AppointmentSection; i
 
 function allowedDetail(role: Role, tab: string) {
   const parts = tab.split('/');
+  if (role === 'admin' && parts.length === 2 && ['applications', 'professionals', 'customers', 'jobs'].includes(parts[0]) && safeRouteId(parts[1])) return true;
   if (parts.length === 2 && role === 'customer' && customerDetail.test(tab)) return true;
   if (parts.length === 2 && role === 'customer' && parts[0] === 'bookings' && safeRouteId(parts[1])) return true;
   if (parts.length === 3 && role === 'customer' && parts[0] === 'bookings' && safeRouteId(parts[1]) && detailPanels.has(parts[2]))

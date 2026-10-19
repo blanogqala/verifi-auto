@@ -138,6 +138,8 @@ export const allowedDashboardPages: Record<Role, string[]> = {
     'jobs',
     'reports',
     'reports/analytics',
+    'reports/security',
+    'notifications',
     'reports/support',
     'finance',
     'profile/account',
@@ -158,10 +160,11 @@ export function adminProfileSection(tab: string): AdminProfileSection | null {
   return null;
 }
 
-export const analyticsSections = ['analytics', 'support'] as const;
+export const analyticsSections = ['analytics', 'security', 'support'] as const;
 export type AnalyticsSection = (typeof analyticsSections)[number];
 
 export function analyticsSection(tab: string): AnalyticsSection | null {
+  if (tab === 'reports/security') return 'security';
   if (tab === 'reports/support') return 'support';
   if (tab === 'reports' || tab === 'reports/analytics') return 'analytics';
   return null;
@@ -203,6 +206,10 @@ export function pageTitle(role: Role, tab: string) {
   if (role === 'admin' && (tab === 'profile' || tab.startsWith('profile/') || tab === 'settings'))
     return 'Admin profile';
   if (role === 'admin' && tab.startsWith('reports')) return 'Analytics & support';
+  if (role === 'admin' && tab === 'notifications') return 'Notifications';
+  if (role === 'admin' && tab.startsWith('professionals/')) return 'Professional';
+  if (role === 'admin' && tab.startsWith('customers/')) return 'Customer';
+  if (role === 'admin' && tab.startsWith('jobs/')) return 'Job';
   if (role === 'admin' && tab.startsWith('applications')) return 'Applications';
   if (role === 'customer' && tab.startsWith('find/')) return 'Professional';
   if (role === 'customer' && tab.startsWith('bookings/')) return 'Booking';

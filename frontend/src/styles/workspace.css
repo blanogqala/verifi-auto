@@ -2660,3 +2660,33 @@ td .text-link {
     grid-template-columns: 1fr;
   }
 }
+
+/* Admin detail pages share the customer/mechanic card and heading language. */
+.admin-detail-page { display: grid; gap: 22px; min-width: 0; }
+.admin-detail-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+.admin-record-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.admin-record-metrics > div { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card-background); display: grid; gap: 6px; }
+.admin-record-metrics strong { font-size: 26px; color: var(--purple); }
+.admin-record-metrics span { font-size: 13px; color: var(--muted); }
+.admin-record-list { display: grid; gap: 10px; }
+.admin-record-link { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; text-align: left; padding: 16px; color: var(--ink); background: transparent; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+.admin-record-link > span:first-child { min-width: 0; display: grid; gap: 5px; }
+.admin-record-link small { color: var(--muted); overflow-wrap: anywhere; }
+.admin-record-link:hover, .admin-clickable-row:hover { background: color-mix(in srgb, var(--purple) 10%, transparent); }
+.admin-clickable-row { cursor: pointer; }
+.admin-record-link:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
+.admin-review { padding-block: 16px; border-bottom: 1px solid var(--line); }
+.admin-detail-tabs { overflow-x: auto; }
+.admin-detail-page .detail-fields dd { overflow-wrap: anywhere; }
+@media (max-width: 750px) {
+  .admin-detail-grid { grid-template-columns: minmax(0, 1fr); }
+  .admin-record-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-record-link { align-items: flex-start; flex-direction: column; }
+  .admin-detail-page { gap: 16px; }
+}
+.admin-audit-list { display: grid; gap: 8px; }
+.admin-audit-event { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.admin-audit-event p { margin: 4px 0; }
+.admin-audit-event time, .admin-audit-event small { color: var(--muted); font-size: 13px; }
+.status-counts meter { width: 100%; accent-color: var(--purple); }
+@media (max-width: 600px) { .admin-audit-event { grid-template-columns: 20px minmax(0, 1fr); } .admin-audit-event time { grid-column: 2; } }
