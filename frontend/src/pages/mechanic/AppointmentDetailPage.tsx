@@ -9,6 +9,7 @@ import { merchantIdentityLabel } from '../../features/account/customerIdentity';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
 import { vehicleCardImage } from '../../features/garage/garageSelection';
 import { formatDay } from '../../features/jobs/bookingProgress';
+import { pricingNote } from '../../features/jobs/pricingModel';
 import { bookingReference, isAcceptedJob, isCancelledRequest, isPendingRequest, isRejectedRequest } from '../../features/jobs/jobViews';
 import { activeMechanicProfessionalId } from '../../features/identity/participants';
 import { unreadMessageCount } from '../../features/messages/conversation';
@@ -116,9 +117,9 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
               <DetailFields
                 items={[
                   { label: 'Requested', value: when },
-                  { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
                 ]}
               />
+              <p className="muted">{pricingNote(job)}</p>
               {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
               {pending ? (
                 <div className="decision-actions">

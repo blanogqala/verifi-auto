@@ -1,3 +1,6 @@
+import { areaCentreLocation, demoAreaById, demoAreaByLabel } from '../../data/demoAreas';
+import { emptyLocation } from '../professionals/geo';
+
 /** View helpers for the same application records. Approval never copies or deletes them. */
 
 export function decideApplication(record: any, status: string, note: string) {
@@ -79,6 +82,17 @@ function blocksDirectory(provider: any, reviews: any[]) {
   });
 }
 
+function ownLocation(profile: any) {
+  if (profile?.location && typeof profile.location === 'object') return profile.location;
+  const area = demoAreaById(typeof profile?.areaId === 'string' ? profile.areaId : '') || demoAreaByLabel(typeof profile?.city === 'string' ? profile.city : '');
+  if (!area) return emptyLocation({ city: typeof profile?.city === 'string' ? profile.city : '', suburb: typeof profile?.city === 'string' ? profile.city : '' });
+  const mobile = profile?.type === 'Mobile mechanic';
+  const location = areaCentreLocation(area, mobile ? 'service-area' : 'area-centre');
+  const radius = Number(profile?.serviceRadiusKm);
+  if (mobile && Number.isFinite(radius) && radius > 0) location.serviceRadiusKm = radius;
+  return location;
+}
+
 /** Public directory rule: only currently approved profiles are listed. */
 export function directoryEntries(providers: any[], data: any) {
   const reviews = Array.isArray(data?.reviews) ? data.reviews : [];
@@ -96,6 +110,8 @@ export function directoryEntries(providers: any[], data: any) {
       special: (profile.services || []).join(' · '),
       services: profile.services || [],
       fee: profile.fee,
+      location: ownLocation(profile),
+      sample: false,
       phone: typeof profile.phone === 'string' ? profile.phone : '',
       email: typeof data?.mechanicAccount?.email === 'string' ? data.mechanicAccount.email : '',
       website: typeof profile.website === 'string' ? profile.website : '',

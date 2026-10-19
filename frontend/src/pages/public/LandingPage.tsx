@@ -1,4 +1,5 @@
 import { Card } from '../../components/ui/Card';
+import { demoAreas } from '../../data/demoAreas';
 
 import {
   ArrowUpRight,
@@ -94,9 +95,12 @@ export function LandingPage({
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               >
-                <option>All locations</option>
-                <option>East London</option>
-                <option>Johannesburg</option>
+                <option value="">Choose an area</option>
+                {demoAreas.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.label}
+                  </option>
+                ))}
               </select>
             </div>
           </label>
@@ -142,7 +146,7 @@ export function LandingPage({
             Explore professionals <ArrowRight size={19} />
           </button>
         </form>
-        <p className="pilot-note">Sample locations for the preview · Pilot city to be confirmed</p>
+        <p className="pilot-note">Sample demo areas only. Typed addresses are not geocoded in this preview.</p>
       </div>
       <section className="section services" id="services">
         <div className="section-top">
@@ -348,7 +352,7 @@ export function LandingPage({
               'Find your professional',
               'Choose a workshop or mobile mechanic that suits your vehicle.',
             ],
-            ['Book an assessment', 'Request a time. See any assessment or call-out fee first.'],
+            ['Book an assessment', 'Request a time. Charges are confirmed in your quotation before approval.'],
             ['Approve your quote', 'Review parts and labour before any repairs begin.'],
             ['Keep the record', 'Pay for completed work and build your vehicle’s history.'],
           ].map(([a, b], i) => (
@@ -381,11 +385,11 @@ export function LandingPage({
             ],
             [
               'When do I pay?',
-              'Any assessment or call-out fee is shown before you confirm. Repair costs require your approval first; payment for completed repairs is planned through the app. This preview does not take payments.',
+              'Charges are confirmed in your quotation before approval. This preview does not take payments.',
             ],
             [
               'Where will Verifi Auto launch?',
-              'The pilot location is still being decided between East London and Johannesburg. Locations and providers in this preview are illustrative.',
+              'This preview uses labelled fictional professionals around Cape Town, plus distant Johannesburg examples. Typed addresses are not geocoded. The pilot city is still being decided.',
             ],
           ].map(([q, a]) => (
             <details key={q}>

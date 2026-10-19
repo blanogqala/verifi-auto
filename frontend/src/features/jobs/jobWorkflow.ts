@@ -19,6 +19,7 @@ function withEvent(job: any, patch: any, type: string) {
   return { ...job, ...rest, events };
 }
 
+/** Submitted quotation total in rands. Legacy job.fee is not added. */
 export function quoteTotal(job: any) {
   const cents = quoteTotalCents(job?.items || []);
   return Number.isFinite(cents) ? cents / 100 : NaN;

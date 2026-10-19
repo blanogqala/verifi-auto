@@ -3,6 +3,7 @@ import { demoCustomerId } from '../features/admin/customerRecords';
 import { professionalOptions, textValue, withRecordLinks } from '../features/demo/links';
 import { activeMechanicProfessionalId } from '../features/identity/participants';
 import { migrateJob } from '../features/jobs/jobViews';
+import { assignPricingModel } from '../features/jobs/pricingModel';
 import { normalizeNotification } from '../features/notifications/inbox';
 import { initialData } from './fixtures';
 
@@ -136,7 +137,7 @@ export function normalizeDemoData(saved: any) {
     reviews: Array.isArray(base.reviews) ? base.reviews.map(rememberApproval) : base.reviews,
     jobs: Array.isArray(base.jobs)
       ? base.jobs.map((job: any) => {
-          const next = migrateJob(job);
+          const next = assignPricingModel(migrateJob(job));
           if (!next || typeof next !== 'object') return next;
           const linked = withRecordLinks(
             typeof next.customerId === 'string' && next.customerId

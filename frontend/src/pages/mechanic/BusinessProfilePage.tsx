@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Card } from '../../components/ui/Card';
 import { commitUpdate } from '../../features/demo/commitUpdate';
+import { demoAreas, demoAreaById } from '../../data/demoAreas';
+import { chargeConfirmation } from '../../features/jobs/pricingModel';
 
 import { ArrowRight, Wrench, Check } from 'lucide-react';
 
@@ -71,11 +73,23 @@ export function BusinessProfilePage({
         <label>
           Service area
           <select
-            value={profile.city}
-            onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+            value={profile.areaId || demoAreas.find((area) => area.label === profile.city || area.city === profile.city)?.id || ''}
+            onChange={(e) => {
+              const area = demoAreaById(e.target.value);
+              setProfile({
+                ...profile,
+                areaId: area?.id || '',
+                city: area?.label || '',
+                serviceRadiusKm: profile.type === 'Mobile mechanic' ? profile.serviceRadiusKm || 25 : null,
+              });
+            }}
           >
-            <option>East London</option>
-            <option>Johannesburg</option>
+            <option value="">Select a demo area</option>
+            {demoAreas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>
@@ -132,17 +146,23 @@ export function BusinessProfilePage({
           ))}
         </div>
       </fieldset>
-      <label>
-        Assessment fee (ZAR)
-        <input
-          required
-          type="number"
-          min="0"
-          max="100000"
-          value={profile.fee}
-          onChange={(e) => setProfile({ ...profile, fee: Number(e.target.value) })}
-        />
-      </label>
+      {profile.type === 'Mobile mechanic' ? (
+        <label>
+          Service radius
+          <select
+            value={profile.serviceRadiusKm || 25}
+            onChange={(e) => setProfile({ ...profile, serviceRadiusKm: Number(e.target.value) })}
+          >
+            <option value={10}>10 km</option>
+            <option value={25}>25 km</option>
+            <option value={50}>50 km</option>
+          </select>
+        </label>
+      ) : null}
+      <p className="muted">
+        {chargeConfirmation} This preview does not advertise a separate booking fee. Choosing an area stores a demo area centre, not a geocoded street address.
+        {profile.type === 'Mobile mechanic' ? ' A mobile listing uses that area as a service-area reference, not a private base address.' : ''}
+      </p>
       <div className="button-row">
         <button className="primary" type="submit">
           Save profile <Check size={17} />

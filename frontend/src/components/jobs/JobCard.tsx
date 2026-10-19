@@ -106,8 +106,8 @@ export function JobCard({
       ) : null}
       <div className="job-card-bottom">
         <span>
-          {j.items?.length ? 'Repair quote' : 'Assessment fee'}
-          <b>R{j.items?.length ? quoteTotal(j).toLocaleString() : j.fee}</b>
+          {j.items?.length ? 'Quotation' : 'Quotation'}
+          <b>{j.items?.length && Number.isFinite(quoteTotal(j)) ? `R${quoteTotal(j).toLocaleString()}` : 'Not sent yet'}</b>
         </span>
         <span className="job-card-actions">
           <button className="text-link" type="button" onClick={quoteAction.onClick}>

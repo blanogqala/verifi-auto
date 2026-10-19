@@ -107,7 +107,6 @@ export function AppointmentsPage({ customerName, jobs, onOpen, route, section, v
                     <span>{when}</span>
                     {registration ? <span>{registration}</span> : null}
                     <span className="reference">{bookingReference(job)}</span>
-                    <span>Assessment fee R{Number(job.fee || 0).toLocaleString()}</span>
                     {job.rejectionReason ? <span>Reason: {job.rejectionReason}</span> : null}
                   </span>
                   <Status value={job.status} />

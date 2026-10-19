@@ -260,14 +260,7 @@ export function BookingDialog({
             <p>
               {modal.area} · {modal.type}
             </p>
-            <div className="fee-row">
-              <span>Assessment fee</span>
-              <strong>R{modal.fee}</strong>
-            </div>
-            <p className="muted">
-              The assessment fee is separate from future repair costs. A preferred time is not
-              confirmed availability.
-            </p>
+            <p className="muted">Charges are confirmed in your quotation before approval. A preferred time is not confirmed availability.</p>
             {choices.length ? (
               <label>
                 Your vehicle

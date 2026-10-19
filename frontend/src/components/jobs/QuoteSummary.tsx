@@ -50,7 +50,7 @@ export function QuoteSummary({ job, title = 'Quotation' }: { job: any; title?: s
           </div>
         </div>
       ) : (
-        <p>No repair quotation has been sent.</p>
+        <p>No quotation has been sent.</p>
       )}
       {job?.notes ? <p>{job.notes}</p> : null}
       {job?.changeRequest ? <p>Change request: {job.changeRequest}</p> : null}

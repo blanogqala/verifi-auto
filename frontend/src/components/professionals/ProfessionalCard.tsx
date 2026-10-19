@@ -1,37 +1,55 @@
+import { MapPin, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { initialsFromName } from '../../features/account/customerIdentity';
+import { emptyRating } from '../../features/reviews/ratingSummary';
 import { Card } from '../ui/Card';
-import { Wrench, MapPin, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import { RatingLine } from './RatingLine';
+
 export function ProfessionalCard({ professional: p, onView, onBook }: any) {
+  const rating = p.rating || emptyRating;
+  const photo = typeof p.photo === 'string' ? p.photo : '';
+  const directions = typeof p.directionsUrl === 'string' ? p.directionsUrl : '';
+  const place = p.place || p.area || 'Location not recorded';
   return (
-    <Card as="article" className="provider-card" key={p.name}>
-      <div className="provider-art">
-        <Wrench size={50} />
-        <span className="chip">SAMPLE PROFILE</span>
-      </div>
-      <div className="provider-info">
-        <span className="provider-type">{p.type}</span>
-        <h2>{p.name}</h2>
-        <p>
-          <MapPin size={15} />
-          {p.area}
-        </p>
-        <p>{p.special}</p>
-        <div className="verification">
-          <ShieldCheck size={18} /> Verification details preview
+    <Card as="article" className="provider-card">
+      <div className="provider-body">
+        <div className="provider-art">
+          {photo ? (
+            <img src={photo} alt="Illustrative workshop photograph. Not a picture of this fictional business." />
+          ) : (
+            <span aria-hidden="true">{initialsFromName(p.name || '')}</span>
+          )}
         </div>
-        <p className="muted">New profile · No reviews yet</p>
-        <div className="provider-bottom">
-          <span>
-            Assessment from<strong>R{p.fee}</strong>
-          </span>
-          <div className="provider-actions">
-            <button className="secondary view-profile" type="button" onClick={onView}>
-              View profile <ArrowUpRight size={14} />
-            </button>
-            <button className="primary" onClick={onBook}>
-              Book assessment <ArrowUpRight size={17} />
-            </button>
+        <div className="provider-info">
+          <div className="provider-kicker">
+            <span className="provider-type">{p.type}</span>
+            {p.sample !== false ? <span className="chip">SAMPLE PROFILE</span> : null}
+          </div>
+          <h2>{p.name}</h2>
+          <p className="provider-place">
+            <MapPin size={15} aria-hidden="true" />
+            {place}
+          </p>
+          <RatingLine summary={rating} />
+          {p.distanceLabel ? <p className="provider-distance">{p.distanceLabel}</p> : null}
+          {p.special ? <p className="provider-special">{p.special}</p> : null}
+          <div className="verification">
+            <ShieldCheck size={16} aria-hidden="true" />
+            {p.verification || 'Sample profile. Not a verified business.'}
           </div>
         </div>
+      </div>
+      <div className="provider-actions">
+        <button className="secondary view-profile" type="button" onClick={onView}>
+          View profile <ArrowUpRight size={14} />
+        </button>
+        <button className="primary" type="button" onClick={onBook}>
+          Book assessment <ArrowUpRight size={16} />
+        </button>
+        {directions ? (
+          <a className="text-link directions-link" href={directions} target="_blank" rel="noopener noreferrer">
+            Directions <ArrowUpRight size={14} />
+          </a>
+        ) : null}
       </div>
     </Card>
   );

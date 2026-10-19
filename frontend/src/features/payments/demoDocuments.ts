@@ -1,4 +1,6 @@
 import { bookingReference } from '../../features/jobs/jobViews';
+import { categoryLabel, formatZar, lineAmountCents, quoteTotalCents } from '../jobs/quotations';
+import { pricingNote } from '../jobs/pricingModel';
 
 function escapeHtml(value: unknown) {
   return String(value ?? '')
@@ -8,14 +10,16 @@ function escapeHtml(value: unknown) {
     .replace(/"/g, '&quot;');
 }
 
-/** Printable demo invoice or receipt. This is not a bank document. */
+/** Printable demo invoice or receipt. Amounts follow the stored quotation and are not rewritten. */
 export function demoDocumentHtml(job: any, kind: 'invoice' | 'receipt') {
   const lines = (job.items || [])
-    .map(
-      (item: any) =>
-        `<tr><td>${escapeHtml(item.name)}</td><td>R${Number(item.amount).toLocaleString()}</td></tr>`,
-    )
+    .map((item: any) => {
+      const label = categoryLabel(item.category || item.kind);
+      const name = label ? `${label}: ${item.name}` : item.name;
+      return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(formatZar(lineAmountCents(item)))}</td></tr>`;
+    })
     .join('');
+  const total = quoteTotalCents(job.items || []);
   const title = kind === 'receipt' ? 'Demo receipt' : 'Demo invoice';
   const stamp =
     kind === 'receipt'
@@ -26,7 +30,7 @@ export function demoDocumentHtml(job: any, kind: 'invoice' | 'receipt') {
 <style>body{font-family:Georgia,serif;margin:0;color:#221536}header{background:#9658e8;color:#fff;padding:20px 28px}main{padding:28px}table{width:100%;border-collapse:collapse}td{padding:8px 0;border-bottom:1px solid #ddd}button{margin-top:24px}</style></head>
 <body><header><strong>${title}</strong><p>Demo document. Not issued by a bank and not proof of payment.</p></header>
 <main><p>${escapeHtml(reference)}<br>${escapeHtml(job.provider)}<br>${escapeHtml(job.vehicle)}</p>
-<table>${lines}</table><p>${stamp}</p><button type="button" onclick="print()">Print</button></main></body></html>`;
+<table>${lines}</table><p><strong>Quotation total ${escapeHtml(formatZar(total))}</strong></p><p>${escapeHtml(pricingNote(job))}</p><p>${stamp}</p><button type="button" onclick="print()">Print</button></main></body></html>`;
 }
 
 export function openDemoDocument(html: string, filename: string) {

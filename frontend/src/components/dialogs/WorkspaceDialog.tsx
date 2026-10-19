@@ -1,5 +1,6 @@
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
 import { activeMechanicProfessionalId, quoteTotal } from '../../demo';
+import { pricingNote } from '../../features/jobs/pricingModel';
 import { commitUpdate } from '../../features/demo/commitUpdate';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
 import { bodyStyleOptions } from '../../features/garage/vehicleCatalogue';
@@ -207,10 +208,7 @@ export function WorkspaceDialog({
               <br />
               {dialog.job.date} at {dialog.job.time}
             </p>
-            <div className="notice">
-              Assessment fee: R{dialog.job.fee}. Repair costs are quoted separately and require
-              customer approval.
-            </div>
+            <div className="notice">{pricingNote(dialog.job)}</div>
             {dialog.job.items?.length > 0 && (
               <>
                 <h3>Repair quote</h3>
@@ -330,13 +328,12 @@ export function WorkspaceDialog({
               </div>
             ))}
             <div className="invoice-line total">
-              <span>Repair total</span>
+              <span>Quotation total</span>
               <b>R{quoteTotal(dialog.job)}</b>
             </div>
             <p>{dialog.job.notes}</p>
             <div className="notice">
-              Approving authorises the proposed repair work in this demo. It does not take a
-              payment. Assessment fee of R{dialog.job.fee} is separate.
+              Approving authorises this submitted quotation in the demo. It does not take a payment. {pricingNote(dialog.job)}
             </div>
             <button className="primary full" onClick={() => jobAction(dialog.job, 'approve')}>
               Approve demo quote <Check size={18} />
@@ -523,7 +520,7 @@ export function WorkspaceDialog({
             </div>
             <div className="notice">
               No real payment processor is connected. No card details are requested and no money is
-              transferred. Assessment fee is separate.
+              transferred. {pricingNote(dialog.job)}
             </div>
             {dialog.kind === 'invoice' ? (
               <div className="notice">

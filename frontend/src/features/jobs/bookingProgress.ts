@@ -10,7 +10,7 @@ export type ProgressStep = {
 const notes = [
   'The request has been sent. It is not confirmed yet.',
   'The professional has accepted the request.',
-  'The quotation is separate from the assessment fee. Repairs stay waiting until the customer approves it.',
+  'The quotation lists every charge for approval, including any assessment or diagnostics. Repairs stay waiting until the customer approves it.',
   'The customer approved the quotation. Work can start only after that approval.',
   'The approved work is underway.',
   'The approved work is finished. Payment applies to this quotation, not a new charge.',

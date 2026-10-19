@@ -12,6 +12,7 @@ import { customerNameForJob, customerRecords } from '../../features/admin/custom
 import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { bookingReference } from '../../features/jobs/jobViews';
 import { quoteEditable } from '../../features/jobs/quotations';
+import { pricingNote } from '../../features/jobs/pricingModel';
 import { sharedRecordsForProfessional } from '../../features/garage/historyAccess';
 import { activeMechanicProfessionalId } from '../../features/identity/participants';
 import { unreadMessageCount } from '../../features/messages/conversation';
@@ -104,9 +105,9 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
               <DetailFields
                 items={[
                   { label: 'Requested', value: `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}` },
-                  { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
                 ]}
               />
+              <p className="muted">{pricingNote(job)}</p>
               {job.status === 'Confirmed' ? (
                 <button className="primary" type="button" onClick={() => choose('quote')}>
                   Prepare quotation
@@ -229,7 +230,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
           {job.status === 'Approved' ? <p>This quotation is approved. It cannot be replaced from here.</p> : null}
           {job.status === 'Awaiting payment' ? <p>Unpaid invoice. You cannot mark this invoice paid.</p> : null}
           <QuoteSummary job={job} title={job.items?.length ? 'Sent quotation' : 'Sent quotation'} />
-          <p className="muted">Assessment fee R{Number(job.fee || 0).toLocaleString()} is separate from the quotation.</p>
+          <p className="muted">{pricingNote(job)}</p>
         </DetailCard>
       </DetailPanel>
       <DetailPanel scope="mechanic-job" tabId="messages" value={tab}>

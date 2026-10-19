@@ -1,5 +1,6 @@
 import { directoryEntries } from '../admin/applicationRecords';
 import { providers } from '../../data/professionals';
+import { emptyLocation, formatPlace } from './geo';
 
 export function safeWebsite(value: unknown) {
   if (typeof value !== 'string' || !value.trim()) return '';
@@ -48,6 +49,8 @@ export function resolveProfessional(id: string, data: any) {
       area: listed.area || provider?.area || '',
       services,
       fee: listed.fee ?? provider?.fee,
+      location: listed.location || provider?.location || emptyLocation(),
+      place: formatPlace(listed.location || provider?.location, listed.area || provider?.area || ''),
       phone: text(listed.phone),
       email: text(listed.email),
       website: safeWebsite(listed.website),

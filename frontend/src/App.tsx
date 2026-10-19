@@ -1,5 +1,8 @@
 import { photo, shop } from './config/assets';
 import { providers } from './data/professionals';
+import { clearBookingDraft, readBookingDraft, writeBookingDraft } from './features/booking/bookingDraft';
+import { discoveryWithArea, searchDirectory, type DiscoverySession } from './features/professionals/discovery';
+import { readDiscoverySession, writeDiscoverySession } from './features/professionals/discoveryState';
 import { PublicHeader } from './layouts/PublicHeader';
 import { LandingPage } from './pages/public/LandingPage';
 import { ProfessionalsPage } from './pages/public/ProfessionalsPage';
@@ -44,17 +47,16 @@ export default function App() {
   );
   const [role, setRole] = useState<Role | null>(storedRole);
   const [data, update] = useDemoStore();
-  const [pending, setPending] = useState<any>(null);
+  const openingDraft = readBookingDraft();
+  const [pending, setPending] = useState<any>(openingDraft?.professional ?? null);
   const [menu, setMenu] = useState(false);
-  const [city, setCity] = useState('All locations');
-  const [service, setService] = useState('All services');
-  const [type, setType] = useState('Either');
+  const [discovery, setDiscovery] = useState<DiscoverySession>(readDiscoverySession);
   const [modal, setModal] = useState<any>(null);
   const [step, setStep] = useState(0);
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('09:00');
-  const [vehicleId, setVehicleId] = useState('');
-  const [description, setDescription] = useState('');
+  const [date, setDate] = useState(openingDraft?.date || '');
+  const [time, setTime] = useState(openingDraft?.time || '09:00');
+  const [vehicleId, setVehicleId] = useState(openingDraft?.vehicleId || '');
+  const [description, setDescription] = useState(openingDraft?.description || '');
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [toast, setToast] = useState('');
   const [sectionTarget, setSectionTarget] = useState<{
@@ -86,7 +88,13 @@ export default function App() {
       ).filter((e) => !e.hasAttribute('disabled'));
     focusables()[0]?.focus();
     function key(e: KeyboardEvent) {
-      if (e.key === 'Escape') setModal(null);
+      if (e.key === 'Escape') {
+        if (modal && typeof modal === 'object' && role === 'customer') {
+          clearBookingDraft();
+          setPending(null);
+        }
+        setModal(null);
+      }
       if (e.key === 'Tab') {
         const fs = focusables();
         const first = fs[0],
@@ -134,7 +142,7 @@ export default function App() {
     setMenu(false);
     if (!modal) document.documentElement.classList.remove('scroll-lock');
     document.body.style.overflow = '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: p === 'find' ? 'auto' : 'smooth' });
   }
   useEffect(() => {
     const change = () => {
@@ -170,6 +178,13 @@ export default function App() {
       sessionStorage.setItem('verifi-demo-role', r);
     } catch {}
     if (pending && r === 'customer') {
+      const draft = readBookingDraft();
+      if (draft) {
+        setVehicleId(draft.vehicleId);
+        setDate(draft.date);
+        setTime(draft.time || '09:00');
+        setDescription(draft.description);
+      }
       setPage('find');
       location.hash = 'find';
       setModal(pending);
@@ -283,12 +298,28 @@ export default function App() {
     return () => stop();
   }, [page, sectionTarget]);
   function book(p: any) {
-    setDate('');
-    setTime('09:00');
-    setVehicleId('');
-    setDescription('');
+    const draft = readBookingDraft();
+    const same = draft?.professional?.id && p?.id && draft.professional.id === p.id;
+    const next = {
+      professional: {
+        id: p?.id || '',
+        name: p?.name || '',
+        area: p?.place || p?.area || '',
+        type: p?.type || '',
+        special: p?.special || '',
+      },
+      vehicleId: same ? draft?.vehicleId || '' : '',
+      date: same ? draft?.date || '' : '',
+      time: same ? draft?.time || '09:00' : '09:00',
+      description: same ? draft?.description || '' : '',
+    };
+    setDate(next.date);
+    setTime(next.time);
+    setVehicleId(next.vehicleId);
+    setDescription(next.description);
     setRequestId(crypto.randomUUID());
     setStep(1);
+    writeBookingDraft(next);
     if (role !== 'customer') {
       setModal(null);
       setPending(p);
@@ -302,15 +333,38 @@ export default function App() {
       window.scrollTo(0, 0);
       return;
     }
-    setModal(p);
+    setModal(next.professional);
   }
-  const directory = directoryEntries(providers, data);
-  const results = directory.filter(
-    (p) =>
-      (city === 'All locations' || p.area === city) &&
-      (type === 'Either' || p.type === type) &&
-      (service === 'All services' || service === 'Not sure yet' || p.special.includes(service)),
-  );
+  useEffect(() => {
+    writeDiscoverySession(discovery);
+  }, [discovery]);
+  useEffect(() => {
+    if (step === 2) clearBookingDraft();
+  }, [step]);
+  useEffect(() => {
+    if (!modal || typeof modal !== 'object') return;
+    writeBookingDraft({
+      professional: {
+        id: modal.id || '',
+        name: modal.name || '',
+        area: modal.area || '',
+        type: modal.type || '',
+        special: modal.special || '',
+      },
+      vehicleId,
+      date,
+      time,
+      description,
+    });
+  }, [modal, vehicleId, date, time, description]);
+  const listed = directoryEntries(providers, data);
+  const results = searchDirectory(listed, discovery, data);
+  function setService(service: string) {
+    setDiscovery((current) => ({ ...current, service }));
+  }
+  function setType(type: string) {
+    setDiscovery((current) => ({ ...current, type }));
+  }
   const customerName =
     role === 'customer' && typeof data.settings?.name === 'string' ? data.settings.name.trim() : '';
   const accountLabel = customerName || 'My account';
@@ -357,43 +411,39 @@ export default function App() {
           setTheme={setTheme}
           directory={{
             book,
-            city,
+            discovery,
             results,
-            service,
-            setCity,
-            setModal,
+            service: discovery.service,
+            setDiscovery,
             setService,
-            setStep,
             setType,
-            type,
+            type: discovery.type,
           }}
         />
       ) : page === 'home' ? (
         <LandingPage
           anchor={anchor}
-          city={city}
+          city={discovery.areaId}
           go={go}
           photo={photo}
-          service={service}
-          setCity={setCity}
+          service={discovery.service}
+          setCity={(areaId: string) => setDiscovery((current) => discoveryWithArea(current, areaId))}
           setService={setService}
           setType={setType}
           shop={shop}
-          type={type}
+          type={discovery.type}
         />
       ) : page === 'find' ? (
         <ProfessionalsPage
           book={book}
-          city={city}
+          discovery={discovery}
           go={go}
           results={results}
-          service={service}
-          setCity={setCity}
-          setModal={setModal}
+          service={discovery.service}
+          setDiscovery={setDiscovery}
           setService={setService}
-          setStep={setStep}
           setType={setType}
-          type={type}
+          type={discovery.type}
         />
       ) : page.startsWith('professional/') ? (
         safeRouteId(page.slice('professional/'.length)) ? (
@@ -428,7 +478,13 @@ export default function App() {
           requestId={requestId}
           setDate={setDate}
           setDescription={setDescription}
-          setModal={setModal}
+          setModal={(value: any) => {
+            if (!value && modal && typeof modal === 'object' && role === 'customer') {
+              clearBookingDraft();
+              setPending(null);
+            }
+            setModal(value);
+          }}
           setRequestId={setRequestId}
           setStep={setStep}
           setTime={setTime}

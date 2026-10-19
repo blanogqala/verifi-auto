@@ -25,6 +25,7 @@ import { NotificationsPage } from '../pages/shared/NotificationsPage';
 import { SettingsPage } from '../pages/shared/SettingsPage';
 import { ProfessionalsPage } from '../pages/public/ProfessionalsPage';
 import { ProfessionalProfilePage } from '../components/professionals/ProfessionalProfilePage';
+import { defaultDiscovery, type DiscoverySession } from '../features/professionals/discovery';
 
 import { StatusBadge as Status } from '../components/ui/StatusBadge';
 import { useState, useEffect, useRef } from 'react';
@@ -91,26 +92,22 @@ import {
 
 export type DirectoryProps = {
   book: (professional: any) => void;
-  city: string;
+  discovery: DiscoverySession;
   results: any[];
   service: string;
-  setCity: (value: string) => void;
-  setModal: (value: any) => void;
+  setDiscovery: (value: DiscoverySession | ((current: DiscoverySession) => DiscoverySession)) => void;
   setService: (value: string) => void;
-  setStep: (value: number) => void;
   setType: (value: string) => void;
   type: string;
 };
 
 const emptyDirectory: DirectoryProps = {
   book: () => {},
-  city: 'All locations',
+  discovery: { ...defaultDiscovery },
   results: [],
   service: 'All services',
-  setCity: () => {},
-  setModal: () => {},
+  setDiscovery: () => {},
   setService: () => {},
-  setStep: () => {},
   setType: () => {},
   type: 'Either',
 };
@@ -722,14 +719,12 @@ export function Workspace({
             <ProfessionalsPage
               embedded
               book={directory.book}
-              city={directory.city}
+              discovery={directory.discovery}
               go={go}
               results={directory.results}
               service={directory.service}
-              setCity={directory.setCity}
-              setModal={directory.setModal}
+              setDiscovery={directory.setDiscovery}
               setService={directory.setService}
-              setStep={directory.setStep}
               setType={directory.setType}
               type={directory.type}
             />

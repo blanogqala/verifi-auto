@@ -77,6 +77,19 @@ import { withMechanicShowcase } from '../src/data/mechanicShowcase';
 import { bookingProgress } from '../src/features/jobs/bookingProgress';
 import { customerReturnAllowed, rememberReturn, resolveReturn } from '../src/features/navigation/returnPath';
 import { providers } from '../src/data/professionals';
+import { demoAreaById } from '../src/data/demoAreas';
+import {
+  defaultDiscovery,
+  discoveryWithArea,
+  discoveryWithBrowser,
+  distanceDisclosure,
+  geolocationMessage,
+  searchDirectory,
+} from '../src/features/professionals/discovery';
+import { haversineKm, mapsDirectionsUrl, validCoordinates } from '../src/features/professionals/geo';
+import { ratingSummary } from '../src/features/reviews/ratingSummary';
+import { categoryLabel, normalizeCategory } from '../src/features/jobs/quotations';
+import { legacyAssessmentFee, pricingModelOf } from '../src/features/jobs/pricingModel';
 import { Workspace } from '../src/layouts/WorkspaceLayout';
 import { WorkspaceDialog } from '../src/components/dialogs/WorkspaceDialog';
 import { PublicHeader } from '../src/layouts/PublicHeader';
@@ -260,13 +273,18 @@ const sampleProfessional = {
 };
 const directory = {
   book: () => {},
-  city: 'All locations',
+  discovery: {
+    mode: 'nearby' as const,
+    radiusKm: 25 as const,
+    areaId: '',
+    origin: null,
+    service: 'All services',
+    type: 'Either',
+  },
   results: [sampleProfessional],
   service: 'All services',
-  setCity: () => {},
-  setModal: () => {},
+  setDiscovery: () => {},
   setService: () => {},
-  setStep: () => {},
   setType: () => {},
   type: 'Either',
 };
@@ -362,13 +380,11 @@ assert.ok(!customerFind.includes('YOUR JOURNEY, SIMPLIFIED'));
 const publicFind = renderToString(
   <ProfessionalsPage
     book={() => {}}
-    city="All locations"
+    discovery={directory.discovery}
     results={[sampleProfessional]}
     service="All services"
-    setCity={() => {}}
-    setModal={() => {}}
+    setDiscovery={() => {}}
     setService={() => {}}
-    setStep={() => {}}
     setType={() => {}}
     type="Either"
   />,
@@ -377,6 +393,8 @@ assert.ok(publicFind.startsWith('<main'));
 assert.ok(publicFind.includes('Good hands'));
 assert.ok(publicFind.includes('Precision Motorworks'));
 assert.ok(publicFind.includes('Book assessment'));
+assert.ok(publicFind.includes('No reviews yet'));
+assert.ok(!publicFind.includes('Assessment from'));
 assert.ok(!publicFind.includes('directory-embedded'));
 const mechanicOverview = screen('mechanic', 'overview');
 assert.ok(mechanicOverview.includes('Overview'));
@@ -1808,6 +1826,110 @@ assert.throws(() => sendMessage(paid.data, {
   body: 'Thanks',
   clientMessageId: 'msg-closed',
 }));
+
+const capeTown = demoAreaById('cape-town');
+const johannesburg = demoAreaById('johannesburg');
+assert.ok(capeTown && johannesburg);
+const capeDiscovery = discoveryWithArea({ ...defaultDiscovery, radiusKm: 25 }, 'cape-town');
+const capeNames = searchDirectory(directoryEntries(providers, initialData), capeDiscovery, initialData).map((hit) => hit.name);
+assert.ok(capeNames.includes('Precision Motorworks'));
+assert.ok(capeNames.includes('Sample Bellville Service'));
+assert.ok(capeNames.includes('On the Move Auto'));
+assert.ok(!capeNames.includes('Sample Stellenbosch Works'));
+assert.ok(!capeNames.includes('Sample Paarl Motors'));
+assert.ok(!capeNames.includes('Driveway Diagnostics'));
+assert.ok(!capeNames.includes('Urban Auto Care'));
+assert.ok(!capeNames.includes('Sample Mowbray Workshop'));
+const capeTen = searchDirectory(directoryEntries(providers, initialData), { ...capeDiscovery, radiusKm: 10 }, initialData).map((hit) => hit.name);
+assert.ok(capeTen.includes('Precision Motorworks'));
+assert.ok(capeTen.includes('On the Move Auto'));
+assert.ok(!capeTen.includes('Sample Bellville Service'));
+assert.ok(!capeTen.includes('Driveway Diagnostics'));
+const capeFifty = searchDirectory(directoryEntries(providers, initialData), { ...capeDiscovery, radiusKm: 50 }, initialData).map((hit) => hit.name);
+assert.ok(capeFifty.includes('Sample Stellenbosch Works'));
+assert.ok(!capeFifty.includes('Sample Paarl Motors'));
+assert.ok(!capeFifty.includes('Driveway Diagnostics'));
+const ordered = searchDirectory(directoryEntries(providers, initialData), capeDiscovery, initialData);
+const distances = ordered.map((hit) => hit.sortKm);
+assert.deepEqual(distances, [...distances].sort((a, b) => a - b));
+const mobile = ordered.find((hit) => hit.name === 'On the Move Auto');
+assert.equal(mobile?.distanceLabel, 'Serves your area');
+assert.equal(mobile?.directionsUrl, null);
+const gardens = ordered.find((hit) => hit.name === 'Precision Motorworks');
+assert.ok(gardens?.directionsUrl?.startsWith('https://www.google.com/maps/dir/?'));
+assert.ok(gardens?.directionsUrl?.includes('travelmode=driving'));
+assert.ok(gardens?.directionsUrl?.includes('destination='));
+assert.equal(gardens?.directionsUrl?.includes('origin='), false);
+assert.equal(searchDirectory(directoryEntries(providers, initialData), defaultDiscovery, initialData).length, 0);
+const allAreas = searchDirectory(directoryEntries(providers, initialData), { ...defaultDiscovery, mode: 'all' }, initialData);
+assert.ok(allAreas.some((hit) => hit.name === 'Driveway Diagnostics'));
+assert.ok(allAreas.some((hit) => hit.name === 'Sample Mowbray Workshop' && hit.distanceLabel === 'Distance unavailable'));
+assert.equal(distanceDisclosure(capeDiscovery.origin).includes('demo area centre'), true);
+assert.equal(distanceDisclosure(capeDiscovery.origin).includes('road distance'), true);
+assert.equal(geolocationMessage(1, true), 'Location permission was denied. Choose an area instead.');
+assert.equal(geolocationMessage(3, true), 'The location request timed out. Choose an area instead.');
+assert.equal(geolocationMessage(2, true), 'Your location is unavailable. Choose an area instead.');
+assert.equal(geolocationMessage(null, false), 'This browser cannot share a location. Choose an area instead.');
+const browserOrigin = discoveryWithBrowser(defaultDiscovery, capeTown!.latitude, capeTown!.longitude);
+assert.equal(browserOrigin.origin?.kind, 'browser');
+assert.equal(validCoordinates(0, 0), true);
+assert.equal(validCoordinates(null, null), false);
+assert.ok(haversineKm({ latitude: 0, longitude: 0 }, { latitude: capeTown!.latitude, longitude: capeTown!.longitude }) > 1000);
+const zeroProfessional = {
+  id: 'pro-zero',
+  name: 'Zero Point Sample',
+  type: 'Workshop',
+  special: 'Servicing',
+  location: { ...providers[0].location, latitude: 0, longitude: 0, precision: 'public-premises' },
+};
+const missingProfessional = {
+  id: 'pro-missing-point',
+  name: 'Missing Point Sample',
+  type: 'Workshop',
+  special: 'Servicing',
+  location: { ...providers[0].location, latitude: null, longitude: null, precision: 'unknown' },
+};
+const zeroHits = searchDirectory([zeroProfessional, missingProfessional], capeDiscovery, initialData);
+assert.equal(zeroHits.length, 0);
+const zeroAll = searchDirectory([zeroProfessional], { ...capeDiscovery, mode: 'all' }, initialData);
+assert.ok(zeroAll[0].sortKm > 1000);
+assert.equal(zeroAll[0].distanceLabel.startsWith('Approximately'), true);
+const encoded = mapsDirectionsUrl({ ...providers[0].location, latitude: -33.5, longitude: 18.5, placeId: 'sample place' });
+assert.ok(encoded?.includes('destination=-33.5%2C18.5') || encoded?.includes('destination=-33.5,18.5'));
+assert.ok(encoded?.includes('destination_place_id=sample+place') || encoded?.includes('destination_place_id=sample%20place'));
+const johannesburgHits = searchDirectory(directoryEntries(providers, initialData), discoveryWithArea({ ...defaultDiscovery, radiusKm: 25 }, 'johannesburg'), initialData).map((hit) => hit.name);
+assert.ok(johannesburgHits.includes('Driveway Diagnostics'));
+assert.ok(!johannesburgHits.includes('Precision Motorworks'));
+assert.equal(normalizeCategory('diagnostics'), 'assessment');
+assert.equal(categoryLabel('assessment'), 'Assessment / diagnostics');
+const legacyJob = initialData.jobs[0];
+assert.equal(pricingModelOf(legacyJob), 'legacy-separate-fee');
+assert.equal(quoteTotal(legacyJob), 1400);
+assert.equal(legacyAssessmentFee(legacyJob), 450);
+const inclusiveQuote = {
+  pricingModel: 'quotation-inclusive',
+  fee: 450,
+  items: [
+    { name: 'Initial assessment and diagnostic scan', category: 'assessment', amount: 350 },
+    { name: 'Front brake pads', category: 'parts', amount: 950 },
+    { name: 'Brake labour', category: 'labour', amount: 450 },
+  ],
+};
+assert.equal(quoteTotal(inclusiveQuote), 1750);
+assert.equal(legacyAssessmentFee(inclusiveQuote), null);
+const rated = withMechanicShowcase(structuredClone(initialData));
+const summary = ratingSummary(rated, 'pro-precision-motorworks');
+assert.equal(summary.count, 2);
+assert.equal(summary.average, 4.5);
+assert.equal(summary.label, '4.5 / 5 · 2 reviews');
+assert.equal(summary.accessible, '4.5 out of 5 from 2 reviews');
+assert.equal(ratingSummary(initialData, 'pro-sample-sea-point').label, 'No reviews yet');
+const demoQuote = rated.jobs.find((job: any) => job.id === 'VA-2026-1301');
+assert.equal(quoteTotal(demoQuote), 1750);
+assert.equal(demoQuote.items.filter((item: any) => item.category === 'assessment').length, 1);
+assert.equal(quoteTotal(rated.jobs.find((job: any) => job.id === 'VA-2026-1110')), 900);
+assert.equal(quoteTotal(rated.jobs.find((job: any) => job.id === 'VA-2026-1112')), 1130);
+
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );

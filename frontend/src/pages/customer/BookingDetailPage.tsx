@@ -11,6 +11,7 @@ import { demoCustomerId } from '../../features/admin/customerRecords';
 import { canOfferHistoryAccess, activeGrantForBooking } from '../../features/garage/historyAccess';
 import { grantHistoryAccess, revokeHistoryAccess } from '../../features/demo/demoActions';
 import { bookingReference } from '../../features/jobs/jobViews';
+import { pricingNote } from '../../features/jobs/pricingModel';
 import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
 import { useEffect, useState } from 'react';
@@ -229,14 +230,13 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
         <QuoteSummary job={job} />
         <DetailFields
           items={[
-            { label: 'Assessment fee', value: `R${Number(job.fee || 0).toLocaleString()}` },
             { label: 'Approval', value: job.quoteApproved ? 'Approved' : 'Not approved' },
             { label: 'Payment', value: paymentLabel },
             { label: 'Reference', value: job.paymentReference || 'Not recorded' },
             { label: 'Paid', value: job.paidAt ? formatWhen(job.paidAt) : 'Not recorded' },
           ]}
         />
-        <p className="muted">The assessment fee is separate from the quotation total.</p>
+        <p className="muted">{pricingNote(job)}</p>
         {job.completionNotes ? <p>Completion: {job.completionNotes}</p> : null}
         {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
         <div className="button-row">

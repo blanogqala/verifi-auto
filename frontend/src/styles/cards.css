@@ -13,7 +13,7 @@
 }
 [data-theme='light'] {
   --card-surface: #f3eafa;
-  --card-background: var(--tint);
+  --card-background: linear-gradient(145deg, #f7f1fc 0%, #efe6f8 58%, #f4eefb 100%);
   --card-shadow: 0 10px 24px rgb(90 50 140 / 9%);
   --card-quiet-background: #fff;
   --card-quiet-border: color-mix(in srgb, var(--purple) 24%, #e4dcf0);

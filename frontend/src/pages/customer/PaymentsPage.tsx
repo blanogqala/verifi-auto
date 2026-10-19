@@ -60,7 +60,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
         <Metric
           label="Approved repair value"
           value={money(paymentRecordTotal(jobs.filter((job: any) => job.quoteApproved)))}
-          note="Excludes assessment fees"
+          note="Submitted quotation totals"
           Icon={FileText}
         />
       </div>

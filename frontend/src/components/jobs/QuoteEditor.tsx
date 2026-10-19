@@ -14,6 +14,7 @@ import {
 
 const categoryOptions = [
   { id: '', label: 'Type' },
+  { id: 'assessment', label: 'Assessment / diagnostics' },
   { id: 'labour', label: 'Labour' },
   { id: 'parts', label: 'Parts' },
   { id: 'other', label: 'Other' },
@@ -86,7 +87,7 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
         save('send');
       }}
     >
-      <p className="muted">This draft stays private until you send it for approval.</p>
+      <p className="muted">Include assessment or diagnostics, parts, labour, and any other charge. This draft stays private until you send it for approval.</p>
       {rows.map((row, index) => (
         <div className="quote-editor-line" key={row.id}>
           <label>

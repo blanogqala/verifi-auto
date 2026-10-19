@@ -1,6 +1,6 @@
 import { textValue } from '../demo/links';
 
-export const quoteCategories = ['labour', 'parts', 'other'] as const;
+export const quoteCategories = ['assessment', 'labour', 'parts', 'other'] as const;
 export type QuoteCategory = (typeof quoteCategories)[number] | '';
 
 export type QuoteLine = {
@@ -38,6 +38,7 @@ export function quoteEditable(status: string) {
 
 export function normalizeCategory(value: unknown): QuoteCategory {
   const kind = textValue(value).toLowerCase();
+  if (kind === 'assessment' || kind === 'diagnostics' || kind === 'diagnostic') return 'assessment';
   if (kind === 'labour' || kind === 'labor') return 'labour';
   if (kind === 'part' || kind === 'parts') return 'parts';
   if (kind === 'other') return 'other';
@@ -46,6 +47,7 @@ export function normalizeCategory(value: unknown): QuoteCategory {
 
 export function categoryLabel(value: unknown) {
   const category = normalizeCategory(value);
+  if (category === 'assessment') return 'Assessment / diagnostics';
   if (category === 'labour') return 'Labour';
   if (category === 'parts') return 'Parts';
   if (category === 'other') return 'Other';

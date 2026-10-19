@@ -2,6 +2,7 @@ import { Card } from '../../components/ui/Card';
 
 import { ArrowRight, FileText } from 'lucide-react';
 import { quoteTotal } from '../../demo';
+import { pricingNote } from '../../features/jobs/pricingModel';
 import { bookingReference } from '../../features/jobs/jobViews';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
@@ -11,8 +12,8 @@ export function QuotesPage({ filter, jobs, name, onEdit, quoteEditor, role, setD
     <>
       <div className="workspace-note">
         {role === 'customer'
-          ? 'Review itemised repair costs before approving. Assessment fees are shown separately.'
-          : 'Confirm an assessment first, then prepare a repair quote. Work can only start after customer approval.'}
+          ? 'Review itemised repair costs before approving. The total is the submitted quotation.'
+          : 'Confirm the request, then send a quotation. Include assessment, parts, labour, and any other charge. Work starts only after approval.'}
       </div>
       <div className="job-grid">
         {jobs
@@ -37,10 +38,10 @@ export function QuotesPage({ filter, jobs, name, onEdit, quoteEditor, role, setD
                 </div>
               ))}
               <div className="invoice-line total">
-                <span>Repair total</span>
+                <span>Quotation total</span>
                 <b>R{quoteTotal(j).toLocaleString()}</b>
               </div>
-              <small className="muted">Assessment fee: R{j.fee} · separate from repair total</small>
+              <small className="muted">{pricingNote(j)}</small>
               <p className="muted">{j.notes || 'No repair quote prepared yet.'}</p>
               <div className="button-row">
                 {role === 'customer' && j.status === 'Awaiting approval' ? (

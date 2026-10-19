@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ArrowRight, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { DetailBack, DetailCard } from '../ui/DetailChrome';
 import { RoadLoader } from '../ui/RoadLoader';
@@ -11,12 +11,17 @@ import { initialsFromName } from '../../features/account/customerIdentity';
 import { resolveProfessional, verificationCopy } from '../../features/professionals/professionalProfile';
 import { formatDay } from '../../features/jobs/bookingProgress';
 import { backTarget, returnLabel } from '../../features/navigation/returnPath';
+import { chargeConfirmation } from '../../features/jobs/pricingModel';
+import { distanceFor } from '../../features/professionals/discovery';
+import { readDiscoverySession } from '../../features/professionals/discoveryState';
+import { approximateDistanceLabel, mapsDirectionsUrl } from '../../features/professionals/geo';
 import {
   deleteCustomerReview,
   eligibleReviewBookings,
-  reviewsForProfessional,
   saveCustomerReview,
 } from '../../features/reviews/customerReviews';
+import { eligibleCustomerReviews, ratingSummary } from '../../features/reviews/ratingSummary';
+import { RatingLine } from './RatingLine';
 
 function stars(rating: number) {
   return Array.from({ length: 5 }, (_, index) => (index < rating ? '★' : '☆')).join('');
@@ -46,7 +51,7 @@ export function ProfessionalProfilePage({
   const resolved = resolveProfessional(professionalId, data);
   const Tag = embedded ? 'div' : 'main';
   const customerId = data?.settings?.id || demoCustomerId;
-  const reviews = resolved.state === 'listed' ? reviewsForProfessional(data, professionalId) : [];
+  const reviews = resolved.state === 'listed' ? eligibleCustomerReviews(data, professionalId) : [];
   const eligible =
     role === 'customer' && resolved.state === 'listed'
       ? eligibleReviewBookings(data, customerId, professionalId)
@@ -62,6 +67,12 @@ export function ProfessionalProfilePage({
   const here = (embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(professionalId || '');
   const fallback = embedded ? 'dashboard/find' : 'find';
   const back = backTarget(here, fallback);
+
+  useLayoutEffect(() => {
+    if (!embedded) return;
+    const scroller = document.querySelector('.workspace-main');
+    if (scroller instanceof HTMLElement) scroller.scrollTop = 0;
+  }, [embedded, professionalId]);
 
   if (resolved.state === 'missing') {
     return (
@@ -134,33 +145,49 @@ export function ProfessionalProfilePage({
     }
   }
 
-  const average = reviews.length
-    ? reviews.reduce((sum: number, review: any) => sum + Number(review.rating || 0), 0) / reviews.length
-    : null;
+  const summary = ratingSummary(data, professionalId);
+  const discovery = readDiscoverySession();
+  const distance = distanceFor({ location: profile.location }, discovery.origin);
+  const coverage = Number(profile.location?.serviceRadiusKm);
+  const distanceLabel =
+    profile.location?.precision === 'service-area' && distance != null && Number.isFinite(coverage) && distance <= coverage
+      ? 'Serves your area'
+      : distance != null && profile.location && profile.location.precision !== 'unknown' && profile.location.precision !== 'service-area'
+        ? approximateDistanceLabel(distance, profile.location.precision)
+        : '';
+  const directions = mapsDirectionsUrl(profile.location);
 
   return (
     <Tag className={'section profile-page detail-page' + (embedded ? ' profile-embedded' : '')}>
       <DetailBack label={returnLabel(back)} onClick={() => go(back)} />
       <section className="pro-banner">
-        <div className="pro-banner-art" aria-hidden="true">
-          {profile.photo ? <img src={profile.photo} alt="" /> : <span>{initialsFromName(profile.name)}</span>}
+        <div className="pro-banner-art">
+          {profile.photo ? (
+            <img src={profile.photo} alt="Illustrative workshop photograph. Not a picture of this fictional business." />
+          ) : (
+            <span aria-hidden="true">{initialsFromName(profile.name)}</span>
+          )}
         </div>
         <div>
           {profile.sample ? <span className="chip">SAMPLE PROFILE</span> : null}
           <h1>{profile.name}</h1>
           {profile.individualName ? <p>{profile.individualName}</p> : null}
           <p>
-            <MapPin size={16} aria-hidden="true" /> {profile.area || 'Location not recorded'} · {profile.type || 'Type not recorded'}
+            <MapPin size={16} aria-hidden="true" /> {profile.place || profile.area || 'Location not recorded'} · {profile.type || 'Type not recorded'}
           </p>
+          {profile.location?.precision === 'service-area' ? (
+            <p>Service-area reference only. This is not a live location or a private base address.</p>
+          ) : null}
+          {profile.location?.precision === 'area-centre' ? (
+            <p>Listed from a demo area centre, not a geocoded street address.</p>
+          ) : null}
           <p>
             <ShieldCheck size={16} aria-hidden="true" /> {verificationCopy(profile)}
           </p>
-          {average != null ? (
-            <p>
-              <Star size={16} aria-hidden="true" /> {average.toFixed(1)} from {reviews.length} review{reviews.length === 1 ? '' : 's'}
-            </p>
-          ) : null}
-          {profile.fee != null ? <p>Assessment fee R{profile.fee}</p> : null}
+          <RatingLine summary={summary} />
+          {distanceLabel ? <p>{distanceLabel}</p> : null}
+          <p>{chargeConfirmation}</p>
+          <div className="button-row">
           <button
             className="primary"
             type="button"
@@ -170,13 +197,18 @@ export function ProfessionalProfilePage({
                 name: profile.name,
                 area: profile.area,
                 type: profile.type,
-                fee: profile.fee,
                 special: profile.services.join(' · '),
               })
             }
           >
             Book assessment <ArrowRight size={18} />
           </button>
+          {directions ? (
+            <a className="text-link directions-link" href={directions} target="_blank" rel="noopener noreferrer">
+              Directions <ArrowUpRight size={16} />
+            </a>
+          ) : null}
+          </div>
         </div>
       </section>
       <div className="detail-layout pro-layout">

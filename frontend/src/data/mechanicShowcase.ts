@@ -4,7 +4,7 @@
  * keep saved edits and do not restore bookings the browser has removed.
  */
 
-export const mechanicShowcaseVersion = 1;
+export const mechanicShowcaseVersion = 2;
 export const showcaseProfessionalId = 'pro-precision-motorworks';
 export const demoStorageKey = 'verifi-demo-v2';
 export const previewFlag = 'verifi-mechanic-preview';
@@ -361,6 +361,83 @@ const jobs = [
       { at: '2026-10-18T14:00:00.000Z', type: 'quote', label: 'Quotation sent for approval' },
     ],
   },
+  {
+    ...workshop,
+    id: 'VA-2026-1301',
+    customerId: 'cust-01',
+    vehicleId: 'v1',
+    vehicleLink: 'resolved',
+    vehicle: '2020 Volkswagen Polo',
+    vehicleLabel: '2020 Volkswagen Polo',
+    registration: 'DEMO 001',
+    date: '2026-10-28',
+    time: '09:30',
+    fee: null,
+    pricingModel: 'quotation-inclusive',
+    status: 'Awaiting approval',
+    accepted: true,
+    description: 'Fictional sample booking. The brakes squeal and the professional has sent one quotation.',
+    quoteVersion: 1,
+    quoteApproved: false,
+    paid: false,
+    notes: 'Fictional sample quotation. Assessment, parts, and labour are included once in this total.',
+    items: [
+      { id: 'line-1301-a', name: 'Initial assessment and diagnostic scan', category: 'assessment', quantity: null, unitPriceCents: null, amount: 350 },
+      { id: 'line-1301-b', name: 'Front brake pads', category: 'parts', quantity: 1, unitPriceCents: 95000, amount: 950 },
+      { id: 'line-1301-c', name: 'Brake labour', category: 'labour', quantity: 2, unitPriceCents: 22500, amount: 450 },
+    ],
+    quoteVersions: [{
+      version: 1,
+      submittedAt: '2026-10-18T15:00:00.000Z',
+      clientSubmitId: 'show-1301-v1',
+      notes: 'Fictional sample quotation. Assessment, parts, and labour are included once in this total.',
+      totalCents: 175000,
+      items: [
+        { id: 'line-1301-a', name: 'Initial assessment and diagnostic scan', category: 'assessment', quantity: null, unitPriceCents: null, amount: 350 },
+        { id: 'line-1301-b', name: 'Front brake pads', category: 'parts', quantity: 1, unitPriceCents: 95000, amount: 950 },
+        { id: 'line-1301-c', name: 'Brake labour', category: 'labour', quantity: 2, unitPriceCents: 22500, amount: 450 },
+      ],
+    }],
+  },
+  {
+    ...workshop,
+    id: 'VA-2026-1302',
+    customerId: 'cust-01',
+    vehicleId: 'v1',
+    vehicleLink: 'resolved',
+    vehicle: '2020 Volkswagen Polo',
+    vehicleLabel: '2020 Volkswagen Polo',
+    registration: 'DEMO 001',
+    date: '2026-10-12',
+    time: '08:00',
+    fee: null,
+    pricingModel: 'quotation-inclusive',
+    status: 'Completed',
+    accepted: true,
+    description: 'Fictional completed assessment used only so this preview can show a customer review.',
+    quoteVersion: 1,
+    approvedQuoteVersion: 1,
+    quoteApproved: true,
+    paid: true,
+    paidAt: '2026-10-12T16:00:00.000Z',
+    paymentReference: 'DEMO-1302',
+    completionNotes: 'Fictional assessment completed. No further repair was approved.',
+    notes: 'Fictional assessment-only quotation. The charge appears once.',
+    items: [
+      { id: 'line-1302-a', name: 'On-site assessment and diagnostic scan', category: 'assessment', quantity: null, unitPriceCents: null, amount: 280 },
+    ],
+    quoteVersions: [{
+      version: 1,
+      submittedAt: '2026-10-12T09:00:00.000Z',
+      clientSubmitId: 'show-1302-v1',
+      notes: 'Fictional assessment-only quotation. The charge appears once.',
+      totalCents: 28000,
+      state: 'approved',
+      items: [
+        { id: 'line-1302-a', name: 'On-site assessment and diagnostic scan', category: 'assessment', quantity: null, unitPriceCents: null, amount: 280 },
+      ],
+    }],
+  },
 ];
 
 const messages = [
@@ -517,6 +594,48 @@ const notifications = [
     eventKey: 'payment:VA-2026-1110',
     section: '',
   },
+  {
+    id: 'show-note-quote-1301',
+    recipientRole: 'customer',
+    recipientId: 'cust-01',
+    type: 'quote',
+    title: 'Quotation ready',
+    message: 'VA-2026-1301 includes assessment, parts, and labour in one total.',
+    text: 'VA-2026-1301 includes assessment, parts, and labour in one total.',
+    createdAt: '2026-10-18T15:00:00.000Z',
+    read: false,
+    bookingId: 'VA-2026-1301',
+    panel: 'quote',
+    eventKey: 'quote:VA-2026-1301:v1',
+    section: '',
+  },
+];
+
+const sampleReviews = [
+  {
+    id: 'review-demo-1110',
+    bookingId: 'VA-2026-1110',
+    customerId: 'cust-chris',
+    professionalId: 'pro-precision-motorworks',
+    rating: 4,
+    text: 'Fictional sample review for this browser preview. Not a real customer endorsement.',
+    photos: [],
+    fictional: true,
+    createdAt: '2026-10-17T15:00:00.000Z',
+    updatedAt: '2026-10-17T15:00:00.000Z',
+  },
+  {
+    id: 'review-demo-1302',
+    bookingId: 'VA-2026-1302',
+    customerId: 'cust-01',
+    professionalId: 'pro-precision-motorworks',
+    rating: 5,
+    text: 'Fictional sample review for this browser preview. The assessment was explained before any further work. Not a real customer endorsement.',
+    photos: [],
+    fictional: true,
+    createdAt: '2026-10-12T17:00:00.000Z',
+    updatedAt: '2026-10-12T17:00:00.000Z',
+  },
 ];
 
 function list(value: unknown) {
@@ -553,6 +672,7 @@ export function withMechanicShowcase(data: any) {
   const messageIds = new Set(list(source.messages).map((message: any) => message?.id));
   const noteIds = new Set(list(source.notifications).map((note: any) => note?.id));
   const noteKeys = new Set(list(source.notifications).map((note: any) => note?.eventKey).filter(Boolean));
+  const reviewIds = new Set(list(source.customerReviews).map((review: any) => review?.id));
   return {
     ...source,
     customers: [...list(source.customers), ...customers.filter((customer) => !customerIds.has(customer.id))],
@@ -562,6 +682,7 @@ export function withMechanicShowcase(data: any) {
       ...list(source.notifications),
       ...notifications.filter((note) => !noteIds.has(note.id) && !noteKeys.has(note.eventKey)),
     ],
+    customerReviews: [...list(source.customerReviews), ...sampleReviews.filter((review) => !reviewIds.has(review.id))],
     historyAccess: list(source.historyAccess),
     demoShowcase: { version: mechanicShowcaseVersion },
   };
