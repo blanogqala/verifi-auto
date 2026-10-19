@@ -1817,7 +1817,7 @@ hr {
 /* Directory: two controls, image-led cards, a consistent action baseline. */
 .directory-heading h1 { font-size: clamp(28px, 3vw, 40px); margin: 0 0 8px; }
 .directory-heading { margin-bottom: 24px; }
-.directory-simple-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-radius: 14px; }
+.directory-simple-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; border-radius: 14px; }
 .directory-simple-filters label { font-size: 13px; }
 .directory-simple-filters select { font-size: 16px; min-height: 44px; padding-top: 8px; }
 .directory-disclosure { margin-top: 24px; }

@@ -98,15 +98,7 @@ export function ProfessionalsPage({
       </div>
       <div className="filters directory-simple-filters">
         <label>
-          Service
-          <select value={service} onChange={(event) => setService(event.target.value)}>
-            {['All services', 'Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical', 'Not sure yet'].map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Area
+          Location
           <select ref={areaRef} aria-label="Search area" value={state.areaId}
             onChange={(event) => {
               requestVersion.current += 1;
@@ -117,6 +109,22 @@ export function ProfessionalsPage({
             }}>
             <option value="">{state.origin?.kind === 'browser' ? 'Current location' : 'Choose area / current location'}</option>
             {demoAreas.map((area) => <option key={area.id} value={area.id}>{area.label}</option>)}
+          </select>
+        </label>
+        <label>
+          Service
+          <select value={service} onChange={(event) => setService(event.target.value)}>
+            {['All services', 'Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical', 'Not sure yet'].map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Professional
+          <select aria-label="Professional type" value={type} onChange={(event) => setType(event.target.value)}>
+            <option>Either</option>
+            <option>Workshop</option>
+            <option>Mobile mechanic</option>
           </select>
         </label>
       </div>

@@ -1935,13 +1935,18 @@ console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );
 
-// Ranked discovery never blocks the catalogue or silently retains a removed type filter.
+// Ranked discovery supports professional filters without a radius cutoff.
 const catalogue = directoryEntries(providers, initialData);
 assert.equal(browseDirectory(catalogue, defaultDiscovery, initialData).length, catalogue.length);
 const ranked = browseDirectory(catalogue, capeDiscovery, initialData);
 assert.equal(ranked.length, catalogue.length);
 for (let index = 1; index < ranked.length; index++) assert.ok(ranked[index - 1].sortKm <= ranked[index].sortKm);
-assert.equal(browseDirectory(catalogue, { ...capeDiscovery, type: 'Workshop', radiusKm: 10 }, initialData).length, ranked.length);
+for (const type of ['Workshop', 'Mobile mechanic']) {
+  const matches = browseDirectory(catalogue, { ...capeDiscovery, type, radiusKm: 10 }, initialData);
+  assert.ok(matches.length > 0);
+  assert.ok(matches.every((hit) => hit.type === type));
+  assert.equal(matches.length, catalogue.filter((item) => item.type === type).length);
+}
 assert.ok(browseDirectory(catalogue, { ...capeDiscovery, service: 'Brakes' }, initialData).every((hit) => hit.special.includes('Brakes')));
 
 for (const html of [customerFind, publicFind]) {
