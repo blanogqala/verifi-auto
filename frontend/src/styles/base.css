@@ -909,32 +909,14 @@ footer.site-footer > div:nth-child(2) {
   border-radius: var(--card-radius);
   overflow: hidden;
 }
-.provider-body {
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: 14px;
-  padding: 16px 16px 0;
-}
+.provider-body { display: flex; flex-direction: column; }
 .provider-art {
-  width: 84px;
-  height: 84px;
-  border-radius: 10px;
-  overflow: hidden;
-  background: radial-gradient(at 30% 30%, #9658e833, transparent), var(--tint);
-  display: grid;
-  place-items: center;
-  color: var(--soft);
-  font-weight: 700;
+  width: 100%; height: 210px; overflow: hidden;
+  background: radial-gradient(at 30% 30%, #9658e855, transparent), var(--tint);
+  display: grid; place-items: center; color: var(--soft);
 }
-.provider-art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.provider-info {
-  min-width: 0;
-  padding: 0;
-}
+.provider-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.provider-info { min-width: 0; padding: 20px 20px 0; }
 .provider-kicker {
   display: flex;
   flex-wrap: wrap;
@@ -1830,4 +1812,22 @@ hr {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Directory: two controls, image-led cards, a consistent action baseline. */
+.directory-heading h1 { font-size: clamp(28px, 3vw, 40px); margin: 0 0 8px; }
+.directory-heading { margin-bottom: 24px; }
+.directory-simple-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-radius: 14px; }
+.directory-simple-filters label { font-size: 13px; }
+.directory-simple-filters select { font-size: 16px; min-height: 44px; padding-top: 8px; }
+.directory-disclosure { margin-top: 24px; }
+.provider-card-footer { margin-top: auto; padding: 18px 20px 20px; }
+.provider-card-reputation { border-top: 1px solid var(--line); padding-top: 14px; margin-bottom: 14px; }
+.provider-card-reputation .provider-distance { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.provider-card .provider-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; padding: 0; align-items: stretch; }
+.provider-card .provider-actions button { justify-content: center; min-height: 46px; padding: 12px; font-size: 14px; }
+.provider-card .directions-link { grid-column: 1 / -1; justify-content: flex-start; }
+@media (max-width: 550px) {
+  .directory-simple-filters { grid-template-columns: 1fr; gap: 14px; padding: 16px; }
+  .provider-art { height: 190px; }
 }

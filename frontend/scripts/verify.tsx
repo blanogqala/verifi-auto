@@ -85,6 +85,7 @@ import {
   distanceDisclosure,
   geolocationMessage,
   searchDirectory,
+  browseDirectory,
 } from '../src/features/professionals/discovery';
 import { haversineKm, mapsDirectionsUrl, validCoordinates } from '../src/features/professionals/geo';
 import { ratingSummary } from '../src/features/reviews/ratingSummary';
@@ -369,13 +370,13 @@ assert.ok(customerQuotes.includes('Review &amp; approve'));
 const customerFind = screen('customer', 'find');
 assert.equal((customerFind.match(/<main[\s>]/g) || []).length, 1);
 assert.ok(customerFind.includes('class="section app-page directory-embedded"'));
-assert.ok(customerFind.includes('Good hands'));
-assert.ok(customerFind.includes('FIND YOUR NEXT PROFESSIONAL'));
+assert.ok(customerFind.includes('Find a professional'));
+assert.equal((customerFind.match(/<h1[ >]/g) || []).length, 1);
 assert.ok(customerFind.includes('Precision Motorworks'));
 assert.ok(customerFind.includes('Book assessment'));
 assert.ok(customerFind.includes('View profile'));
 assert.ok(customerFind.includes('Find a Professional'));
-assert.ok(!customerFind.includes('Find a professional'));
+assert.ok(!customerFind.includes('FIND YOUR NEXT PROFESSIONAL'));
 assert.ok(!customerFind.includes('YOUR JOURNEY, SIMPLIFIED'));
 const publicFind = renderToString(
   <ProfessionalsPage
@@ -390,7 +391,7 @@ const publicFind = renderToString(
   />,
 );
 assert.ok(publicFind.startsWith('<main'));
-assert.ok(publicFind.includes('Good hands'));
+assert.ok(publicFind.includes('Find a professional'));
 assert.ok(publicFind.includes('Precision Motorworks'));
 assert.ok(publicFind.includes('Book assessment'));
 assert.ok(publicFind.includes('No reviews yet'));
@@ -1933,3 +1934,19 @@ assert.equal(quoteTotal(rated.jobs.find((job: any) => job.id === 'VA-2026-1112')
 console.log(
   `${count} role/auth screens rendered; role route guards, application checklist, and complete quote-to-payment state flow passed.`,
 );
+
+// Ranked discovery never blocks the catalogue or silently retains a removed type filter.
+const catalogue = directoryEntries(providers, initialData);
+assert.equal(browseDirectory(catalogue, defaultDiscovery, initialData).length, catalogue.length);
+const ranked = browseDirectory(catalogue, capeDiscovery, initialData);
+assert.equal(ranked.length, catalogue.length);
+for (let index = 1; index < ranked.length; index++) assert.ok(ranked[index - 1].sortKm <= ranked[index].sortKm);
+assert.equal(browseDirectory(catalogue, { ...capeDiscovery, type: 'Workshop', radiusKm: 10 }, initialData).length, ranked.length);
+assert.ok(browseDirectory(catalogue, { ...capeDiscovery, service: 'Brakes' }, initialData).every((hit) => hit.special.includes('Brakes')));
+
+for (const html of [customerFind, publicFind]) {
+  assert.ok(!html.includes('Search radius'));
+  assert.ok(!html.includes('Increase radius'));
+  assert.ok(!html.includes('Return to nearby search'));
+  assert.ok(!html.includes('Browse all areas'));
+}

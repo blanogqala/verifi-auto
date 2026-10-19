@@ -228,3 +228,8 @@ export function directorySummary(discovery: DiscoverySession, count: number) {
 }
 
 export { demoAreas };
+
+/** Discovery is a ranked catalogue: location orders results, never gates them. */
+export function browseDirectory(professionals: any[], discovery: DiscoverySession, data: any = {}) {
+  return searchDirectory(professionals, { ...discovery, mode: 'all', type: 'Either' }, data);
+}

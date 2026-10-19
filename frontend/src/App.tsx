@@ -1,7 +1,8 @@
 import { photo, shop } from './config/assets';
+import { demoAreaByLabel } from './data/demoAreas';
 import { providers } from './data/professionals';
 import { clearBookingDraft, readBookingDraft, writeBookingDraft } from './features/booking/bookingDraft';
-import { discoveryWithArea, searchDirectory, type DiscoverySession } from './features/professionals/discovery';
+import { discoveryWithArea, browseDirectory, type DiscoverySession } from './features/professionals/discovery';
 import { readDiscoverySession, writeDiscoverySession } from './features/professionals/discoveryState';
 import { PublicHeader } from './layouts/PublicHeader';
 import { LandingPage } from './pages/public/LandingPage';
@@ -50,7 +51,12 @@ export default function App() {
   const openingDraft = readBookingDraft();
   const [pending, setPending] = useState<any>(openingDraft?.professional ?? null);
   const [menu, setMenu] = useState(false);
-  const [discovery, setDiscovery] = useState<DiscoverySession>(readDiscoverySession);
+  const [discovery, setDiscovery] = useState<DiscoverySession>(() => {
+    const saved = readDiscoverySession();
+    if (saved.origin) return saved;
+    const area = role === 'customer' ? demoAreaByLabel(data.settings?.city || '') : null;
+    return area ? discoveryWithArea(saved, area.id) : saved;
+  });
   const [modal, setModal] = useState<any>(null);
   const [step, setStep] = useState(0);
   const [date, setDate] = useState(openingDraft?.date || '');
@@ -358,7 +364,7 @@ export default function App() {
     });
   }, [modal, vehicleId, date, time, description]);
   const listed = directoryEntries(providers, data);
-  const results = searchDirectory(listed, discovery, data);
+  const results = browseDirectory(listed, discovery, data);
   function setService(service: string) {
     setDiscovery((current) => ({ ...current, service }));
   }

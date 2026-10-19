@@ -1,5 +1,4 @@
-import { MapPin, ShieldCheck, ArrowUpRight } from 'lucide-react';
-import { initialsFromName } from '../../features/account/customerIdentity';
+import { Wrench, MapPin, ShieldCheck, ArrowUpRight } from 'lucide-react';
 import { emptyRating } from '../../features/reviews/ratingSummary';
 import { Card } from '../ui/Card';
 import { RatingLine } from './RatingLine';
@@ -16,7 +15,7 @@ export function ProfessionalCard({ professional: p, onView, onBook }: any) {
           {photo ? (
             <img src={photo} alt="Illustrative workshop photograph. Not a picture of this fictional business." />
           ) : (
-            <span aria-hidden="true">{initialsFromName(p.name || '')}</span>
+            <Wrench size={56} aria-hidden="true" />
           )}
         </div>
         <div className="provider-info">
@@ -29,14 +28,17 @@ export function ProfessionalCard({ professional: p, onView, onBook }: any) {
             <MapPin size={15} aria-hidden="true" />
             {place}
           </p>
-          <RatingLine summary={rating} />
-          {p.distanceLabel ? <p className="provider-distance">{p.distanceLabel}</p> : null}
           {p.special ? <p className="provider-special">{p.special}</p> : null}
           <div className="verification">
             <ShieldCheck size={16} aria-hidden="true" />
             {p.verification || 'Sample profile. Not a verified business.'}
           </div>
         </div>
+      </div>
+      <div className="provider-card-footer">
+      <div className="provider-card-reputation">
+        <RatingLine summary={rating} />
+        {p.distanceLabel && p.distanceLabel !== 'Distance unavailable' ? <p className="provider-distance">{p.distanceLabel}</p> : null}
       </div>
       <div className="provider-actions">
         <button className="secondary view-profile" type="button" onClick={onView}>
@@ -50,6 +52,7 @@ export function ProfessionalCard({ professional: p, onView, onBook }: any) {
             Directions <ArrowUpRight size={14} />
           </a>
         ) : null}
+      </div>
       </div>
     </Card>
   );
