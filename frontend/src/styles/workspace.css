@@ -2690,3 +2690,22 @@ td .text-link {
 .admin-audit-event time, .admin-audit-event small { color: var(--muted); font-size: 13px; }
 .status-counts meter { width: 100%; accent-color: var(--purple); }
 @media (max-width: 600px) { .admin-audit-event { grid-template-columns: 20px minmax(0, 1fr); } .admin-audit-event time { grid-column: 2; } }
+
+.admin-overview { display: grid; gap: 22px; }
+.admin-summary-metrics { margin-bottom: 22px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.table-controls.admin-filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.admin-filter-row .search-input { flex: 1 1 260px; min-width: 0; }
+.admin-filter-row select { flex: 0 1 190px; max-width: 100%; min-height: 44px; }
+.admin-bars { display: grid; gap: 18px; }
+.admin-bar-row > div:first-child { display: flex; justify-content: space-between; gap: 14px; font-size: 13px; margin-bottom: 7px; }
+.admin-bar-track { height: 12px; background: color-mix(in srgb, var(--purple) 12%, transparent); border-radius: 20px; overflow: hidden; }
+.admin-bar-track > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7040b8, #b78bea); }
+.admin-dispute-card { text-align: left; cursor: pointer; }
+.admin-dispute-card:focus-visible { outline: 3px solid var(--purple); outline-offset: 3px; }
+.admin-overview .detail-card-body > .admin-record-link + .admin-record-link { margin-top: 10px; }
+@media (max-width: 750px) {
+  .admin-summary-metrics { grid-template-columns: minmax(0, 1fr); }
+  .admin-filter-row .search-input { flex-basis: 100%; }
+  .admin-filter-row select { flex: 1 1 calc(50% - 12px); width: 0; }
+}
+@media (max-width: 380px) { .admin-filter-row select { flex-basis: 100%; width: 100%; } }

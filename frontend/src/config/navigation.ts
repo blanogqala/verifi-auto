@@ -139,6 +139,7 @@ export const allowedDashboardPages: Record<Role, string[]> = {
     'reports',
     'reports/analytics',
     'reports/security',
+    'jobs/disputes',
     'notifications',
     'reports/support',
     'finance',
@@ -209,6 +210,8 @@ export function pageTitle(role: Role, tab: string) {
   if (role === 'admin' && tab === 'notifications') return 'Notifications';
   if (role === 'admin' && tab.startsWith('professionals/')) return 'Professional';
   if (role === 'admin' && tab.startsWith('customers/')) return 'Customer';
+  if (role === 'admin' && tab === 'jobs/disputes') return 'Jobs & activity';
+  if (role === 'admin' && tab.startsWith('disputes/')) return 'Dispute';
   if (role === 'admin' && tab.startsWith('jobs/')) return 'Job';
   if (role === 'admin' && tab.startsWith('applications')) return 'Applications';
   if (role === 'customer' && tab.startsWith('find/')) return 'Professional';

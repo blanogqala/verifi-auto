@@ -1,3 +1,5 @@
+import { AdminOverviewPage } from '../pages/admin/AdminOverviewPage';
+import { AdminJobsPage, AdminDisputePage } from '../pages/admin/AdminJobsPage';
 import { appendAdminActivity } from '../features/admin/detailRecords';
 import { ApplicationDetailPage, ProfessionalAdminDetailPage, CustomerAdminDetailPage, AdminJobDetailPage } from '../pages/admin/AdminDetailPages';
 import { JobCard } from '../components/jobs/JobCard';
@@ -295,7 +297,7 @@ export function Workspace({
     role === 'customer' ? data.settings?.photo || '' : role === 'mechanic' ? data.profile?.photo || '' : '';
   const heading = pageTitle(role, tab);
   const apps = applicationRecords(data);
-  const adminDetailKind = role === 'admin' && ['applications', 'professionals', 'customers', 'jobs'].includes(sectionRoot) && tab.includes('/') && tab !== 'applications/history' ? sectionRoot : '';
+  const adminDetailKind = role === 'admin' && ['applications', 'professionals', 'customers', 'jobs', 'disputes'].includes(sectionRoot) && tab.includes('/') && tab !== 'applications/history' && tab !== 'jobs/disputes' ? sectionRoot : '';
   const adminDetailId = adminDetailKind ? detailId(tab, adminDetailKind) : undefined;
   useEffect(() => { setChecks([]); setReviewNote(apps.find((a: any) => a.id === adminDetailId)?.note || ''); }, [adminDetailId]);
   const customers = customerRecords(data);
@@ -558,7 +560,9 @@ export function Workspace({
           {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} />}
           {adminDetailKind === 'customers' && <CustomerAdminDetailPage key={adminDetailId} customer={customers.find((c: any) => c.id === adminDetailId)} data={data} route={route} />}
           {adminDetailKind === 'jobs' && <AdminJobDetailPage key={adminDetailId} job={jobs.find((j: any) => j.id === adminDetailId)} data={data} route={route} />}
-          {tab === 'overview' && (
+          {role === 'admin' && tab === 'overview' && <AdminOverviewPage apps={apps} data={data} route={route} openReview={openReview} />}
+          {adminDetailKind === 'disputes' && <AdminDisputePage key={adminDetailId} id={adminDetailId} data={data} route={route} update={update} notify={notify} />}
+          {tab === 'overview' && role !== 'admin' && (
             <OverviewPage
               apps={apps}
               cardJobs={cardJobs}
@@ -659,29 +663,7 @@ export function Workspace({
               ]}
             />
           )}
-          {tab === 'jobs' && role === 'admin' && (
-            <JobsPage
-              cardJobs={cardJobs}
-              filter={filter}
-              jobs={jobs}
-              query={query}
-              setFilter={setFilter}
-              setQuery={setQuery}
-              statuses={[
-                'All',
-                'Requested',
-                'Rejected',
-                'Confirmed',
-                'Awaiting approval',
-                'Changes requested',
-                'Approved',
-                'In progress',
-                'Awaiting payment',
-                'Completed',
-                'Cancelled',
-              ]}
-            />
-          )}
+          {role === 'admin' && (tab === 'jobs' || tab === 'jobs/disputes') && <AdminJobsPage data={data} cardJobs={cardJobs} route={route} section={tab === 'jobs/disputes' ? 'disputes' : 'jobs'} />}
           {mechanicJobId && role === 'mechanic' && (
             <JobDetailPage
               key={mechanicJobId}
@@ -785,6 +767,7 @@ export function Workspace({
           )}
           {tab === 'professionals' && role === 'admin' && (
             <ProfessionalsAdminPage
+              data={data}
               apps={apps.filter(isManagedProfessional)}
               filter={filter}
               openReview={openReview}

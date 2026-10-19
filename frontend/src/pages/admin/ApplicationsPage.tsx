@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { CityFilter, ProfessionalTypeFilter } from './AdminFilters';
+import { matchesAdminFilters } from '../../features/admin/filters';
 import { ArrowUpRight, History, Search } from 'lucide-react';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { EmptyState as Empty } from '../../components/ui/EmptyState';
@@ -10,10 +13,15 @@ function matches(application: any, query: string) {
 
 /** Pending applications, or the retained decisions that have left that queue. */
 export function ApplicationsPage({ apps, history, openReview, query, route, setQuery }: any) {
-  const visible = apps.filter((application: any) => matches(application, query));
+  const [city, setCity] = useState('All');
+  const [type, setType] = useState('All');
+  const visible = apps.filter(
+    (application: any) =>
+      matches(application, query) && matchesAdminFilters(application, city, type),
+  );
   return (
     <>
-      <div className="table-controls">
+      <div className="table-controls admin-filter-row">
         <div className="search-input">
           <Search size={17} />
           <input
@@ -22,6 +30,8 @@ export function ApplicationsPage({ apps, history, openReview, query, route, setQ
             placeholder="Search professional or location"
           />
         </div>
+        <CityFilter rows={apps} value={city} onChange={setCity} />
+        <ProfessionalTypeFilter value={type} onChange={setType} />
         <button
           className="secondary"
           type="button"
@@ -50,7 +60,11 @@ export function ApplicationsPage({ apps, history, openReview, query, route, setQ
             </thead>
             <tbody>
               {visible.map((application: any) => (
-                <tr className="admin-clickable-row" key={application.id} onClick={() => openReview(application)}>
+                <tr
+                  className="admin-clickable-row"
+                  key={application.id}
+                  onClick={() => openReview(application)}
+                >
                   <td>
                     <b>{application.name}</b>
                     <small>
@@ -73,7 +87,14 @@ export function ApplicationsPage({ apps, history, openReview, query, route, setQ
                     )}
                   </td>
                   <td>
-                    <button className="text-link" type="button" onClick={(event) => { event.stopPropagation(); openReview(application); }}>
+                    <button
+                      className="text-link"
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openReview(application);
+                      }}
+                    >
                       View application <ArrowUpRight size={15} />
                     </button>
                   </td>
