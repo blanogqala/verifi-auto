@@ -17,8 +17,10 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
   const [reset, setReset] = useState(false);
   return (
     <main className="auth-page">
-      <aside className="auth-story auth-visual" aria-label="Verifi Auto">
+      <div className="auth-backdrop" aria-hidden="true">
         <img className="auth-visual-image" src="/images/auth-workshop.webp" alt="" />
+      </div>
+      <aside className="auth-story auth-visual" aria-label="Verifi Auto">
         <div className="auth-visual-copy">
           <span className="eyebrow">VERIFIED PROFESSIONALS. TRUSTED REPAIRS.</span>
           <h1>
