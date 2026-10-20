@@ -2722,3 +2722,32 @@ td .text-link {
 .admin-chart-scroll { overflow-x: auto; max-width: 100%; margin-bottom: 18px; }
 .admin-chart-scroll svg { display: block; width: 100%; }
 .admin-chart-scroll:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+
+/* Dedicated authentication shell; public navigation returns on public routes. */
+.auth-page { box-sizing: border-box; width: 100%; max-width: none; margin: 0; padding: 20px; min-height: 100svh; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; gap: clamp(24px, 5vw, 88px); }
+.auth-page .auth-visual { position: relative; isolation: isolate; overflow: hidden; border: 1px solid #58426d; border-radius: 24px; min-height: 740px; padding: clamp(28px, 4vw, 64px); display: flex; flex-direction: column; justify-content: space-between; color: #fff; background: #17121e; }
+.auth-visual-image { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.auth-visual::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgb(13 10 22 / 82%) 0%, rgb(16 12 28 / 30%) 38%, transparent 62%, rgb(13 10 22 / 88%) 100%); }
+.auth-visual-copy .eyebrow { color: #d2b6ff; font-size: 10px; line-height: 1.8; letter-spacing: .15em; }
+.auth-page .auth-visual h1 { font-size: clamp(32px, 3.8vw, 62px); line-height: 1.08; letter-spacing: -.045em; margin: 26px 0 20px; color: #fff; }
+.auth-visual h1 em { color: #d0afff; font-style: normal; }
+.auth-visual-copy > p { color: #e1dbe8; max-width: 390px; line-height: 1.7; font-size: 15px; }
+.auth-visual-caption { display: flex; align-items: center; gap: 12px; margin-top: 260px; color: #e8d9ff; font-size: 14px; }
+.auth-visual-caption small { display: block; margin-top: 5px; color: #c2b9ce; font-size: 12px; }
+.auth-form-side { width: 100%; max-width: 520px; justify-self: center; align-self: center; padding: 28px 20px 28px 0; min-width: 0; }
+.auth-brand { display: flex; align-items: center; gap: 12px; border: 0; background: transparent; color: var(--ink); padding: 0; margin: 0 0 28px; cursor: pointer; }
+.auth-brand > img { width: 72px; height: 52px; object-fit: contain; filter: url(#logo-matte); }
+.auth-brand > span { font-size: 29px; letter-spacing: -.06em; font-weight: 750; }
+.auth-brand-auto { font-weight: 400; color: var(--muted); }
+.auth-brand i { color: var(--purple); font-style: normal; margin-left: 6px; }
+.auth-page .auth-card { width: 100%; box-sizing: border-box; margin: 0; padding: clamp(22px, 2.5vw, 34px); border-radius: 20px; }
+.auth-page .auth-card h2 { font-size: clamp(27px, 2.4vw, 36px); line-height: 1.15; margin-top: 18px; }
+.auth-page .auth-card input { min-height: 48px; font-size: 16px; }
+.auth-page .auth-card .role-picker { gap: 8px; }
+.auth-page .auth-card .role-picker button { min-width: 0; padding: 13px 5px; }
+.auth-page .auth-card .role-picker span { font-size: 12px; }
+.auth-home-link { margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.auth-brand:focus-visible, .auth-home-link:focus-visible { outline: 2px solid var(--purple); outline-offset: 5px; border-radius: 6px; }
+@media (max-width: 1000px) { .auth-page { grid-template-columns: minmax(0, .85fr) minmax(0, 1fr); gap: 24px; padding: 16px; } .auth-page .auth-visual { padding: 28px; } .auth-form-side { padding-right: 0; } }
+@media (max-width: 750px) { .auth-page { display: flex; flex-direction: column; padding: 24px 16px; gap: 28px; } .auth-form-side { order: 0; padding: 0; align-self: center; } .auth-page .auth-visual { order: 1; min-height: 360px; width: 100%; max-width: 520px; box-sizing: border-box; align-self: center; padding: 26px; } .auth-page .auth-visual h1 { font-size: 32px; margin: 16px 0; } .auth-visual-copy > p { font-size: 13px; max-width: 300px; } .auth-visual-caption { margin-top: 100px; } .auth-brand { margin-bottom: 24px; } .auth-brand > img { width: 60px; height: 44px; } .auth-brand > span { font-size: 26px; } }
+.auth-page .auth-visual h1 br { display: block; }

@@ -383,6 +383,7 @@ export default function App() {
   const customerName =
     role === 'customer' && typeof data.settings?.name === 'string' ? data.settings.name.trim() : '';
   const accountLabel = customerName || 'My account';
+  const showAuth = ['login', 'register', 'forgot'].includes(page);
   const showWorkspace = page.startsWith('dashboard/') && role !== null && canVisit(role, page);
   useEffect(() => {
     if (showWorkspace) setMenu(false);
@@ -397,7 +398,7 @@ export default function App() {
           />
         </filter>
       </svg>
-      {!showWorkspace && (
+      {!showWorkspace && !showAuth && (
         <PublicHeader
           accountLabel={accountLabel}
           anchor={anchor}
@@ -411,8 +412,8 @@ export default function App() {
           theme={theme}
         />
       )}
-      {['login', 'register', 'forgot'].includes(page) ? (
-        <Auth mode={page} role={role} setRole={setRole} onLogin={login} go={go} pending={pending} />
+      {showAuth ? (
+        <Auth key={page} mode={page} role={role} setRole={setRole} onLogin={login} go={go} pending={pending} />
       ) : showWorkspace ? (
         <Workspace
           role={role}
@@ -478,7 +479,7 @@ export default function App() {
           </main>
         )
       ) : null}
-      {!page.startsWith('dashboard/') && (
+      {!page.startsWith('dashboard/') && !showAuth && (
         <PublicFooter anchor={anchor} go={go} setModal={setModal} />
       )}
       {modal && (

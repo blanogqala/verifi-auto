@@ -129,6 +129,11 @@ for (const mode of ['login', 'register', 'forgot']) {
     />,
   );
   assert.ok(html.includes('auth-card'));
+  assert.ok(html.includes('aria-label="Verifi Auto home"'));
+  assert.ok(html.includes('/images/auth-workshop.webp'));
+  assert.ok(html.includes('Back to home'));
+  assert.ok(!html.includes('<footer'));
+  assert.ok(!html.includes('site-header'));
   count++;
 }
 assert.equal(canVisit(null, 'dashboard/garage'), false);
@@ -1215,6 +1220,9 @@ assert.ok(appointmentForm.includes('not confirmed availability'));
 assert.ok(!appointmentForm.includes('Choose an appointment'));
 const appSource = readFileSync('src/App.tsx', 'utf8');
 assert.ok(appSource.includes('setStep(1)'));
+assert.ok(appSource.includes('!showWorkspace && !showAuth'));
+assert.ok(appSource.includes("!page.startsWith('dashboard/') && !showAuth"));
+assert.ok(appSource.includes('<Auth key={page}'));
 assert.ok(appSource.includes('setPending(p)'));
 const payable = {
   ...initialData.jobs[0],
