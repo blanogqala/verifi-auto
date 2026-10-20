@@ -195,7 +195,7 @@ export function transitionNotifications(before: any, job: any, action: string) {
     })];
   }
   if (action === 'approve') {
-    return mechanic({ type: 'approved', title: 'Quotation approved', message: `${reference} was approved.`, panel: 'quote', eventKey: `approved:${job.id}:v${version}` });
+    return mechanic({ type: 'approved', title: 'Quotation approved', message: `${reference}: selected repairs approved.${job.customerRequest ? ' Customer also sent an additional request; review before starting.' : ''}`, panel: 'quote', eventKey: `approved:${job.id}:v${version}` });
   }
   if (action === 'changes') {
     const feedback = textValue(job.changeRequest);
@@ -205,7 +205,7 @@ export function transitionNotifications(before: any, job: any, action: string) {
     return [customer({ type: 'started', title: 'Work started', message: `${reference} is in progress.`, panel: 'overview', eventKey: `started:${job.id}` })];
   }
   if (action === 'complete') {
-    return [customer({ type: 'completed', title: 'Work finished', message: `${reference} is ready for payment.`, panel: 'quote', eventKey: `completed:${job.id}` })];
+    return [customer({ type: 'completed', title: 'Work finished', message: job.paid ? `${reference} is complete; demo payment was already recorded.` : `${reference} is ready for payment.`, panel: 'quote', eventKey: `completed:${job.id}` })];
   }
   if (action === 'pay') {
     return mechanic({ type: 'payment', title: 'Demo payment recorded', message: `${reference} has a recorded demo payment.`, panel: 'quote', eventKey: `payment:${job.id}` });

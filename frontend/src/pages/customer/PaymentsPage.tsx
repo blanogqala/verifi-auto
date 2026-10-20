@@ -48,7 +48,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
         <Metric
           label="Awaiting payment"
           value={money(paymentRecordTotal(awaiting))}
-          note="Completed repair work"
+          note="Approved quotations"
           Icon={Wallet}
         />
         <Metric
@@ -60,7 +60,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
         <Metric
           label="Approved repair value"
           value={money(paymentRecordTotal(jobs.filter((job: any) => job.quoteApproved)))}
-          note="Submitted quotation totals"
+          note="Selected repair totals"
           Icon={FileText}
         />
       </div>
@@ -77,15 +77,15 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
         />
         <DetailPanel scope="payments" tabId="outstanding" value={tab}>
           <Card as="section" className="dash-panel">
-            <h2>Outstanding invoices</h2>
+            <h2>Awaiting payment</h2>
             {awaiting.length ? (
               awaiting.map((job: any) => (
                 <PaymentRow key={job.id} job={job} go={go} setDialog={setDialog} />
               ))
             ) : (
               <Empty
-                title="No invoices due yet."
-                text="Invoices appear after approved work is finished."
+                title="No payments due yet."
+                text="Payment becomes available after you approve your selected repairs."
               />
             )}
           </Card>
@@ -139,9 +139,9 @@ function PaymentRow({ job, go, setDialog }: any) {
       <button className="text-link" type="button" onClick={() => go('dashboard/bookings/' + encodeURIComponent(job.id))}>
         View booking
       </button>
-      <button className="secondary" type="button" onClick={() => openDoc(job, 'invoice')}>
+      {paid ? <button className="secondary" type="button" onClick={() => openDoc(job, 'invoice')}>
         Demo invoice
-      </button>
+      </button> : null}
       {paid ? (
         <button className="secondary" type="button" onClick={() => openDoc(job, 'receipt')}>
           Demo receipt

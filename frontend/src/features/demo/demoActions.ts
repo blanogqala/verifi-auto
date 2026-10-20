@@ -172,7 +172,7 @@ export function saveQuoteDraft(
   const job = (data.jobs || []).find((item: any) => item.id === input.bookingId);
   if (!job) throw Error('Booking not found.');
   assertActor(data, job, 'quote', actor);
-  if (!quoteEditable(job.status)) throw Error('A quotation draft can be saved before the customer approves it.');
+  if (job.paid || (job.status === 'Approved' && !job.customerRequest) || !quoteEditable(job.status)) throw Error('A quotation draft can be saved before the customer approves it.');
   const items = rowsToLines(input.rows);
   const notes = assertQuoteNotes(input.notes);
   const quoteDraft = { items, notes, updatedAt: input.now || new Date().toISOString() };
@@ -188,7 +188,7 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
   assertActor(data, current, action, actor);
   let payload = extra;
   if (action === 'quote') {
-    if (current.quoteApproved && current.status === 'Approved') throw Error('An approved quotation cannot be overwritten.');
+    if (current.paid || (current.status === 'Approved' && !current.customerRequest)) throw Error('Only an unpaid customer-requested revision can replace an approval.');
     const prepared = buildQuoteSubmission(current, extra);
     if (prepared.duplicate) return { data, job: current, duplicate: true };
     payload = prepared.patch;
@@ -203,9 +203,9 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
         {
           version,
           submittedAt: changed.events?.[changed.events.length - 1]?.at || new Date().toISOString(),
-          items: Array.isArray(changed.items) ? changed.items.map((item: any) => ({ ...item })) : [],
+          items: Array.isArray(current.items) ? current.items.map((item: any) => ({ ...item })) : [],
           notes: changed.notes || '',
-          totalCents: quoteTotalCents(changed.items || []),
+          totalCents: quoteTotalCents(current.items || []),
         },
       ];
       changed.quoteVersion = version;
@@ -230,7 +230,7 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
   const last = Array.isArray(changed.events) ? changed.events[changed.events.length - 1] : null;
   const at = last?.at || new Date().toISOString();
   let records = Array.isArray(data.records) ? data.records : [];
-  if (action === 'pay' && !records.some((record: any) => record.id === changed.id)) {
+  if (changed.status === 'Completed' && ['pay', 'complete'].includes(action) && !records.some((record: any) => record.id === changed.id)) {
     records = [
       {
         id: changed.id,

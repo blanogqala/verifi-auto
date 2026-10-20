@@ -1,4 +1,4 @@
-import { quoteTotalCents } from './quotations';
+import { quoteTotalCents, quoteReviewToken, quoteLineKey } from './quotations';
 
 const eventLabels: Record<string, string> = {
   confirm: 'Request accepted',
@@ -30,7 +30,7 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
       if (job.status !== 'Requested') throw Error('Only a new request can be confirmed.');
       return withEvent(job, { status: 'Confirmed', accepted: true, quoteApproved: false }, 'confirm');
     case 'quote':
-      if (!['Confirmed', 'Awaiting approval', 'Changes requested'].includes(job.status))
+      if (job.paid || (job.status === 'Approved' && !job.customerRequest) || !['Confirmed', 'Awaiting approval', 'Changes requested', 'Approved'].includes(job.status))
         throw Error('Confirm the assessment before creating a quote.');
       if (
         !extra.items?.length ||
@@ -46,8 +46,13 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
       );
     case 'approve':
       if (job.status !== 'Awaiting approval') throw Error('This quote is not awaiting approval.');
-      return withEvent(job, { status: 'Approved', quoteApproved: true }, 'approve');
+      if (extra.reviewToken && extra.reviewToken !== quoteReviewToken(job)) throw Error('The quotation changed. Close and reopen it to review the latest prices.');
+      if (extra.selectedLineIds && (!Array.isArray(extra.selectedLineIds) || extra.selectedLineIds.some((id: string) => !job.items.some((item: any, index: number) => quoteLineKey(item, index) === id)))) throw Error('Select valid quotation items.');
+      const items = (job.items || []).map((item: any, index: number) => ({ ...item, approved: extra.selectedLineIds ? extra.selectedLineIds.includes(quoteLineKey(item, index)) : true }));
+      if (!items.some((item: any) => item.approved) || !(quoteTotalCents(items) > 0)) throw Error('Select at least one repair to approve.');
+      return withEvent(job, { items, status: 'Approved', quoteApproved: true, customerRequest: String(extra.customerRequest || '').trim().slice(0, 2000) }, 'approve');
     case 'changes':
+      if (extra.reviewToken && extra.reviewToken !== quoteReviewToken(job)) throw Error('The quotation changed. Reopen the review.');
       if (job.status !== 'Awaiting approval') throw Error('This quote is not awaiting approval.');
       return withEvent(job, { ...extra, status: 'Changes requested' }, 'changes');
     case 'start':
@@ -58,15 +63,16 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
       if (job.status !== 'In progress') throw Error('Start the approved work first.');
       if (!extra.completionNotes?.trim())
         throw Error('Add work details before completing the job.');
-      return withEvent(job, { ...extra, status: 'Awaiting payment' }, 'complete');
+      return withEvent(job, { ...extra, status: job.paid ? 'Completed' : 'Awaiting payment' }, 'complete');
     case 'pay':
-      if (job.status !== 'Awaiting payment' || !job.quoteApproved)
-        throw Error('Only completed approved work can be paid.');
+      if (extra.reviewToken && extra.reviewToken !== quoteReviewToken(job)) throw Error('The payable quotation changed. Reopen checkout.');
+      if (!['Approved', 'In progress', 'Awaiting payment'].includes(job.status) || !job.quoteApproved)
+        throw Error('Approve the quotation before paying.');
       if (job.paid === true) throw Error('This invoice has already been paid.');
       return withEvent(
         job,
         {
-          status: 'Completed',
+          status: job.status === 'Awaiting payment' ? 'Completed' : job.status,
           paid: true,
           paidAt: new Date().toISOString(),
           paymentReference:

@@ -925,3 +925,11 @@ select {
 .paint-colour-picker::-moz-color-swatch { border: 0; border-radius: 7px; }
 .paint-colour-preview { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid; border-radius: 10px; font-size: 13px; overflow-wrap: anywhere; }
 .paint-colour-preview i { width: 20px; height: 20px; border: 1px solid var(--line); border-radius: 50%; flex-shrink: 0; }
+
+.quote-review-lines { display: grid; gap: 10px; margin-block: 20px; }
+.quote-review-line { display: grid !important; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; margin: 0 !important; }
+.quote-review-line.selected { border-color: var(--purple); background: color-mix(in srgb, var(--purple) 12%, transparent); }
+.quote-review-line input[type='checkbox'] { width: 20px; height: 20px; min-height: 20px; margin: 0; accent-color: var(--purple); }
+.quote-review-line small { display: block; color: var(--muted); margin-top: 5px; }
+.quote-review-line strong { overflow-wrap: anywhere; }
+@media(max-width: 450px) { .quote-review-line { padding: 12px; } .quote-review-line b { grid-column: 2; } }

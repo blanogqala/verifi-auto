@@ -33,7 +33,7 @@ export function QuotesPage({ filter, jobs, name, onEdit, quoteEditor, role, setD
               <p>{j.provider}</p>
               {j.items?.map((i: any, k: number) => (
                 <div className="invoice-line" key={k}>
-                  <span>{i.name}</span>
+                  <span>{i.name}{i.approved === false ? ' · Deferred — not authorised' : ''}</span>
                   <b>R{Number(i.amount).toLocaleString()}</b>
                 </div>
               ))}
@@ -52,12 +52,7 @@ export function QuotesPage({ filter, jobs, name, onEdit, quoteEditor, role, setD
                     >
                       Review & approve <ArrowRight size={16} />
                     </button>
-                    <button
-                      className="secondary"
-                      onClick={() => setDialog({ kind: 'changes', job: j })}
-                    >
-                      Request changes
-                    </button>
+
                   </>
                 ) : role === 'mechanic' &&
                   ['Confirmed', 'Awaiting approval', 'Changes requested'].includes(j.status) ? (

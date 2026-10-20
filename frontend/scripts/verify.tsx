@@ -1,3 +1,6 @@
+import { QuoteSummary } from '../src/components/jobs/QuoteSummary';
+import { demoDocumentHtml } from '../src/features/payments/demoDocuments';
+import { quoteReviewToken } from '../src/features/jobs/quotations';
 import { resolvePaintColour } from '../src/features/garage/paintColours';
 import { adminJobRows, matchesAdminFilters, cityName, resolveDispute } from '../src/features/admin/filters';
 import { accountMetrics, professionalJobs, appendAdminActivity } from '../src/features/admin/detailRecords';
@@ -2044,3 +2047,32 @@ assert.equal(namedPaint.vehicles[0].paintColor, '#b8bcc2');
 const clearedPaint = saveVehicle(namedPaint, { ...namedPaint.vehicles[0], paintColor: '', paintColorName: '' });
 assert.equal(clearedPaint.vehicles[0].paintColor, '');
 assert.equal(clearedPaint.vehicles[0].paintColorName, '');
+
+// Partial approval charges only selected work and preserves deferred lines.
+const partial = applyJobTransition(revised.data, revised.job, 'approve', {
+  selectedLineIds: ['d1'], reviewToken: quoteReviewToken(revised.job), customerRequest: 'Please also price an oil change.',
+}, customerActor);
+assert.equal(quoteTotal(partial.job), 700);
+assert.equal(partial.job.items[1].approved, false);
+assert.equal(partial.job.quoteVersions[1].totalCents, 95000);
+assert.ok(renderToString(<QuoteSummary job={partial.job} />).includes('Deferred'));
+assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { selectedLineIds: [] }, customerActor));
+assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { selectedLineIds: ['missing'] }, customerActor));
+assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { reviewToken: 'stale' }, customerActor));
+const earlyPaid = applyJobTransition(partial.data, partial.job, 'pay', { reviewToken: quoteReviewToken(partial.job) }, customerActor);
+assert.equal(earlyPaid.job.status, 'Approved');
+assert.equal(earlyPaid.job.paid, true);
+assert.equal(earlyPaid.data.records?.some((r: any) => r.id === earlyPaid.job.id) || false, false);
+assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'pay', {}, customerActor));
+assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'quote', { items: earlyPaid.job.items, notes: 'Changed work' }, mechanicActor));
+const earlyStarted = applyJobTransition(earlyPaid.data, earlyPaid.job, 'start', {}, mechanicActor);
+const earlyFinished = applyJobTransition(earlyStarted.data, earlyStarted.job, 'complete', { completionNotes: 'Selected repairs completed.' }, mechanicActor);
+assert.equal(earlyFinished.job.status, 'Completed');
+assert.equal(earlyFinished.data.records.filter((r: any) => r.id === earlyFinished.job.id).length, 1);
+const requestedRevision = applyJobTransition(partial.data, partial.job, 'quote', {
+  items: [{ id: 'd1', name: 'Pads', amount: 700 }, { id: 'oil', name: 'Oil change', amount: 300 }], notes: 'Pads and requested oil service.',
+}, mechanicActor);
+assert.equal(requestedRevision.job.status, 'Awaiting approval');
+assert.equal(requestedRevision.job.quoteApproved, false);
+assert.throws(() => applyJobTransition(requestedRevision.data, requestedRevision.job, 'pay', {}, customerActor));
+assert.ok(!demoDocumentHtml(earlyPaid.job, 'invoice').includes('Labour'));

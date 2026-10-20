@@ -38,6 +38,7 @@ export function QuoteSummary({ job, title = 'Quotation' }: { job: any; title?: s
               <span>
                 {categoryLabel(item.category || item.kind) ? <small>{categoryLabel(item.category || item.kind)}</small> : null}
                 {item.name}
+                {item.approved === false ? <small>Deferred — not authorised</small> : job.quoteApproved ? <small>Approved repair</small> : null}
               </span>
               {withQty ? <span>{item.quantity ?? '—'}</span> : null}
               <b>{formatZar(lineAmountCents(item))}</b>
@@ -53,6 +54,7 @@ export function QuoteSummary({ job, title = 'Quotation' }: { job: any; title?: s
         <p>No quotation has been sent.</p>
       )}
       {job?.notes ? <p>{job.notes}</p> : null}
+      {job?.customerRequest ? <p>Customer request (not priced or authorised): {job.customerRequest}</p> : null}
       {job?.changeRequest ? <p>Change request: {job.changeRequest}</p> : null}
       {previous.length ? (
         <details className="fold">

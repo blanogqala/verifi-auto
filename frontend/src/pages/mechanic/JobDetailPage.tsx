@@ -51,7 +51,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const history = sharedRecordsForProfessional(data, job, professionalId);
   const events = Array.isArray(job.events) ? job.events : [];
   const unread = unreadMessageCount(data, job.id, 'mechanic');
-  const editable = quoteEditable(job.status);
+  const editable = !job.paid && (job.status !== 'Approved' || !!job.customerRequest) && quoteEditable(job.status);
 
   function choose(next: string) {
     setTab(next);
@@ -227,7 +227,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
               />
             </>
           ) : null}
-          {job.status === 'Approved' ? <p>This quotation is approved. It cannot be replaced from here.</p> : null}
+          {job.status === 'Approved' ? <p>Only selected repairs are authorised. Any revision before payment requires fresh customer approval.</p> : null}
           {job.status === 'Awaiting payment' ? <p>Unpaid invoice. You cannot mark this invoice paid.</p> : null}
           <QuoteSummary job={job} title={job.items?.length ? 'Sent quotation' : 'Sent quotation'} />
           <p className="muted">{pricingNote(job)}</p>

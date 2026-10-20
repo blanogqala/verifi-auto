@@ -97,7 +97,7 @@ export function settleHistoryAccess(data: any, job: any, action: string, at: str
   const historyAccess = grantsOf(data).map((grant: any) => {
     if (grant?.bookingId !== job.id || grant?.status !== 'active') return grant;
     if (action === 'cancel' || action === 'reject') return { ...grant, status: 'revoked', revokedAt: at };
-    if (action === 'pay') return { ...grant, status: 'expired', expiresAt: at };
+    if (job.status === 'Completed') return { ...grant, status: 'expired', expiresAt: at };
     return grant;
   });
   return historyAccess;

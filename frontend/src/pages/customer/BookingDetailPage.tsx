@@ -51,7 +51,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
   const records = (data.records || []).filter((record: any) => record.vehicleId === job.vehicleId);
   const grant = activeGrantForBooking(data, job.id);
-  const payable = job.status === 'Awaiting payment' && job.quoteApproved && job.paid !== true;
+  const payable = ['Approved', 'In progress', 'Awaiting payment'].includes(job.status) && job.quoteApproved && job.paid !== true;
   const events = Array.isArray(job.events) ? job.events : [];
   const paymentLabel = job.paid ? 'Demo paid' : payable ? 'Awaiting payment' : 'Not payable yet';
 
@@ -245,9 +245,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
               <button className="primary" type="button" onClick={() => setDialog({ kind: 'approve', job })}>
                 Review and approve
               </button>
-              <button className="secondary" type="button" onClick={() => setDialog({ kind: 'changes', job })}>
-                Request changes
-              </button>
+
             </>
           ) : null}
           {payable ? (
@@ -256,10 +254,6 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             </button>
           ) : null}
           {job.paid ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'receipt', job })}>
-              View receipt
-            </button>
-          ) : job.items?.length ? (
             <button className="secondary" type="button" onClick={() => setDialog({ kind: 'invoice', job })}>
               View invoice
             </button>

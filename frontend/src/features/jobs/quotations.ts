@@ -30,7 +30,7 @@ export type QuoteRow = {
   price: string;
 };
 
-const editableQuoteStatuses = ['Confirmed', 'Awaiting approval', 'Changes requested'];
+const editableQuoteStatuses = ['Confirmed', 'Awaiting approval', 'Changes requested', 'Approved'];
 
 export function quoteEditable(status: string) {
   return editableQuoteStatuses.includes(status);
@@ -75,6 +75,7 @@ export function lineAmountCents(item: any): number {
 export function quoteTotalCents(items: any[]) {
   let sum = 0;
   for (const item of Array.isArray(items) ? items : []) {
+    if (item.approved === false) continue;
     const cents = lineAmountCents(item);
     if (!Number.isFinite(cents)) return NaN;
     sum += cents;
@@ -245,6 +246,14 @@ export function buildQuoteSubmission(job: any, extra: any = {}, now = new Date()
       quoteVersions: [...versions.map((version) => ({ ...version, items: (version.items || []).map(copyLine) })), snapshot],
       quoteDraft: null,
       quoteApproved: false,
+      customerRequest: '',
+      approvedQuoteVersion: null,
     },
   };
 }
+
+/** Snapshot token protects a review from approving a newer quotation. */
+export function quoteReviewToken(job: any) {
+  return JSON.stringify([job.quoteVersion || 0, job.items || [], job.notes || '']);
+}
+export function quoteLineKey(item: any, index: number) { return item.id || `line-${index}`; }

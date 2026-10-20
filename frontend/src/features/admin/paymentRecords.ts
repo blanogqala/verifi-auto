@@ -16,7 +16,7 @@ export function recordedCustomerPayments(jobs: any[]) {
 }
 
 export function awaitingCustomerPayments(jobs: any[]) {
-  return uniqueJobs(jobs).filter((job) => job.status === 'Awaiting payment' && job.paid !== true);
+  return uniqueJobs(jobs).filter((job) => ['Approved', 'In progress', 'Awaiting payment'].includes(job.status) && job.quoteApproved && job.paid !== true);
 }
 
 export function paymentRecordTotal(jobs: any[]) {

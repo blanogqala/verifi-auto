@@ -1,3 +1,5 @@
+import { quoteReviewToken } from '../../features/jobs/quotations';
+import { QuoteReview } from '../jobs/QuoteReview';
 import { PaintColourField } from '../garage/PaintColourField';
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
 import { activeMechanicProfessionalId, quoteTotal } from '../../demo';
@@ -207,7 +209,7 @@ export function WorkspaceDialog({
             {dialog.job.items?.length > 0 && (
               <>
                 <h3>Repair quote</h3>
-                {dialog.job.items.map((i: any, k: number) => (
+                {dialog.job.items.filter((i: any) => i.approved !== false).map((i: any, k: number) => (
                   <div className="invoice-line" key={k}>
                     <span>{i.name}</span>
                     <b>R{Number(i.amount).toLocaleString()}</b>
@@ -309,51 +311,8 @@ export function WorkspaceDialog({
               : null}
           </>
         )}
-        {dialog.kind === 'approve' && (
-          <>
-            <span className="chip">YOUR APPROVAL COMES FIRST</span>
-            <h2>Review the repair quote.</h2>
-            <p>
-              {dialog.job.vehicle} · {dialog.job.provider}
-            </p>
-            {dialog.job.items.map((i: any, k: number) => (
-              <div className="invoice-line" key={k}>
-                <span>{i.name}</span>
-                <b>R{i.amount}</b>
-              </div>
-            ))}
-            <div className="invoice-line total">
-              <span>Quotation total</span>
-              <b>R{quoteTotal(dialog.job)}</b>
-            </div>
-            <p>{dialog.job.notes}</p>
-            <div className="notice">
-              Approving authorises this submitted quotation in the demo. It does not take a payment. {pricingNote(dialog.job)}
-            </div>
-            <button className="primary full" onClick={() => jobAction(dialog.job, 'approve')}>
-              Approve demo quote <Check size={18} />
-            </button>
-          </>
-        )}
-        {dialog.kind === 'changes' && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const text = String(new FormData(e.currentTarget).get('request'));
-              jobAction(dialog.job, 'changes', { changeRequest: text });
-            }}
-          >
-            <h2>Ask for a clearer quote.</h2>
-            <label>
-              What needs changing?
-              <textarea
-                required
-                name="request"
-                placeholder="Explain which item or cost you want clarified."
-              />
-            </label>
-            <button className="primary full">Send demo change request</button>
-          </form>
+        {['approve', 'changes'].includes(dialog.kind) && (
+          <QuoteReview key={dialog.job.id + ':' + (dialog.job.quoteVersion || 0)} job={dialog.job} onAction={jobAction} />
         )}
         {dialog.kind === 'quote-edit' && (
           <form
@@ -496,14 +455,14 @@ export function WorkspaceDialog({
                 ? 'Payment simulated.'
                 : dialog.kind === 'invoice'
                   ? 'Repair invoice.'
-                  : 'Your repair invoice.'}
+                  : 'Demo checkout.'}
             </h2>
             <p>
               {bookingReference(dialog.job)}
               <br />
               {dialog.job.provider} · {dialog.job.vehicle}
             </p>
-            {dialog.job.items.map((i: any, k: number) => (
+            {dialog.job.items.filter((i: any) => i.approved !== false).map((i: any, k: number) => (
               <div className="invoice-line" key={k}>
                 <span>{i.name}</span>
                 <b>R{i.amount}</b>
@@ -517,16 +476,17 @@ export function WorkspaceDialog({
               No real payment processor is connected. No card details are requested and no money is
               transferred. {pricingNote(dialog.job)}
             </div>
+            {dialog.job.paid ? <p>Demo payment reference: {dialog.job.paymentReference || 'Not recorded'}<br />Recorded: {dialog.job.paidAt || 'Date not recorded'}</p> : null}
             {dialog.kind === 'invoice' ? (
               <div className="notice">
-                Customer payment has not been recorded. This preview does not confirm a bank payout.
+                {dialog.job.paid ? 'Demo payment recorded. This is a demo invoice, not a tax invoice or confirmation of a bank payout.' : 'Payment has not been recorded.'}
               </div>
             ) : null}
             {dialog.kind === 'pay' && role === 'customer' ? (
               <button
                 className="primary full"
                 onClick={() =>
-                  jobAction(dialog.job, 'pay', { mileage: dialog.job.completedMileage })
+                  jobAction(dialog.job, 'pay', { mileage: dialog.job.completedMileage, reviewToken: quoteReviewToken(dialog.job) })
                 }
               >
                 Simulate payment <Wallet size={17} />
@@ -534,7 +494,7 @@ export function WorkspaceDialog({
             ) : dialog.kind === 'receipt' ? (
               <div className="success-note">
                 <CheckCircle2 size={20} />
-                Demo payment recorded. Your service history has been updated.
+                Demo payment recorded. Service history is updated when the work is completed.
               </div>
             ) : null}
           </>

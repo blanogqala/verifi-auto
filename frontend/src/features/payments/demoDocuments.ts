@@ -12,7 +12,7 @@ function escapeHtml(value: unknown) {
 
 /** Printable demo invoice or receipt. Amounts follow the stored quotation and are not rewritten. */
 export function demoDocumentHtml(job: any, kind: 'invoice' | 'receipt') {
-  const lines = (job.items || [])
+  const lines = (job.items || []).filter((item: any) => item.approved !== false)
     .map((item: any) => {
       const label = categoryLabel(item.category || item.kind);
       const name = label ? `${label}: ${item.name}` : item.name;
@@ -22,7 +22,7 @@ export function demoDocumentHtml(job: any, kind: 'invoice' | 'receipt') {
   const total = quoteTotalCents(job.items || []);
   const title = kind === 'receipt' ? 'Demo receipt' : 'Demo invoice';
   const stamp =
-    kind === 'receipt'
+    job.paid
       ? `${escapeHtml(job.paymentReference || 'Reference not recorded')} · ${escapeHtml(job.paidAt || 'Date not recorded')}`
       : 'Payment has not been recorded';
   const reference = bookingReference(job);
