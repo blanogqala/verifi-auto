@@ -58,26 +58,19 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
         </div>
       </aside>
       <div className="auth-form-side">
-        <button
-          className="auth-brand"
-          type="button"
-          onClick={() => go('home')}
-          aria-label="Verifi Auto home"
-        >
-          <img src="/logo.png" alt="" />
-          <span>
-            verifi<span className="auth-brand-auto">auto</span>
-            <i>.</i>
-          </span>
-        </button>
         <Card as="section" className="auth-card">
-          <span className="chip">
-            {mode === 'register'
-              ? 'CREATE AN ACCOUNT'
-              : mode === 'forgot'
-                ? 'ACCOUNT RECOVERY'
-                : 'WELCOME TO VERIFI AUTO'}
-          </span>
+          <button
+            className="auth-brand"
+            type="button"
+            onClick={() => go('home')}
+            aria-label="Verifi Auto home"
+          >
+            <img src="/logo.png" alt="" />
+            <span>
+              verifi<span className="auth-brand-auto">auto</span>
+              <i>.</i>
+            </span>
+          </button>
           <h2>
             {mode === 'register'
               ? 'Start your journey.'
