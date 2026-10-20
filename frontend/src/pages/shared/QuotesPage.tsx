@@ -44,7 +44,7 @@ export function QuotesPage({ filter, jobs, name, onEdit, quoteEditor, role, setD
               <small className="muted">{pricingNote(j)}</small>
               <p className="muted">{j.notes || 'No repair quote prepared yet.'}</p>
               <div className="button-row">
-                {role === 'customer' && j.status === 'Awaiting approval' ? (
+                {role === 'customer' && !j.paid && ['Awaiting approval', 'Approved'].includes(j.status) ? (
                   <>
                     <button
                       className="primary"

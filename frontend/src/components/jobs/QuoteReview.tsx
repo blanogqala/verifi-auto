@@ -4,7 +4,7 @@ import { formatZar, lineAmountCents, quoteTotalCents, quoteLineKey, quoteReviewT
 export function QuoteReview({ job, onAction }: { job: any; onAction: (job: any, action: string, extra: any) => unknown }) {
   const items = job.items || [];
   const [selected, setSelected] = useState<string[]>(items.filter((i: any) => i.approved !== false).map((i: any) => quoteLineKey(i, items.indexOf(i))));
-  const [request, setRequest] = useState('');
+  const [request, setRequest] = useState(job.customerRequest || '');
   const total = quoteTotalCents(items.filter((i: any, k: number) => selected.includes(quoteLineKey(i, k))).map((i: any) => ({ ...i, approved: true })));
   return <form onSubmit={event => {
     event.preventDefault();
@@ -30,7 +30,7 @@ export function QuoteReview({ job, onAction }: { job: any; onAction: (job: any, 
     </label>
     <p className="muted">Requests do not add a charge or authorise extra work. The mechanic must price any changes and send a revised quote for your approval. Ask for a revision before paying if you want it included.</p>
     <div className="button-row">
-      <button className="primary" disabled={!selected.length || !(total > 0)}>Approve selected repairs</button>
+      <button className="primary" disabled={!selected.length || !(total > 0)}>{job.quoteApproved ? 'Save and approve repairs' : 'Approve selected repairs'}</button>
       <button className="secondary" type="button" disabled={!request.trim()} onClick={() => onAction(job, 'changes', { changeRequest: request.trim(), reviewToken: quoteReviewToken(job) })}>Request a revised quote</button>
     </div>
     <p className="muted">Approval does not take a payment. Demo checkout is available afterwards.</p>

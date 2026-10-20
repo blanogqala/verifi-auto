@@ -211,23 +211,48 @@ export function ProfessionalProfilePage({
           </div>
         </div>
       </section>
-      <div className="detail-layout pro-layout">
+      <div className="pro-profile-content">
         <div className="detail-main">
-          <details className="fold">
-            <summary>About</summary>
-            <p>{profile.bio || 'No about text has been recorded.'}</p>
-          </details>
-          <DetailCard title="Services">
-            {profile.services.length ? (
-              <ul className="pro-services">
-                {profile.services.map((service: string) => (
-                  <li key={service}>{service}</li>
-                ))}
+          <Card as="section" className="pro-information dash-panel">
+            <section className="pro-information-section">
+              <h2>About</h2>
+              {profile.bio && profile.bio.length > 320 ? (
+                <div><p>{profile.bio.slice(0, 320)}…</p><details className="pro-about-more"><summary>Read full introduction</summary><p>{profile.bio}</p></details></div>
+              ) : <p>{profile.bio || 'This professional has not added an introduction yet.'}</p>}
+            </section>
+            <section className="pro-information-section">
+              <h2>Services</h2>
+              {profile.services.length ? (
+                <ul className="pro-service-tags">{profile.services.map((service: string) => <li key={service}>{service}</li>)}</ul>
+              ) : <p>No services have been recorded.</p>}
+            </section>
+            <section className="pro-information-section">
+              <h2>Contact</h2>
+            {profile.phone || profile.email || profile.website ? (
+              <ul className="pro-contact">
+                {profile.phone ? (
+                  <li>
+                    <a href={'tel:' + profile.phone}>{profile.phone}</a>
+                  </li>
+                ) : null}
+                {profile.email ? (
+                  <li>
+                    <a href={'mailto:' + profile.email}>{profile.email}</a>
+                  </li>
+                ) : null}
+                {profile.website ? (
+                  <li>
+                    <a href={profile.website} target="_blank" rel="noopener noreferrer">
+                      Website
+                    </a>
+                  </li>
+                ) : null}
               </ul>
             ) : (
-              <p>No services have been recorded.</p>
+              <p>No public phone, email, or website has been recorded.</p>
             )}
-          </DetailCard>
+            </section>
+          </Card>
           <DetailCard title="Customer reviews">
             {reviews.length ? (
               reviews.map((review: any) => {
@@ -344,33 +369,7 @@ export function ProfessionalProfilePage({
             ) : null}
           </DetailCard>
         </div>
-        <div className="detail-side">
-          <DetailCard title="Contact">
-            {profile.phone || profile.email || profile.website ? (
-              <ul className="pro-contact">
-                {profile.phone ? (
-                  <li>
-                    <a href={'tel:' + profile.phone}>{profile.phone}</a>
-                  </li>
-                ) : null}
-                {profile.email ? (
-                  <li>
-                    <a href={'mailto:' + profile.email}>{profile.email}</a>
-                  </li>
-                ) : null}
-                {profile.website ? (
-                  <li>
-                    <a href={profile.website} target="_blank" rel="noopener noreferrer">
-                      Website
-                    </a>
-                  </li>
-                ) : null}
-              </ul>
-            ) : (
-              <p>No public phone, email, or website has been recorded.</p>
-            )}
-          </DetailCard>
-        </div>
+
       </div>
     </Tag>
   );

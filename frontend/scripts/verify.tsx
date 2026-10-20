@@ -2076,3 +2076,18 @@ assert.equal(requestedRevision.job.status, 'Awaiting approval');
 assert.equal(requestedRevision.job.quoteApproved, false);
 assert.throws(() => applyJobTransition(requestedRevision.data, requestedRevision.job, 'pay', {}, customerActor));
 assert.ok(!demoDocumentHtml(earlyPaid.job, 'invoice').includes('Labour'));
+
+// Customers can correct an unpaid selection without losing deferred repairs.
+const reselection = applyJobTransition(partial.data, partial.job, 'approve', {
+  selectedLineIds: ['d1', 'd2'], reviewToken: quoteReviewToken(partial.job), customerRequest: partial.job.customerRequest,
+}, customerActor);
+assert.equal(quoteTotal(reselection.job), 950);
+assert.equal(reselection.job.items[1].approved, true);
+assert.equal(reselection.job.status, 'Approved');
+assert.throws(() => applyJobTransition(reselection.data, reselection.job, 'pay', { reviewToken: quoteReviewToken(partial.job) }, customerActor));
+assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'approve', { selectedLineIds: ['d1', 'd2'] }, customerActor));
+const selectionStarted = applyJobTransition(reselection.data, reselection.job, 'start', {}, mechanicActor);
+assert.throws(() => applyJobTransition(selectionStarted.data, selectionStarted.job, 'approve', { selectedLineIds: ['d1'] }, customerActor));
+const reopenChanges = applyJobTransition(reselection.data, reselection.job, 'changes', { changeRequest: 'Please clarify labour.' }, customerActor);
+assert.equal(reopenChanges.job.quoteApproved, false);
+assert.throws(() => applyJobTransition(reopenChanges.data, reopenChanges.job, 'pay', {}, customerActor));

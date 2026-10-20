@@ -45,7 +45,7 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
         'quote',
       );
     case 'approve':
-      if (job.status !== 'Awaiting approval') throw Error('This quote is not awaiting approval.');
+      if (job.paid || !['Awaiting approval', 'Approved'].includes(job.status)) throw Error('Repair choices can only change before payment or work starts.');
       if (extra.reviewToken && extra.reviewToken !== quoteReviewToken(job)) throw Error('The quotation changed. Close and reopen it to review the latest prices.');
       if (extra.selectedLineIds && (!Array.isArray(extra.selectedLineIds) || extra.selectedLineIds.some((id: string) => !job.items.some((item: any, index: number) => quoteLineKey(item, index) === id)))) throw Error('Select valid quotation items.');
       const items = (job.items || []).map((item: any, index: number) => ({ ...item, approved: extra.selectedLineIds ? extra.selectedLineIds.includes(quoteLineKey(item, index)) : true }));
@@ -53,8 +53,8 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
       return withEvent(job, { items, status: 'Approved', quoteApproved: true, customerRequest: String(extra.customerRequest || '').trim().slice(0, 2000) }, 'approve');
     case 'changes':
       if (extra.reviewToken && extra.reviewToken !== quoteReviewToken(job)) throw Error('The quotation changed. Reopen the review.');
-      if (job.status !== 'Awaiting approval') throw Error('This quote is not awaiting approval.');
-      return withEvent(job, { ...extra, status: 'Changes requested' }, 'changes');
+      if (job.paid || !['Awaiting approval', 'Approved'].includes(job.status)) throw Error('Repair choices can only change before payment or work starts.');
+      return withEvent(job, { ...extra, status: 'Changes requested', quoteApproved: false }, 'changes');
     case 'start':
       if (job.status !== 'Approved' || !job.quoteApproved)
         throw Error('Customer approval is required first.');

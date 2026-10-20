@@ -240,10 +240,10 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
         {job.completionNotes ? <p>Completion: {job.completionNotes}</p> : null}
         {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
         <div className="button-row">
-          {job.status === 'Awaiting approval' ? (
+          {!job.paid && ['Awaiting approval', 'Approved'].includes(job.status) ? (
             <>
               <button className="primary" type="button" onClick={() => setDialog({ kind: 'approve', job })}>
-                Review and approve
+                {job.quoteApproved ? 'Edit repair selection' : 'Review and approve'}
               </button>
 
             </>
