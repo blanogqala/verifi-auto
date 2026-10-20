@@ -1,3 +1,4 @@
+import { PaintColourField } from '../garage/PaintColourField';
 import { useState } from 'react';
 import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
@@ -119,7 +120,8 @@ export function BookingDialog({
                     mileage: form.get('mileage'),
                     bodyStyle: form.get('bodyStyle'),
                     variant: form.get('variant'),
-                    paintColor: form.get('usePaint') ? form.get('paintColor') : '',
+                    paintColor: form.get('paintColor'),
+                paintColorName: form.get('paintColorName'),
                     licenceDiscSource: 'owner',
                     nextServiceSource: 'owner',
                   });
@@ -179,14 +181,7 @@ export function BookingDialog({
                 <input name="variant" />
               </label>
             </div>
-            <label className="check-label">
-              <input name="usePaint" type="checkbox" />
-              Set a body colour
-            </label>
-            <label>
-              Paint colour
-              <input name="paintColor" type="color" defaultValue="#f2f2f2" />
-            </label>
+            <PaintColourField />
             <p className="muted">Paint colour and body style are saved with the vehicle.</p>
             {error ? (
               <p className="form-error" role="alert">

@@ -1,3 +1,4 @@
+import { PaintColourField } from '../garage/PaintColourField';
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
 import { activeMechanicProfessionalId, quoteTotal } from '../../demo';
 import { pricingNote } from '../../features/jobs/pricingModel';
@@ -66,7 +67,8 @@ export function WorkspaceDialog({
                 archived: dialog.vehicle?.archived === true,
                 variant: f.get('variant'),
                 bodyStyle: f.get('bodyStyle'),
-                paintColor: f.get('usePaint') ? f.get('paintColor') : '',
+                paintColor: f.get('paintColor'),
+                paintColorName: f.get('paintColorName'),
               };
               try {
                 const saved = commitUpdate(
@@ -112,14 +114,7 @@ export function WorkspaceDialog({
                 <input name="variant" defaultValue={dialog.vehicle?.variant || ''} />
               </label>
             </div>
-            <label className="check-label">
-              <input name="usePaint" type="checkbox" defaultChecked={!!dialog.vehicle?.paintColor} />
-              Set a body colour
-            </label>
-            <label>
-              Paint colour
-              <input name="paintColor" type="color" defaultValue={dialog.vehicle?.paintColor || '#f2f2f2'} />
-            </label>
+            <PaintColourField key={dialog.vehicle?.id || "new"} color={dialog.vehicle?.paintColor} name={dialog.vehicle?.paintColorName} />
             <div className="form-row">
               <label>
                 Year

@@ -176,10 +176,10 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
               { label: 'Variant', value: recorded(vehicle.variant) || 'Not recorded' },
               {
                 label: 'Paint colour',
-                value: recorded(vehicle.paintColor) ? (
+                value: recorded(vehicle.paintColorName || vehicle.paintColor) ? (
                   <span className="paint-value">
                     <i style={{ background: vehicle.paintColor }} />
-                    {vehicle.paintColor}
+                    {vehicle.paintColorName || vehicle.paintColor}
                   </span>
                 ) : (
                   'Not recorded'

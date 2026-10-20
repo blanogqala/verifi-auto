@@ -1,3 +1,4 @@
+import { resolvePaintColour } from '../src/features/garage/paintColours';
 import { adminJobRows, matchesAdminFilters, cityName, resolveDispute } from '../src/features/admin/filters';
 import { accountMetrics, professionalJobs, appendAdminActivity } from '../src/features/admin/detailRecords';
 import assert from 'node:assert/strict';
@@ -2031,3 +2032,15 @@ assert.equal(resolvedDispute.disputes[0].status, 'Resolved');
 assert.equal(disputeData.disputes[0].status, 'Open');
 assert.equal(resolvedDispute.jobs, disputeData.jobs);
 assert.equal(resolveDispute(resolvedDispute, 'd-01', 'Repeat', 'Admin'), resolvedDispute);
+
+// Typed colours and custom labels survive saving without the old opt-in checkbox.
+
+assert.equal(resolvePaintColour(' Silver '), '#b8bcc2');
+assert.equal(resolvePaintColour('#abc'), '#aabbcc');
+assert.equal(resolvePaintColour('Pearl glacier'), '');
+const namedPaint = saveVehicle(initialData, { ...initialData.vehicles[0], paintColor: '#b8bcc2', paintColorName: 'Silver' });
+assert.equal(namedPaint.vehicles[0].paintColorName, 'Silver');
+assert.equal(namedPaint.vehicles[0].paintColor, '#b8bcc2');
+const clearedPaint = saveVehicle(namedPaint, { ...namedPaint.vehicles[0], paintColor: '', paintColorName: '' });
+assert.equal(clearedPaint.vehicles[0].paintColor, '');
+assert.equal(clearedPaint.vehicles[0].paintColorName, '');
