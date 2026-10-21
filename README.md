@@ -2,6 +2,12 @@
 
 Editable frontend source for the purple Verifi Auto design preview. The application is a React + TypeScript + Vite + Tailwind CSS frontend. No Next.js is used.
 
+## Backend and connected mode
+
+A separate Node.js + Express + TypeScript backend now exists in `backend/`, with PostgreSQL and Prisma. See [backend setup and launch gates](backend/README.md) and [API contract](docs/BACKEND-API.md). Set `VITE_API_URL` to activate the connected frontend; without it, the existing browser-local demo remains unchanged. Production database/email/payment services have not been provisioned by this change.
+
+The sections below describe the retained **demo mode**.
+
 ## Start locally
 
 1. Extract this archive into the parent folder where you keep your projects. It creates a `verifi-auto` project root.
@@ -26,7 +32,7 @@ No backend, API key, database, or environment file is needed to run this fronten
 | Folder | Purpose |
 | --- | --- |
 | `frontend/` | The complete editable web frontend, assets, configuration, lockfile, and verification scripts. |
-| `backend/` | A README only. The backend has NOT been implemented. |
+| `backend/` | Node.js API, Prisma schema/migration, integration tests and deployment setup. |
 | `docs/` | Architecture, design-system editing guide, image references, and original product explanation. |
 
 The frontend has its own `package.json`. Install and run commands inside `frontend`, not the project root. Dependencies and generated build files are intentionally excluded from the ZIP; `npm ci` installs the exact locked versions.
@@ -94,4 +100,4 @@ To restart the demo with clean fixtures, remove these keys in your browser's dev
 
 ## Next development step
 
-Implement the standalone backend described in `backend/README.md`, then replace browser-local state with authenticated REST calls while retaining the pages and shared components. The downloadable source is a portable refactored copy; exporting it does not change the hosted preview.
+Configure and verify the standalone backend described in `backend/README.md`, then enable connected mode with `VITE_API_URL` after the remaining launch gates pass. The downloadable source is a portable refactored copy; exporting it does not change the hosted preview.

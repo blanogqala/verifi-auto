@@ -5,6 +5,7 @@ import { adminProfileSection, analyticsSection, merchantProfileSection } from '.
 import { Role, roleLabel } from '../demo';
 
 export type WorkspaceTopbarProps = {
+  live?: boolean;
   accountName?: string;
   accountPhoto?: string;
   heading: string;
@@ -23,6 +24,7 @@ export type WorkspaceTopbarProps = {
 
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function WorkspaceTopbar({
+  live = false,
   accountName = '',
   accountPhoto = '',
   heading,
@@ -83,7 +85,7 @@ export function WorkspaceTopbar({
         ) : null}
       </span>
       <div>
-        <span className="chip">DEMO DATA</span>
+        <span className="chip">{live ? 'CONNECTED' : 'DEMO DATA'}</span>
         <button
           type="button"
           className="theme"

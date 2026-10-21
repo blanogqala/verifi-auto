@@ -1,0 +1,302 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  CUSTOMER
+  MECHANIC
+  ADMIN
+}
+enum ProfessionalStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  CHANGES_REQUESTED
+  SUSPENDED
+}
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  APPROVED
+  IN_PROGRESS
+  AWAITING_PAYMENT
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+enum QuoteStatus {
+  DRAFT
+  SENT
+  CHANGES_REQUESTED
+  APPROVED
+  IN_PROGRESS
+  PAID
+  WITHDRAWN
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  passwordHash String
+  name String @db.VarChar(120)
+  phone String @default("") @db.VarChar(25)
+  role Role @default(CUSTOMER)
+  verifiedAt DateTime?
+  disabledAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  professional Professional?
+  sessions Session[]
+  tokens AccountToken[]
+  vehicles Vehicle[]
+  bookings Booking[]
+  messages Message[]
+  notifications Notification[]
+  reviews Review[]
+  documents Document[]
+}
+model Session {
+  id String @id
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrfHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([userId])
+  @@index([expiresAt])
+}
+model AccountToken {
+  id String @id
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose String
+  expiresAt DateTime
+  @@index([userId, purpose])
+}
+model RateLimit {
+  key String @id
+  count Int @default(1)
+  expiresAt DateTime
+}
+model MailOutbox {
+  id String @id @default(uuid()) @db.Uuid
+  to String
+  subject String
+  body String
+  createdAt DateTime @default(now())
+  sentAt DateTime?
+  attempts Int @default(0)
+  availableAt DateTime @default(now())
+  @@index([sentAt, availableAt])
+}
+model Professional {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @unique @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  name String @default("") @db.VarChar(160)
+  type String @default("Workshop")
+  city String @default("") @db.VarChar(100)
+  address String @default("") @db.VarChar(300)
+  about String @default("") @db.VarChar(4000)
+  services String[] @default([])
+  phone String @default("")
+  website String @default("")
+  latitude Float?
+  longitude Float?
+  status ProfessionalStatus @default(DRAFT)
+  reviewNote String @default("")
+  credentialId String? @unique
+  version Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  bookings Booking[]
+  reviews Review[]
+  @@index([status, city])
+}
+model Vehicle {
+  id String @id @default(uuid()) @db.Uuid
+  customerId String @db.Uuid
+  customer User @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  make String @db.VarChar(80)
+  model String @db.VarChar(100)
+  year Int
+  variant String @default("") @db.VarChar(100)
+  registration String @db.VarChar(30)
+  paintColorName String @default("") @db.VarChar(80)
+  paintColor String @default("") @db.VarChar(7)
+  mileage Int @default(0)
+  licenceDiscExpiry DateTime? @db.Date
+  nextServiceDate DateTime? @db.Date
+  archivedAt DateTime?
+  version Int @default(0)
+  createdAt DateTime @default(now())
+  bookings Booking[]
+  @@unique([id, customerId])
+  @@unique([customerId, registration])
+}
+model VehicleAsset {
+  id String @id @default(uuid()) @db.Uuid
+  make String
+  model String
+  yearFrom Int
+  yearTo Int
+  variant String
+  modelUrl String
+  paintMaterials String[] @default([])
+  previewUrl String?
+  licence String
+  attribution String
+  sourceUrl String
+  verifiedAt DateTime
+  @@index([make, model])
+}
+model Booking {
+  id String @id @default(uuid()) @db.Uuid
+  customerId String @db.Uuid
+  customer User @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  professionalId String @db.Uuid
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  vehicleId String @db.Uuid
+  vehicle Vehicle @relation(fields: [vehicleId, customerId], references: [id, customerId], onDelete: Restrict)
+  description String @db.VarChar(4000)
+  appointmentAt DateTime
+  status BookingStatus @default(REQUESTED)
+  rejectionReason String @default("")
+  completionNotes String @default("")
+  version Int @default(0)
+  clientRequestId String @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  quotes Quote[]
+  messages Message[]
+  record ServiceRecord?
+  grant HistoryGrant?
+  review Review?
+  @@unique([customerId, clientRequestId])
+  @@index([professionalId, status])
+  @@index([customerId, createdAt])
+}
+model Quote {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @db.Uuid
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  number Int
+  version Int @default(1)
+  status QuoteStatus @default(DRAFT)
+  notes String @db.VarChar(4000)
+  customerRequest String @default("") @db.VarChar(2000)
+  workStartedAt DateTime?
+  sentAt DateTime?
+  approvedAt DateTime?
+  createdAt DateTime @default(now())
+  clientRequestId String @db.Uuid
+  lines QuoteLine[]
+  revisions QuoteRevision[]
+  payment Payment?
+  @@unique([bookingId, number])
+  @@unique([bookingId, clientRequestId])
+}
+model QuoteLine {
+  id String @id @default(uuid()) @db.Uuid
+  quoteId String @db.Uuid
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  description String @db.VarChar(300)
+  category String
+  quantity Int
+  unitPriceCents Int
+  selected Boolean @default(true)
+}
+model QuoteRevision {
+  id String @id @default(uuid()) @db.Uuid
+  quoteId String @db.Uuid
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  version Int
+  snapshot Json
+  createdAt DateTime @default(now())
+  @@unique([quoteId, version])
+}
+model Payment {
+  id String @id @default(uuid()) @db.Uuid
+  quoteId String @unique @db.Uuid
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Restrict)
+  quoteVersion Int
+  amountCents Int
+  currency String @default("ZAR")
+  provider String
+  providerReference String @unique
+  paidAt DateTime @default(now())
+}
+model Message {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @db.Uuid
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  authorId String @db.Uuid
+  author User @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  body String @db.VarChar(4000)
+  clientRequestId String @db.Uuid
+  createdAt DateTime @default(now())
+  @@unique([authorId, clientRequestId])
+  @@index([bookingId, createdAt])
+}
+model ServiceRecord {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @unique @db.Uuid
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  notes String
+  repairs Json
+  createdAt DateTime @default(now())
+}
+model HistoryGrant {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @unique @db.Uuid
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  recordIds String[]
+  expiresAt DateTime
+  revokedAt DateTime?
+}
+model Review {
+  id String @id @default(uuid()) @db.Uuid
+  bookingId String @unique @db.Uuid
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  customerId String @db.Uuid
+  customer User @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  professionalId String @db.Uuid
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  rating Int
+  body String @db.VarChar(2000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Notification {
+  id BigInt @id @default(autoincrement())
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  topic String
+  resourceId String
+  title String
+  readAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([userId, id])
+}
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  actorId String @db.Uuid
+  action String
+  resourceId String
+  details Json
+  createdAt DateTime @default(now())
+  @@index([resourceId, createdAt])
+}
+model Document {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  kind String
+  name String
+  mime String
+  bytes Bytes
+  createdAt DateTime @default(now())
+  @@index([userId])
+}
