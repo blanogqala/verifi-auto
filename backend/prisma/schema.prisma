@@ -85,6 +85,7 @@ model MailOutbox {
   to String
   subject String
   body String
+  html String?
   createdAt DateTime @default(now())
   sentAt DateTime?
   attempts Int @default(0)

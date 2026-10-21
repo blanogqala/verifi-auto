@@ -47,10 +47,11 @@ export function startMailWorker() {
             to: row.to,
             subject: row.subject,
             text: row.body,
+            ...(row.html ? { html: row.html } : {}),
           });
           await db.mailOutbox.update({
             where: { id: row.id },
-            data: { sentAt: new Date(), body: "[Delivered]" },
+            data: { sentAt: new Date(), body: "[Delivered]", html: null },
           });
         } catch {
           console.error(

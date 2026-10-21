@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
@@ -13,13 +13,20 @@ test(
   "authenticated API: isolation, booking/quote flow, documents, reset and events",
   { timeout: 120000 },
   async () => {
-    const migration = await readFile(
-      new URL(
-        "../prisma/migrations/202610210001_initial/migration.sql",
-        import.meta.url,
-      ),
-      "utf8",
-    );
+    const migrationsUrl = new URL("../prisma/migrations/", import.meta.url);
+    const migrationNames = (
+      await readdir(migrationsUrl, { withFileTypes: true })
+    )
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .sort();
+    const migration = (
+      await Promise.all(
+        migrationNames.map((name) =>
+          readFile(new URL(`${name}/migration.sql`, migrationsUrl), "utf8"),
+        ),
+      )
+    ).join("\n");
     let closeDatabase: () => Promise<void>;
     if (process.env.TEST_DATABASE_URL) {
       const url = new URL(process.env.TEST_DATABASE_URL);
@@ -127,6 +134,11 @@ test(
         const mail = await db.mailOutbox.findFirstOrThrow({
           where: { to: email },
         });
+        assert.ok(mail.html?.includes("Verify email"));
+        assert.ok(
+          mail.html?.includes('href="http://localhost:5173/#verify?token='),
+        );
+        assert.ok(mail.body.includes("If you did not request this"));
         const token = mail.body.match(/token=([\w-]+)/)![1];
         assert.equal(
           (await send("post", "/api/auth/verify", { token })).status,

@@ -121,3 +121,34 @@
   border-radius: 1.5rem;
   overflow: hidden;
 }
+
+.auth-email-state {
+  display: grid;
+  gap: 1rem;
+  text-align: center;
+}
+.auth-email-state p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.auth-email-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0.5rem auto;
+  border-radius: 50%;
+  color: var(--accent, #a875ef);
+  background: rgba(150, 88, 232, 0.14);
+  border: 1px solid rgba(150, 88, 232, 0.4);
+}
+.auth-email-hint {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.auth-confirmation {
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(150, 88, 232, 0.14);
+  border: 1px solid rgba(150, 88, 232, 0.4);
+}

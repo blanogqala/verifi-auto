@@ -7,6 +7,7 @@ import {
 } from "../../lib/security.js";
 import { env } from "../../config/env.js";
 import { requireThat } from "../../lib/errors.js";
+import { accountEmailHtml } from "../../lib/accountEmail.js";
 import { audit } from "../../lib/events.js";
 export const publicUser = {
   id: true,
@@ -42,6 +43,7 @@ export async function queueToken(
         purpose === "verify"
           ? "Verify your Verifi Auto email"
           : "Reset your Verifi Auto password",
+      html: accountEmailHtml(purpose, link),
       body: `Use this link to ${purpose === "verify" ? "verify your email" : "reset your password"}: ${link}\nIf you did not request this, ignore this email.`,
     },
   });

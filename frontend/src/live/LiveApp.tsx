@@ -33,12 +33,12 @@ export default function LiveApp() {
   const [city, setCity] = useState('Cape Town'),
     [service, setService] = useState(''),
     [type, setType] = useState('');
-  const go = (next: string) => {
+  const go = useCallback((next: string) => {
     location.hash = next;
     setPage(next);
     setSide(false);
     setMenu(false);
-  };
+  }, []);
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
   useEffect(() => {
     const listener = () => setPage(location.hash.slice(1) || 'home');
