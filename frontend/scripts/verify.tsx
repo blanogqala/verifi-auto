@@ -1,3 +1,4 @@
+import { CustomerOverviewView, LiveBookingList, LivePayments } from '../src/live/LiveWorkspaceViews';
 import { bookingQuotations, newQuotation } from '../src/features/jobs/bookingQuotes';
 import { BookingQuotations } from '../src/components/jobs/BookingQuotations';
 import { QuoteSummary } from '../src/components/jobs/QuoteSummary';
@@ -2157,3 +2158,15 @@ const draftBooking = privateDraft.jobs.find((job: any) => job.id === earlyStarte
 assert.equal(bookingQuotations(draftBooking)[1].quoteDraft.notes, 'Unsent private notes');
 assert.ok(!renderToString(<BookingQuotations job={draftBooking} setDialog={() => {}} />).includes('Private draft diagnosis'));
 console.log('Multiple quotation approval, payment, ownership, completion and rendering checks passed.');
+
+const emptyLiveOverview = renderToString(<CustomerOverviewView name="New Customer" summary={{activeBookings:0, quotesToReview:0, vehicles:0, serviceRecords:0, recentBookings:[]}} go={() => {}}/>);
+assert.equal((emptyLiveOverview.match(/class="ui-card metric"/g) || []).length, 4);
+for (const text of ['Welcome back, New.', 'Good care starts with clarity.', 'Active bookings', 'Quotes to review', 'Service records', 'Recent appointments', 'No bookings yet', 'Make your next move.']) assert.ok(emptyLiveOverview.includes(text), text);
+assert.equal((emptyLiveOverview.match(/<strong>0<\/strong>/g) || []).length, 4);
+assert.ok(!emptyLiveOverview.includes('sample data'));
+const emptyLiveBookings = renderToString(<LiveBookingList bookings={[]} role="customer" base="bookings" section="bookings" go={() => {}}/>);
+assert.ok(emptyLiveBookings.includes('Filter job status'));
+assert.ok(emptyLiveBookings.includes('No bookings yet.'));
+const emptyLivePayments = renderToString(<LivePayments payments={[]} bookings={[]} role="customer" go={() => {}}/>);
+for (const text of ['Awaiting payment', 'Recorded payments', 'Outstanding', 'History', 'No payments due yet.', 'No payments yet.']) assert.ok(emptyLivePayments.includes(text), text);
+console.log('Connected customer overview, booking and payment empty-state rendering passed.');

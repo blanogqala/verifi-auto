@@ -186,6 +186,25 @@ test(
         ).status,
         403,
       );
+      const emptyOverview = await send(
+        "get",
+        "/api/customer/overview",
+        undefined,
+        alice,
+      );
+      assert.equal(emptyOverview.status, 200);
+      assert.deepEqual(emptyOverview.body, {
+        activeBookings: 0,
+        quotesToReview: 0,
+        vehicles: 0,
+        serviceRecords: 0,
+        recentBookings: [],
+      });
+      assert.equal(
+        (await send("get", "/api/customer/overview", undefined, mechanic))
+          .status,
+        403,
+      );
       const carInput = {
         make: "Volkswagen",
         model: "Polo",
@@ -324,6 +343,18 @@ test(
       const booked = await send("post", "/api/bookings", bookingInput, alice);
       assert.equal(booked.status, 201, JSON.stringify(booked.body));
       const bookingId = booked.body.id;
+      const overview = (
+        await send("get", "/api/customer/overview", undefined, alice)
+      ).body;
+      assert.equal(overview.activeBookings, 1);
+      assert.equal(overview.vehicles, 1);
+      assert.equal(overview.recentBookings[0].id, bookingId);
+      assert.equal(
+        (await send("get", "/api/customer/overview", undefined, bob)).body
+          .activeBookings,
+        0,
+      );
+
       assert.equal(
         (await send("post", "/api/bookings", bookingInput, alice)).body.id,
         bookingId,
@@ -544,6 +575,12 @@ test(
         .body;
       assert.equal(job.status, "COMPLETED");
       assert.equal(await db.serviceRecord.count({ where: { bookingId } }), 1);
+      const completedOverview = (
+        await send("get", "/api/customer/overview", undefined, alice)
+      ).body;
+      assert.equal(completedOverview.serviceRecords, 1);
+      assert.equal(completedOverview.activeBookings, 0);
+
       assert.equal(
         (await send("get", "/api/payments", undefined, alice)).body.length,
         2,

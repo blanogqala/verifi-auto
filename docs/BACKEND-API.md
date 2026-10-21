@@ -13,6 +13,7 @@ Base `/api`. JSON requests; successful bodies are resources or `{message}`. Erro
 | Directory | GET `/professionals`, `/professionals/:id` | Approved professionals only; city/service/type, take/cursor |
 | Business | GET/PATCH `/professional/me`, POST `/professional/me/submit` | Mechanic-owned; profile changes need review |
 | Evidence | GET/POST `/documents`, GET/DELETE `/documents/:id` | Multipart `{kind,file}` upload, owner/admin-only download |
+| Customer overview | GET `/customer/overview` | Verified customer only; database counts and two recent bookings scoped to the signed-in account |
 | Garage | GET/POST `/vehicles`, GET/PATCH/DELETE `/vehicles/:id` | Owner only; delete archives; PATCH requires version |
 | Bookings | GET/POST `/bookings`, GET `/bookings/:id` | Participants only; create requires own active vehicle and approved professional |
 | Job state | POST `/bookings/:id/actions` | `{action,version,reason?,completionNotes?}`; accept/reject/cancel/start/complete |

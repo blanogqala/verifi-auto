@@ -31,6 +31,8 @@ export function OverviewPage({
   openReview,
   role,
   route,
+  summary,
+  live = false,
 }: any) {
   return (
     <>
@@ -92,25 +94,32 @@ export function OverviewPage({
           <>
             <Metric
               label="Active bookings"
-              value={jobs.filter((j: any) => !['Completed', 'Cancelled'].includes(j.status)).length}
+              value={
+                summary?.activeBookings ??
+                jobs.filter((j: any) => !['Completed', 'Cancelled', 'Rejected'].includes(j.status))
+                  .length
+              }
               note="Requests and ongoing work"
               Icon={Calendar}
             />
             <Metric
               label="Quotes to review"
-              value={jobs.filter((j: any) => j.status === 'Awaiting approval').length}
+              value={
+                summary?.quotesToReview ??
+                jobs.filter((j: any) => j.status === 'Awaiting approval').length
+              }
               note="Your approval comes first"
               Icon={FileText}
             />
             <Metric
               label="Vehicles"
-              value={data.vehicles.length}
+              value={summary?.vehicles ?? data.vehicles.length}
               note="In your personal garage"
               Icon={Car}
             />
             <Metric
               label="Service records"
-              value={data.records.length}
+              value={summary?.serviceRecords ?? data.records.length}
               note="Your vehicle’s story"
               Icon={ClipboardCheck}
             />
@@ -138,7 +147,7 @@ export function OverviewPage({
             <Metric
               label="Documents"
               value={data.documents.length}
-              note="Sample evidence selected"
+              note={live ? 'Your submitted evidence' : 'Sample evidence selected'}
               Icon={Upload}
             />
           </>
@@ -158,7 +167,10 @@ export function OverviewPage({
             />
             <Metric
               label="Active jobs"
-              value={jobs.filter((j: any) => !['Cancelled', 'Completed', 'Rejected'].includes(j.status)).length}
+              value={
+                jobs.filter((j: any) => !['Cancelled', 'Completed', 'Rejected'].includes(j.status))
+                  .length
+              }
               note="Across the demo platform"
               Icon={Wrench}
             />
@@ -198,23 +210,23 @@ export function OverviewPage({
           </div>
           {role === 'admin' ? (
             apps.filter((item: any) => item.status === 'Pending review').slice(0, 3).length ? (
-            apps
-              .filter((item: any) => item.status === 'Pending review')
-              .slice(0, 3)
-              .map((a: any) => (
-              <button className="queue-row" onClick={() => openReview(a)} key={a.id}>
-                <span className="avatar">
-                  <Wrench size={19} />
-                </span>
-                <div>
-                  <b>{a.name}</b>
-                  <small>
-                    {a.city} · {a.type}
-                  </small>
-                </div>
-                <Status value={a.status} />
-              </button>
-            ))
+              apps
+                .filter((item: any) => item.status === 'Pending review')
+                .slice(0, 3)
+                .map((a: any) => (
+                  <button className="queue-row" onClick={() => openReview(a)} key={a.id}>
+                    <span className="avatar">
+                      <Wrench size={19} />
+                    </span>
+                    <div>
+                      <b>{a.name}</b>
+                      <small>
+                        {a.city} · {a.type}
+                      </small>
+                    </div>
+                    <Status value={a.status} />
+                  </button>
+                ))
             ) : (
               <p className="muted">No applications are waiting for review.</p>
             )
@@ -264,8 +276,9 @@ export function OverviewPage({
             </button>
           ))}
           <div className="workspace-note">
-            This connected preview uses browser-local sample data. Switching demo roles lets you
-            explore the full journey.
+            {live
+              ? 'Your vehicles, bookings and service history, together in one place.'
+              : 'This connected preview uses browser-local sample data. Switching demo roles lets you explore the full journey.'}
           </div>
         </Card>
       </div>

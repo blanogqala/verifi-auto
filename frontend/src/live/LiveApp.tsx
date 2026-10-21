@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, apiBase, ApiFailure, displayStatus, money, setCsrf, type LiveUser } from './api';
 import { useResource } from './useResource';
 import { LiveAuth } from './LiveAuth';
+import {
+  LiveCustomerOverview,
+  LiveBookingList,
+  LivePayments,
+  LiveMechanicOverview,
+} from './LiveWorkspaceViews';
 import { LiveVehicles } from './LiveVehicles';
 import { LiveDirectory } from './LiveDirectory';
 import { LiveBooking } from './LiveBooking';
@@ -181,11 +187,12 @@ export default function LiveApp() {
     }, 'Signed out.');
   };
   const section = page.startsWith('dashboard/') ? page.slice('dashboard/'.length) : '',
-    base = section.split('/')[0];
+    base = section.split('/')[0].split('?')[0];
   const role = user?.role.toLowerCase() as Role;
   const { data: notifications } = useResource(user ? '/notifications' : null, revision);
   const bookingList =
-    !!user?.verifiedAt && ['overview', 'bookings', 'jobs', 'appointments'].includes(base);
+    !!user?.verifiedAt &&
+    ['overview', 'bookings', 'jobs', 'appointments', 'payments'].includes(base);
   const { data: bookings, error: bookingsError } = useResource(
     bookingList ? '/bookings?take=100' : null,
     revision,
@@ -371,6 +378,28 @@ export default function LiveApp() {
           refresh={refresh}
         />
       );
+    else if (base === 'overview' && role === 'mechanic')
+      workspace = (
+        <LiveMechanicOverview
+          user={user}
+          bookings={bookings}
+          error={bookingsError}
+          revision={revision}
+          go={go}
+        />
+      );
+    else if (base === 'overview' && role === 'customer')
+      workspace = <LiveCustomerOverview user={user} revision={revision} go={go} />;
+    else if (base === 'payments' && role === 'customer')
+      workspace = (
+        <LivePayments
+          payments={payments}
+          error={paymentsError || bookingsError}
+          bookings={bookings}
+          go={go}
+          role={role}
+        />
+      );
     else if (['payments', 'finance'].includes(base))
       workspace = (
         <div className="detail-page">
@@ -411,81 +440,16 @@ export default function LiveApp() {
         <LiveAdmin section={section} revision={revision} run={run} go={go} refresh={refresh} />
       );
     else if (bookingList) {
-      const statusFilter =
-        base === 'appointments'
-          ? section.includes('rejected')
-            ? 'REJECTED'
-            : section.includes('cancelled')
-              ? 'CANCELLED'
-              : 'REQUESTED'
-          : '';
-      const rows = bookings?.filter((job: any) =>
-        statusFilter
-          ? job.status === statusFilter
-          : base === 'jobs'
-            ? !['REQUESTED', 'REJECTED', 'CANCELLED'].includes(job.status)
-            : true,
-      );
       workspace = (
-        <div className="detail-page">
-          <h1>
-            {base === 'overview'
-              ? `Welcome, ${user.name.split(' ')[0]}`
-              : base === 'appointments'
-                ? 'Appointments'
-                : role === 'customer'
-                  ? 'My bookings'
-                  : 'Jobs & activity'}
-          </h1>
-          {base === 'appointments' ? (
-            <div className="button-row">
-              {['pending', 'rejected', 'cancelled'].map((tab) => (
-                <button
-                  className="secondary"
-                  key={tab}
-                  onClick={() => go('dashboard/appointments/' + tab)}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          {bookingsError ? (
-            <p role="alert">{bookingsError}</p>
-          ) : !rows ? (
-            <RoadLoader label="Loading bookings…" />
-          ) : rows.length ? (
-            <div className="live-card-grid">
-              {rows.map((job: any) => (
-                <button
-                  type="button"
-                  className="live-resource-card"
-                  key={job.id}
-                  onClick={() =>
-                    go(
-                      `dashboard/${role === 'customer' ? 'bookings' : base === 'appointments' ? 'appointments/pending' : 'jobs'}/${job.id}`,
-                    )
-                  }
-                >
-                  <strong>
-                    {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
-                  </strong>
-                  <span>{role === 'mechanic' ? job.customer.name : job.professional.name}</span>
-                  <span>{new Date(job.appointmentAt).toLocaleString()}</span>
-                  <span className="quotation-state">{displayStatus(job.status)}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <DetailCard title="No bookings yet">
-              <p>
-                {role === 'customer'
-                  ? 'Add a vehicle and find a verified professional to get started.'
-                  : 'New requests will appear automatically here.'}
-              </p>
-            </DetailCard>
-          )}
-        </div>
+        <LiveBookingList
+          key={section}
+          bookings={bookings}
+          error={bookingsError}
+          role={role}
+          base={base}
+          section={section}
+          go={go}
+        />
       );
     } else
       workspace = (
@@ -518,7 +482,21 @@ export default function LiveApp() {
           <WorkspaceTopbar
             live
             accountName={user.name}
-            heading={base}
+            heading={
+              (
+                {
+                  overview: 'Overview',
+                  garage: 'My Garage',
+                  bookings: 'My bookings',
+                  payments: 'Payments',
+                  find: 'Find a professional',
+                  profile: 'Profile',
+                  appointments: 'Appointments',
+                  jobs: 'Jobs & activity',
+                  notifications: 'Notifications',
+                } as Record<string, string>
+              )[base] || base
+            }
             role={role}
             goHome={() => go('home')}
             route={(tab) => go('dashboard/' + tab)}
@@ -530,12 +508,13 @@ export default function LiveApp() {
             setTheme={setTheme}
             menuButtonRef={menuButtonRef}
           />
-          <div className="workspace-body">
-            <p className="live-connection" role="status">
-              {connected ? 'Live updates connected' : 'Reconnecting to live updates…'}
-            </p>
-            {workspace}
-          </div>
+          <div className="workspace-body">{workspace}</div>
+          <div className="workspace-grow" />
+          <footer className="workspace-footer">
+            <span role="status">
+              {connected ? 'Your workspace is up to date' : 'Reconnecting to live updates…'}
+            </span>
+          </footer>
         </main>
       </div>
     );

@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { env } from "./config/env.js";
 import { ApiError, errorHandler, requireThat } from "./lib/errors.js";
 import { db } from "./lib/db.js";
-import { authenticate, actor } from "./middleware/auth.js";
+import { authenticate, actor, roles, verified } from "./middleware/auth.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { authRoutes } from "./modules/auth/auth.routes.js";
 import { vehicleRoutes } from "./modules/vehicles/vehicles.routes.js";
@@ -18,7 +18,11 @@ import {
 import { bookingRoutes } from "./modules/bookings/bookings.routes.js";
 import { notificationRoutes } from "./modules/notifications/notifications.routes.js";
 import { adminRoutes } from "./modules/admin/admin.routes.js";
-import { scope } from "./modules/bookings/bookings.service.js";
+import {
+  scope,
+  bookingInclude,
+  publicBooking,
+} from "./modules/bookings/bookings.service.js";
 export const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", env.TRUST_PROXY_HOPS);
@@ -65,6 +69,54 @@ app.use("/api/auth", authRoutes);
 app.use("/api/professionals", directoryRoutes);
 app.use("/api", authenticate);
 app.use("/api", rateLimit("account", 240, 1));
+app.get(
+  "/api/customer/overview",
+  roles("CUSTOMER"),
+  verified,
+  async (req, res) => {
+    const customerId = actor(req).userId;
+    const [
+      activeBookings,
+      quotesToReview,
+      vehicles,
+      serviceRecords,
+      recentBookings,
+    ] = await db.$transaction([
+      db.booking.count({
+        where: {
+          customerId,
+          status: { notIn: ["COMPLETED", "CANCELLED", "REJECTED"] },
+        },
+      }),
+      db.quote.count({
+        where: {
+          booking: {
+            customerId,
+            status: { notIn: ["CANCELLED", "REJECTED", "COMPLETED"] },
+          },
+          status: "SENT",
+        },
+      }),
+      db.vehicle.count({ where: { customerId, archivedAt: null } }),
+      db.serviceRecord.count({ where: { booking: { customerId } } }),
+      db.booking.findMany({
+        where: { customerId },
+        include: bookingInclude,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 2,
+      }),
+    ]);
+    res.json({
+      activeBookings,
+      quotesToReview,
+      vehicles,
+      serviceRecords,
+      recentBookings: recentBookings.map((row) =>
+        publicBooking(row, actor(req)),
+      ),
+    });
+  },
+);
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/professional", professionalRoutes);
 app.use("/api/documents", documentRoutes);

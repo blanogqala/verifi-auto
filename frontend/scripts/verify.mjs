@@ -9,6 +9,7 @@ try {
   await build({
     entryPoints: ['scripts/verify.tsx'],
     bundle: true,
+    define: { 'import.meta.env.VITE_API_URL': '""' },
     platform: 'node',
     format: 'cjs',
     outfile,
