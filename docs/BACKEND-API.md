@@ -39,3 +39,9 @@ Booking create body: `{vehicleId,professionalId,appointmentAt,description,client
 Lists cap at 100 rows. Bookings/directory accept `take` and UUID `cursor`; messages accept `take` and cursor; notifications accept `take` and `before` (decimal-string ID). The first connected UI currently loads up to 100 bookings; full list pagination must be completed before high-volume rollout.
 
 Frontend activation is explicit via `VITE_API_URL`. There is no silent fallback to browser demo data when the API fails. Existing demo UI is retained when the variable is absent. Connected screens share the sidebar, topbar, auth artwork and card styles, but the final presentation parity pass and unsupported admin/finance features remain launch work described in the backend README.
+
+### Profile presentation and preferences
+
+`PATCH /api/auth/profile` accepts `name`, `phone`, and optional `emailUpdates` (boolean), `photo` (empty string to remove, or a JPEG data URL up to 120,000 characters). The shared profile form resizes uploads to at most 320px before saving. Only the authenticated user's account is updated. External image URLs and SVG are rejected. Session responses include these saved preferences so the profile photo also appears in the workspace navigation. This preference records consent; it does not introduce a marketing email sender.
+
+Apply migration `202610210003_profile_preferences` with `npm run db:migrate` before restarting the API. Email remains read-only; changing a verified email requires a separate verification workflow. Password changes use the existing authenticated endpoint, invalidate sessions, and return the user to sign-in.

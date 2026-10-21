@@ -1,3 +1,5 @@
+import { SettingsPage } from '../pages/shared/SettingsPage';
+import { WorkspaceHeading } from './LiveWorkspaceViews';
 import { DetailCard } from '../components/ui/DetailChrome';
 import { RoadLoader } from '../components/ui/RoadLoader';
 import { api, type LiveUser } from './api';
@@ -20,6 +22,35 @@ export function LiveProfile({
     revision,
   );
   const { data: docs } = useResource(user.role === 'MECHANIC' ? '/documents' : null, revision);
+  if (user.role === 'CUSTOMER') {
+    return (
+      <>
+        <WorkspaceHeading title="Profile" />
+        <SettingsPage
+          key={user.id}
+          data={{ settings: user }}
+          connected={{
+            save: async (values: {
+              name: string;
+              phone: string;
+              photo: string;
+              emailUpdates: boolean;
+            }) => {
+              const saved = await api<LiveUser>('/auth/profile', 'PATCH', values);
+              onUser(saved);
+              await run(async () => {}, 'Profile saved.');
+            },
+            changePassword: async (values: { currentPassword: string; password: string }) => {
+              await api('/auth/password', 'POST', values);
+              onUser(null);
+              location.hash = 'login';
+              await run(async () => {}, 'Password changed. Sign in again.');
+            },
+          }}
+        />
+      </>
+    );
+  }
   return (
     <div className="detail-page">
       <h1>My profile</h1>

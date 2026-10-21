@@ -154,6 +154,36 @@ test(
       const alice = await login("alice@example.test"),
         bob = await login("bob@example.test"),
         mechanic = await login("mechanic@example.test");
+      const profilePhoto = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD5/ooooA//2Q==";
+      const savedProfile = await send("patch", "/api/auth/profile", {
+        name: "Alice Customer", phone: "082 123 4567", photo: profilePhoto, emailUpdates: true,
+      }, alice);
+      assert.equal(savedProfile.status, 200);
+      assert.equal(savedProfile.body.photo, profilePhoto);
+      assert.equal(savedProfile.body.emailUpdates, true);
+      const persistedProfile = (await send("get", "/api/auth/session", undefined, alice)).body.user;
+      assert.equal(persistedProfile.photo, profilePhoto);
+      assert.equal(persistedProfile.emailUpdates, true);
+      const otherProfile = (await send("get", "/api/auth/session", undefined, bob)).body.user;
+      assert.equal(otherProfile.photo, null);
+      assert.equal(otherProfile.emailUpdates, false);
+      for (const invalid of [
+        { photo: "data:image/svg+xml;base64,PHN2Zz4=" },
+        { photo: "https://example.test/photo.jpg" },
+        { photo: "data:image/jpeg;base64,bm90YW5pbWFnZQ==" },
+        { photo: "x".repeat(120001) },
+        { email: "other@example.test" },
+        { id: bob.user.id },
+        { emailUpdates: "true" },
+      ]) {
+        assert.equal((await send("patch", "/api/auth/profile", {
+          name: "Alice Customer", phone: "0821234567", ...invalid,
+        }, alice)).status, 422);
+      }
+      assert.equal((await send("patch", "/api/auth/profile", {
+        name: "Alice Customer", phone: "0821234567", photo: "", emailUpdates: false,
+      }, alice)).status, 200);
+      assert.equal((await send("get", "/api/auth/session", undefined, alice)).body.user.photo, "");
       const adminUser = await db.user.create({
         data: {
           name: "Admin",

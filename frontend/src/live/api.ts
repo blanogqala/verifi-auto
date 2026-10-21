@@ -46,6 +46,8 @@ export type LiveUser = {
   name: string;
   email: string;
   phone: string;
+  photo?: string | null;
+  emailUpdates?: boolean;
   role: 'CUSTOMER' | 'MECHANIC' | 'ADMIN';
   verifiedAt: string | null;
 };

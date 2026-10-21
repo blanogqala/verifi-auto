@@ -8,8 +8,8 @@ import { readProfilePhoto } from '../../features/account/profilePhoto';
 import { formatPhone } from '../../features/account/phoneNumber';
 import { saveCustomerProfile } from '../../features/demo/demoActions';
 
-/** Customer profile. Passwords are not stored in this browser preview. */
-export function SettingsPage({ data, notify, update }: any) {
+/** Shared profile presentation; connected accounts provide server-backed actions. */
+export function SettingsPage({ data, notify, update, connected }: any) {
   const settings = data.settings || {};
   const [name, setName] = useState(settings.name || '');
   const [email, setEmail] = useState(settings.email || '');
@@ -18,11 +18,16 @@ export function SettingsPage({ data, notify, update }: any) {
   const [photo, setPhoto] = useState(typeof settings.photo === 'string' ? settings.photo : '');
   const [photoState, setPhotoState] = useState<'idle' | 'working'>('idle');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [nextPassword, setNextPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const passwordMismatch = nextPassword.length > 0 && confirmPassword.length > 0 && nextPassword !== confirmPassword;
-  const passwordWeak = nextPassword.length > 0 && !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(nextPassword);
+  const passwordMismatch =
+    nextPassword.length > 0 && confirmPassword.length > 0 && nextPassword !== confirmPassword;
+  const passwordWeak =
+    nextPassword.length > 0 && !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(nextPassword);
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNext, setShowNext] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -33,16 +38,24 @@ export function SettingsPage({ data, notify, update }: any) {
     try {
       setPhoto(await readProfilePhoto(file));
     } catch (reason: any) {
-      setError(reason?.message || 'This image could not be read. Try a different JPG, PNG, or WebP.');
+      setError(
+        reason?.message || 'This image could not be read. Try a different JPG, PNG, or WebP.',
+      );
     } finally {
       setPhotoState('idle');
     }
   }
 
-  function save(event: FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault();
     setError('');
+    if (saving) return;
+    setSaving(true);
     try {
+      if (connected) {
+        await connected.save({ name, phone, emailUpdates, photo });
+        return;
+      }
       const saved = update((current: any) =>
         saveCustomerProfile(current, { name, email, phone, emailUpdates, photo }),
       );
@@ -53,6 +66,8 @@ export function SettingsPage({ data, notify, update }: any) {
       );
     } catch (reason: any) {
       setError(reason.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -61,8 +76,9 @@ export function SettingsPage({ data, notify, update }: any) {
       <Card as="form" className="dash-panel settings-form" onSubmit={save}>
         <h2>Profile</h2>
         <p className="muted">
-          Use sample details. This profile stays in this browser and does not create a real account
-          or send notifications.
+          {connected
+            ? 'Keep your personal details and contact preferences up to date.'
+            : 'Use sample details. This profile stays in this browser and does not create a real account or send notifications.'}
         </p>
         <div className="avatar-upload">
           <span className="avatar big" aria-hidden="true">
@@ -91,7 +107,14 @@ export function SettingsPage({ data, notify, update }: any) {
         <div className="form-row">
           <label>
             Full name
-            <input autoComplete="name" value={name} required onChange={(event) => setName(event.target.value)} />
+            <input
+              autoComplete="name"
+              value={name}
+              minLength={2}
+              maxLength={120}
+              required
+              onChange={(event) => setName(event.target.value)}
+            />
           </label>
           <label>
             Email address
@@ -99,12 +122,18 @@ export function SettingsPage({ data, notify, update }: any) {
               type="email"
               autoComplete="email"
               inputMode="email"
+              readOnly={Boolean(connected)}
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
           </label>
         </div>
+        {connected ? (
+          <p className="muted">
+            Your verified email is used to sign in and cannot be changed here.
+          </p>
+        ) : null}
         <label>
           Cell phone number
           <input
@@ -117,7 +146,9 @@ export function SettingsPage({ data, notify, update }: any) {
             onChange={(event) => setPhone(event.target.value)}
           />
         </label>
-        {phone ? <p className="muted">Saved format preview: {formatPhone(phone) || phone}</p> : null}
+        {phone ? (
+          <p className="muted">Saved format preview: {formatPhone(phone) || phone}</p>
+        ) : null}
         <label className="check-label">
           <input
             type="checkbox"
@@ -131,21 +162,43 @@ export function SettingsPage({ data, notify, update }: any) {
             {error}
           </p>
         ) : null}
-        <button className="primary" type="submit" disabled={photoState === 'working'}>
-          Save profile <Check size={17} />
+        <button className="primary" type="submit" disabled={photoState === 'working' || saving}>
+          {saving ? 'Saving profile…' : 'Save profile'} <Check size={17} />
         </button>
       </Card>
       <Card
         as="form"
         className="dash-panel settings-form"
-        onSubmit={(event) => {
+        onSubmit={async (event: FormEvent) => {
           event.preventDefault();
+          if (!connected || changingPassword) return;
+          setPasswordError('');
+          if (
+            !currentPassword ||
+            !nextPassword ||
+            passwordWeak ||
+            nextPassword !== confirmPassword
+          ) {
+            setPasswordError(
+              'Enter your current password and a valid new password with matching confirmation.',
+            );
+            return;
+          }
+          setChangingPassword(true);
+          try {
+            await connected.changePassword({ currentPassword, password: nextPassword });
+          } catch (reason: any) {
+            setPasswordError(reason.message || 'Could not change your password. Please try again.');
+          } finally {
+            setChangingPassword(false);
+          }
         }}
       >
         <h2>Change password</h2>
         <p className="muted">
-          Unavailable until secure authentication is connected. This preview does not store or
-          change a password.
+          {connected
+            ? 'Choose a new password to keep your account secure. You will sign in again after saving.'
+            : 'Unavailable until secure authentication is connected. This preview does not store or change a password.'}
         </p>
         <p id="password-rules">
           Use at least 8 characters, including a letter and a number. Confirmation must match the
@@ -158,6 +211,8 @@ export function SettingsPage({ data, notify, update }: any) {
               type={showCurrent ? 'text' : 'password'}
               autoComplete="current-password"
               aria-describedby="password-rules"
+              required={Boolean(connected)}
+              maxLength={128}
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
             />
@@ -179,6 +234,8 @@ export function SettingsPage({ data, notify, update }: any) {
               type={showNext ? 'text' : 'password'}
               autoComplete="new-password"
               aria-describedby="password-rules"
+              required={Boolean(connected)}
+              maxLength={128}
               value={nextPassword}
               onChange={(event) => setNextPassword(event.target.value)}
             />
@@ -200,6 +257,8 @@ export function SettingsPage({ data, notify, update }: any) {
               type={showConfirm ? 'text' : 'password'}
               autoComplete="new-password"
               aria-describedby="password-rules"
+              required={Boolean(connected)}
+              maxLength={128}
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
             />
@@ -224,8 +283,17 @@ export function SettingsPage({ data, notify, update }: any) {
             Confirmation must match the new password.
           </p>
         ) : null}
-        <button className="secondary" type="submit" disabled>
-          Change password unavailable
+        {passwordError ? (
+          <p className="form-error" role="alert">
+            {passwordError}
+          </p>
+        ) : null}
+        <button className="secondary" type="submit" disabled={!connected || changingPassword}>
+          {connected
+            ? changingPassword
+              ? 'Changing password…'
+              : 'Change password'
+            : 'Change password unavailable'}
         </button>
       </Card>
     </div>

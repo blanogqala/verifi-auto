@@ -27,12 +27,10 @@ authRoutes.post("/register", limit, async (req, res) => {
     .strict()
     .parse(req.body);
   await service.register(input);
-  res
-    .status(202)
-    .json({
-      message:
-        "If this email can be registered, a verification link will be sent. Check your inbox.",
-    });
+  res.status(202).json({
+    message:
+      "If this email can be registered, a verification link will be sent. Check your inbox.",
+  });
 });
 authRoutes.post("/login", limit, async (req, res) => {
   const input = z
@@ -106,7 +104,33 @@ authRoutes.post("/resend-verification", limit, async (req, res) => {
 });
 authRoutes.patch("/profile", async (req, res) => {
   const input = z
-    .object({ name: z.string().trim().min(2).max(120), phone })
+    .object({
+      name: z.string().trim().min(2).max(120),
+      phone,
+      emailUpdates: z.boolean().optional(),
+      // The shared form normalizes uploads to a small JPEG. Never accept remote URLs or SVG.
+      photo: z
+        .string()
+        .max(120000)
+        .refine((value) => {
+          if (value === "") return true;
+          if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value))
+            return false;
+          const bytes = Buffer.from(
+            value.slice("data:image/jpeg;base64,".length),
+            "base64",
+          );
+          return (
+            bytes.length > 4 &&
+            bytes[0] === 0xff &&
+            bytes[1] === 0xd8 &&
+            bytes[2] === 0xff &&
+            bytes[bytes.length - 2] === 0xff &&
+            bytes[bytes.length - 1] === 0xd9
+          );
+        }, "Choose a valid photo using the upload button.")
+        .optional(),
+    })
     .strict()
     .parse(req.body);
   res.json(

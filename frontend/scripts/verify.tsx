@@ -1,3 +1,4 @@
+import { SettingsPage } from '../src/pages/shared/SettingsPage';
 import { CustomerOverviewView, LiveBookingList, LivePayments } from '../src/live/LiveWorkspaceViews';
 import { bookingQuotations, newQuotation } from '../src/features/jobs/bookingQuotes';
 import { BookingQuotations } from '../src/components/jobs/BookingQuotations';
@@ -2170,3 +2171,10 @@ assert.ok(emptyLiveBookings.includes('No bookings yet.'));
 const emptyLivePayments = renderToString(<LivePayments payments={[]} bookings={[]} role="customer" go={() => {}}/>);
 for (const text of ['Awaiting payment', 'Recorded payments', 'Outstanding', 'History', 'No payments due yet.', 'No payments yet.']) assert.ok(emptyLivePayments.includes(text), text);
 console.log('Connected customer overview, booking and payment empty-state rendering passed.');
+
+const connectedProfile = renderToString(<SettingsPage data={{settings:{name:'Real Customer',email:'real@example.test',phone:'0821234567'}}} connected={{save:async()=>{},changePassword:async()=>{}}}/>);
+for (const text of ['customer-profile', 'dash-panel settings-form', 'avatar big', 'form-row', 'Upload photo', 'Email updates preference', 'Confirm new password', 'Show Current password', 'Show New password', 'Show Confirm new password']) assert.ok(connectedProfile.includes(text), text);
+assert.ok(!connectedProfile.includes('Change password unavailable'));
+assert.ok(!connectedProfile.includes('Use sample details'));
+assert.ok(connectedProfile.includes('readOnly=""'));
+console.log('Connected profile retains the shared demo layout with real-account wording.');

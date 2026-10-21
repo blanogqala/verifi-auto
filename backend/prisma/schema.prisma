@@ -42,6 +42,8 @@ model User {
   passwordHash String
   name String @db.VarChar(120)
   phone String @default("") @db.VarChar(25)
+  photo String?
+  emailUpdates Boolean @default(false)
   role Role @default(CUSTOMER)
   verifiedAt DateTime?
   disabledAt DateTime?

@@ -1,0 +1,1 @@
+ALTER TABLE "User" ADD COLUMN "photo" TEXT, ADD COLUMN "emailUpdates" BOOLEAN NOT NULL DEFAULT false;

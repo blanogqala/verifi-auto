@@ -468,6 +468,7 @@ export default function LiveApp() {
         ) : null}
         <WorkspaceSidebar
           accountName={user.name}
+          accountPhoto={user.photo || ''}
           goHome={() => go('home')}
           logout={logout}
           onClose={() => setSide(false)}
@@ -482,6 +483,7 @@ export default function LiveApp() {
           <WorkspaceTopbar
             live
             accountName={user.name}
+            accountPhoto={user.photo || ''}
             heading={
               (
                 {

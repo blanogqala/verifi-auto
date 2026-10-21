@@ -14,6 +14,8 @@ export const publicUser = {
   name: true,
   email: true,
   phone: true,
+  photo: true,
+  emailUpdates: true,
   role: true,
   verifiedAt: true,
 } as const;
