@@ -25,7 +25,7 @@ export function demoDocumentHtml(job: any, kind: 'invoice' | 'receipt') {
     job.paid
       ? `${escapeHtml(job.paymentReference || 'Reference not recorded')} · ${escapeHtml(job.paidAt || 'Date not recorded')}`
       : 'Payment has not been recorded';
-  const reference = bookingReference(job);
+  const reference = (bookingReference(job) + (job.quoteNumber ? ` · Quotation ${job.quoteNumber}` : ''));
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title} ${escapeHtml(reference)}</title>
 <style>body{font-family:Georgia,serif;margin:0;color:#221536}header{background:#9658e8;color:#fff;padding:20px 28px}main{padding:28px}table{width:100%;border-collapse:collapse}td{padding:8px 0;border-bottom:1px solid #ddd}button{margin-top:24px}</style></head>
 <body><header><strong>${title}</strong><p>Demo document. Not issued by a bank and not proof of payment.</p></header>

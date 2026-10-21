@@ -30,7 +30,7 @@ export function MechanicPaymentsPage({ jobs, setDialog }: any) {
         <Metric
           label="Awaiting customer payment"
           value={awaiting.length}
-          note="Completed demo work"
+          note="Approved quotations"
           Icon={Wallet}
         />
         <Metric
@@ -47,7 +47,7 @@ export function MechanicPaymentsPage({ jobs, setDialog }: any) {
             <div className="payment-row" key={job.id}>
               <FileText size={23} />
               <div>
-                <b>{bookingReference(job)}</b>
+                <b>{bookingReference(job)}{job.quoteNumber ? ` · Quotation ${job.quoteNumber}` : ''}</b>
                 <small>
                   {job.vehicle}
                   {job.provider ? ` · ${job.provider}` : ''}

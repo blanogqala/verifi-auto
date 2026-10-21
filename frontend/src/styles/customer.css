@@ -943,3 +943,11 @@ select {
 .pro-information .pro-contact { display: flex; flex-wrap: wrap; gap: 12px 24px; margin: 0; padding: 0; list-style: none; overflow-wrap: anywhere; }
 .pro-about-more summary { line-height: 1.7; cursor: pointer; }
 .pro-about-more summary span { color: var(--soft); white-space: nowrap; }
+
+.booking-quotations { display: grid; gap: 1.25rem; min-width: 0; }
+.quotation-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.quotation-state { font-size: .875rem; font-weight: 600; padding: .35rem .75rem; border-radius: 999px; border: 1px solid rgba(139, 92, 246, .45); background: rgba(139, 92, 246, .12); }
+.quotation-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+.quotation-totals > span { padding: 1rem; border-radius: 1rem; border: 1px solid rgba(139, 92, 246, .4); background: linear-gradient(135deg, rgba(139, 92, 246, .14), rgba(139, 92, 246, .04)); }
+.quotation-totals strong { display: block; margin-top: .4rem; overflow-wrap: anywhere; }
+@media (max-width: 420px) { .quotation-totals { grid-template-columns: 1fr; } }

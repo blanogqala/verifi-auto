@@ -86,7 +86,7 @@ export function FinancePage({ customers, filter, jobs, query, setDialog, setFilt
             <div className="payment-row" key={job.id}>
               <FileText size={23} />
               <div>
-                <b>{bookingReference(job)}</b>
+                <b>{bookingReference(job)}{job.quoteNumber ? ` · Quotation ${job.quoteNumber}` : ''}</b>
                 <small>
                   {customerNameForJob(job, customers)} · {job.provider || 'Mechanic not recorded'}
                 </small>

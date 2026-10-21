@@ -1,8 +1,9 @@
+import { bookingQuotations, canAddQuotation, newQuotation, primaryQuoteId, quoteCanEdit, storedQuotation, allApprovedQuotesPaid } from '../jobs/bookingQuotes';
 import { phoneError, normalizePhone } from '../account/phoneNumber';
 import { demoCustomerId } from '../admin/customerRecords';
 import { grantHistoryAccess, revokeHistoryAccess, settleHistoryAccess } from '../garage/historyAccess';
 import { customerOwnsJob, jobProfessionalId, type Actor } from '../identity/participants';
-import { assertQuoteNotes, buildQuoteSubmission, quoteEditable, quoteTotalCents, rowsToLines } from '../jobs/quotations';
+import { assertQuoteNotes, buildQuoteSubmission, quoteTotalCents, rowsToLines } from '../jobs/quotations';
 import { transitionJob } from '../jobs/jobWorkflow';
 import { appendNotification, transitionNotifications } from '../notifications/inbox';
 import { deleteCustomerReview, saveCustomerReview } from '../reviews/customerReviews';
@@ -144,7 +145,7 @@ export function updateRequestedBooking(
   };
 }
 
-const mechanicActions = new Set(['confirm', 'reject', 'quote', 'start', 'complete']);
+const mechanicActions = new Set(['confirm', 'reject', 'quote', 'start', 'complete', 'withdraw-quote', 'start-quote']);
 const customerActions = new Set(['approve', 'changes', 'pay', 'cancel']);
 
 function assertActor(data: any, job: any, action: string, actor?: Actor) {
@@ -166,26 +167,44 @@ function assertActor(data: any, job: any, action: string, actor?: Actor) {
 
 export function saveQuoteDraft(
   data: any,
-  input: { bookingId: string; rows: any[]; notes: string; now?: string },
+  input: { bookingId: string; rows: any[]; notes: string; now?: string; quoteId?: string },
   actor?: Actor,
 ) {
   const job = (data.jobs || []).find((item: any) => item.id === input.bookingId);
   if (!job) throw Error('Booking not found.');
   assertActor(data, job, 'quote', actor);
-  if (job.paid || (job.status === 'Approved' && !job.customerRequest) || !quoteEditable(job.status)) throw Error('A quotation draft can be saved before the customer approves it.');
+  if (['Completed', 'Cancelled', 'Rejected'].includes(job.status)) throw Error('This booking has ended.');
+  const quoteId = input.quoteId || primaryQuoteId;
+  const existing = bookingQuotations(job).find((quote) => quote.quoteId === quoteId);
+  if (!existing && !canAddQuotation(job)) throw Error('Additional quotations require an active approved job.');
+  const quote = existing || newQuotation(job, quoteId);
+  if (!quoteCanEdit(quote)) throw Error('This quotation cannot be edited.');
   const items = rowsToLines(input.rows);
   const notes = assertQuoteNotes(input.notes);
   const quoteDraft = { items, notes, updatedAt: input.now || new Date().toISOString() };
   return {
     ...data,
-    jobs: data.jobs.map((item: any) => (item.id === job.id ? { ...item, quoteDraft } : item)),
+    jobs: data.jobs.map((item: any) => item.id !== job.id ? item : quoteId === primaryQuoteId ? { ...item, quoteDraft } : {
+      ...item, additionalQuotes: existing
+        ? (item.additionalQuotes || []).map((entry: any) => entry.quoteId === quoteId ? { ...entry, quoteDraft } : entry)
+        : [...(item.additionalQuotes || []), storedQuotation({ ...quote, quoteDraft })],
+    }),
   };
 }
 
 export function applyJobTransition(data: any, job: any, action: string, extra: any = {}, actor?: Actor) {
-  const current = (data.jobs || []).find((item: any) => item.id === job?.id);
-  if (!current) throw Error('Booking not found.');
-  assertActor(data, current, action, actor);
+  const booking = (data.jobs || []).find((item: any) => item.id === (job?.bookingId || job?.id));
+  if (!booking) throw Error('Booking not found.');
+  assertActor(data, booking, action, actor);
+  const quoteId = job?.quoteId || primaryQuoteId;
+  const supplemental = quoteId !== primaryQuoteId;
+  const existing = bookingQuotations(booking).find((quote) => quote.quoteId === quoteId);
+  if (supplemental && !['quote', 'approve', 'changes', 'pay', 'withdraw-quote', 'start-quote'].includes(action)) throw Error('Choose an action for this quotation.');
+  if (supplemental && ['Completed', 'Cancelled', 'Rejected'].includes(booking.status)) throw Error('This booking has ended.');
+  if (!existing && (action !== 'quote' || !canAddQuotation(booking))) throw Error('Quotation not found.');
+  const current = supplemental ? (existing || newQuotation(booking, quoteId)) : booking;
+  if (action === 'start-quote' && booking.status !== 'In progress') throw Error('Start the job before starting additional repairs.');
+  if (action === 'complete' && (booking.additionalQuotes || []).some((quote: any) => ['Awaiting approval', 'Changes requested'].includes(quote.status))) throw Error('Resolve or withdraw pending additional quotations before completing the job.');
   let payload = extra;
   if (action === 'quote') {
     if (current.paid || (current.status === 'Approved' && !current.customerRequest)) throw Error('Only an unpaid customer-requested revision can replace an approval.');
@@ -193,7 +212,7 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
     if (prepared.duplicate) return { data, job: current, duplicate: true };
     payload = prepared.patch;
   }
-  const changed = transitionJob(current, action, payload);
+  let changed = transitionJob(current, action, payload);
   if (action === 'approve') {
     const versions = Array.isArray(changed.quoteVersions) ? changed.quoteVersions : [];
     const version = changed.quoteVersion || (versions.length ? versions[versions.length - 1].version : 1);
@@ -220,12 +239,28 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
       item.version === version ? { ...item, changeRequest: changed.changeRequest, state: 'changes' } : item,
     );
   }
+  const quoteChanged = changed;
+  if (supplemental) {
+    const lastEvent = changed.events?.[changed.events.length - 1];
+    changed = {
+      ...booking,
+      additionalQuotes: existing
+        ? (booking.additionalQuotes || []).map((entry: any) => entry.quoteId === quoteId ? storedQuotation(quoteChanged) : entry)
+        : [...(booking.additionalQuotes || []), storedQuotation(quoteChanged)],
+      events: [...(booking.events || []), ...(lastEvent ? [{ ...lastEvent, quoteId, label: `Quotation ${quoteChanged.quoteNumber}: ${lastEvent.label}` }] : [])],
+    };
+  }
+  if (action === 'complete') {
+    changed.additionalQuotes = (changed.additionalQuotes || []).map((quote: any) => quote.quoteApproved ? { ...quote, status: quote.paid ? 'Completed' : 'Awaiting payment' } : quote);
+    changed.status = allApprovedQuotesPaid(changed) ? 'Completed' : 'Awaiting payment';
+  }
+  if (action === 'pay' && booking.status === 'Awaiting payment') changed.status = allApprovedQuotesPaid(changed) ? 'Completed' : 'Awaiting payment';
   let nextData = {
     ...data,
     jobs: (data.jobs || []).map((item: any) => (item.id === changed.id ? changed : item)),
   };
-  for (const notice of transitionNotifications(current, changed, action)) {
-    nextData = appendNotification(nextData, notice);
+  for (const notice of transitionNotifications(current, supplemental ? quoteChanged : changed, action)) {
+    nextData = appendNotification(nextData, supplemental ? { ...notice, bookingId: booking.id, message: `Quotation ${quoteChanged.quoteNumber} · ${notice.message}` } : notice);
   }
   const last = Array.isArray(changed.events) ? changed.events[changed.events.length - 1] : null;
   const at = last?.at || new Date().toISOString();

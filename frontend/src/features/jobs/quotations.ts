@@ -254,6 +254,6 @@ export function buildQuoteSubmission(job: any, extra: any = {}, now = new Date()
 
 /** Snapshot token protects a review from approving a newer quotation. */
 export function quoteReviewToken(job: any) {
-  return JSON.stringify([job.quoteVersion || 0, job.items || [], job.notes || '']);
+  return JSON.stringify([job.bookingId || job.id, job.quoteId || 'primary', job.quoteVersion || 0, job.items || [], job.notes || '']);
 }
 export function quoteLineKey(item: any, index: number) { return item.id || `line-${index}`; }

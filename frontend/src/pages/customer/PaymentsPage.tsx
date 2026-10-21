@@ -33,7 +33,7 @@ function groups(jobs: any[]) {
 }
 
 function openDoc(job: any, kind: 'invoice' | 'receipt') {
-  openDemoDocument(demoDocumentHtml(job, kind), `${kind}-${bookingReference(job)}.html`);
+  openDemoDocument(demoDocumentHtml(job, kind), `${kind}-${bookingReference(job)}-Q${job.quoteNumber || 1}.html`);
 }
 
 export function PaymentsPage({ go, jobs, setDialog }: any) {
@@ -59,7 +59,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
         />
         <Metric
           label="Approved repair value"
-          value={money(paymentRecordTotal(jobs.filter((job: any) => job.quoteApproved)))}
+          value={money(paymentRecordTotal([...awaiting, ...recorded]))}
           note="Selected repair totals"
           Icon={FileText}
         />
@@ -128,7 +128,7 @@ function PaymentRow({ job, go, setDialog }: any) {
     <div className="payment-row">
       <FileText size={23} />
       <div>
-        <b>{bookingReference(job)}</b>
+        <b>{bookingReference(job)}{job.quoteNumber ? ` · Quotation ${job.quoteNumber}` : ''}</b>
         <small>
           {job.provider} · {job.vehicle}
         </small>
@@ -136,7 +136,7 @@ function PaymentRow({ job, go, setDialog }: any) {
       </div>
       <strong>{job.items?.length ? money(quoteTotal(job)) : 'Not recorded'}</strong>
       <Status value={paid ? 'Demo paid' : 'Awaiting payment'} />
-      <button className="text-link" type="button" onClick={() => go('dashboard/bookings/' + encodeURIComponent(job.id))}>
+      <button className="text-link" type="button" onClick={() => go('dashboard/bookings/' + encodeURIComponent(job.bookingId || job.id))}>
         View booking
       </button>
       {paid ? <button className="secondary" type="button" onClick={() => openDoc(job, 'invoice')}>

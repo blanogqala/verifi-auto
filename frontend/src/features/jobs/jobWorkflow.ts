@@ -10,6 +10,8 @@ const eventLabels: Record<string, string> = {
   pay: 'Demo payment recorded',
   reject: 'Request rejected',
   cancel: 'Request cancelled',
+  'withdraw-quote': 'Quotation withdrawn',
+  'start-quote': 'Additional repairs started',
 };
 
 function withEvent(job: any, patch: any, type: string) {
@@ -55,6 +57,12 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
       if (extra.reviewToken && extra.reviewToken !== quoteReviewToken(job)) throw Error('The quotation changed. Reopen the review.');
       if (job.paid || !['Awaiting approval', 'Approved'].includes(job.status)) throw Error('Repair choices can only change before payment or work starts.');
       return withEvent(job, { ...extra, status: 'Changes requested', quoteApproved: false }, 'changes');
+    case 'withdraw-quote':
+      if (!job.quoteId || job.quoteId === 'primary' || job.paid || job.quoteApproved || !['Confirmed', 'Awaiting approval', 'Changes requested'].includes(job.status)) throw Error('Only an unapproved additional quotation can be withdrawn.');
+      return withEvent(job, { status: 'Withdrawn', quoteDraft: null }, 'withdraw-quote');
+    case 'start-quote':
+      if (!job.quoteId || job.quoteId === 'primary' || job.status !== 'Approved' || !job.quoteApproved) throw Error('Approve the additional quotation before starting its repairs.');
+      return withEvent(job, { status: 'In progress' }, 'start-quote');
     case 'start':
       if (job.status !== 'Approved' || !job.quoteApproved)
         throw Error('Customer approval is required first.');

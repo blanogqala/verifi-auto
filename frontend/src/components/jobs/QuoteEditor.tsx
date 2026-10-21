@@ -58,7 +58,7 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
     const saved = commitUpdate(
       update,
       (data: any) => {
-        if (kind === 'draft') return saveQuoteDraft(data, { bookingId: job.id, rows, notes }, actor);
+        if (kind === 'draft') return saveQuoteDraft(data, { bookingId: job.bookingId || job.id, quoteId: job.quoteId, rows, notes }, actor);
         const result = applyJobTransition(data, job, 'quote', { rows, notes, clientSubmitId }, actor);
         if (result.duplicate) return data;
         return result.data;

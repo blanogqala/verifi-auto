@@ -1,3 +1,4 @@
+import { allApprovedQuotesPaid } from '../../features/jobs/bookingQuotes';
 import { useState } from 'react';
 import { ClipboardCheck, FileText, Star, Users, Wallet, Wrench } from 'lucide-react';
 import {
@@ -365,7 +366,7 @@ export function AdminJobDetailPage({ job, data, route }: any) {
                 value: [job.date, job.time].filter(Boolean).join(' · ') || 'Not recorded',
               },
               { label: 'Vehicle ID', value: job.vehicleId || 'Not linked' },
-              { label: 'Payment', value: job.paid ? 'Demo payment recorded' : 'Not paid' },
+              { label: 'Payment', value: job.quoteApproved && allApprovedQuotesPaid(job) ? 'Approved quotes paid (demo)' : 'Not fully paid' },
             ]}
           />
           <p>{job.description || 'No description supplied.'}</p>

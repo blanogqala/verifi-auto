@@ -1,5 +1,5 @@
 import { JobConversation } from '../../components/jobs/JobConversation';
-import { QuoteSummary } from '../../components/jobs/QuoteSummary';
+import { BookingQuotations } from '../../components/jobs/BookingQuotations';
 import { customerIdentityLabel } from '../../features/account/customerIdentity';
 import { unreadMessageCount } from '../../features/messages/conversation';
 import { Card } from '../../components/ui/Card';
@@ -11,7 +11,6 @@ import { demoCustomerId } from '../../features/admin/customerRecords';
 import { canOfferHistoryAccess, activeGrantForBooking } from '../../features/garage/historyAccess';
 import { grantHistoryAccess, revokeHistoryAccess } from '../../features/demo/demoActions';
 import { bookingReference } from '../../features/jobs/jobViews';
-import { pricingNote } from '../../features/jobs/pricingModel';
 import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
 import { useEffect, useState } from 'react';
@@ -51,9 +50,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
   const records = (data.records || []).filter((record: any) => record.vehicleId === job.vehicleId);
   const grant = activeGrantForBooking(data, job.id);
-  const payable = ['Approved', 'In progress', 'Awaiting payment'].includes(job.status) && job.quoteApproved && job.paid !== true;
   const events = Array.isArray(job.events) ? job.events : [];
-  const paymentLabel = job.paid ? 'Demo paid' : payable ? 'Awaiting payment' : 'Not payable yet';
 
   return (
     <div className="detail-page booking-detail">
@@ -81,7 +78,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
         onChange={choose}
         tabs={[
           { id: 'overview', label: 'Overview' },
-          { id: 'quote', label: 'Quote & payment' },
+          { id: 'quote', label: 'Quotes & payments' },
           { id: 'messages', label: 'Messages', badge: job ? unreadMessageCount(data, job.id, 'customer') || undefined : undefined },
         ]}
       />
@@ -226,40 +223,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
       </details>
       </DetailPanel>
       <DetailPanel scope="booking-detail" tabId="quote" value={tab}>
-      <DetailCard title="Quote and payment">
-        <QuoteSummary job={job} />
-        <DetailFields
-          items={[
-            { label: 'Approval', value: job.quoteApproved ? 'Approved' : 'Not approved' },
-            { label: 'Payment', value: paymentLabel },
-            { label: 'Reference', value: job.paymentReference || 'Not recorded' },
-            { label: 'Paid', value: job.paidAt ? formatWhen(job.paidAt) : 'Not recorded' },
-          ]}
-        />
-        <p className="muted">{pricingNote(job)}</p>
-        {job.completionNotes ? <p>Completion: {job.completionNotes}</p> : null}
-        {job.rejectionReason ? <p>Rejection reason: {job.rejectionReason}</p> : null}
-        <div className="button-row">
-          {!job.paid && ['Awaiting approval', 'Approved'].includes(job.status) ? (
-            <>
-              <button className="primary" type="button" onClick={() => setDialog({ kind: 'approve', job })}>
-                {job.quoteApproved ? 'Edit repair selection' : 'Review and approve'}
-              </button>
-
-            </>
-          ) : null}
-          {payable ? (
-            <button className="primary" type="button" onClick={() => setDialog({ kind: 'pay', job })}>
-              Review and pay
-            </button>
-          ) : null}
-          {job.paid ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'invoice', job })}>
-              View invoice
-            </button>
-          ) : null}
-        </div>
-      </DetailCard>
+      <BookingQuotations job={job} setDialog={setDialog} />
       </DetailPanel>
       <DetailPanel scope="booking-detail" tabId="messages" value={tab}>
         <DetailCard title="Messages">

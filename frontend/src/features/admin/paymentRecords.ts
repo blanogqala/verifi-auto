@@ -1,3 +1,4 @@
+import { bookingQuotations } from '../jobs/bookingQuotes';
 import { quoteTotal } from '../jobs/jobWorkflow';
 
 /** Keep the first record for an id so a paid job is never totalled twice. */
@@ -12,11 +13,11 @@ export function uniqueJobs(jobs: any[]) {
 }
 
 export function recordedCustomerPayments(jobs: any[]) {
-  return uniqueJobs(jobs).filter((job) => job.paid === true);
+  return uniqueJobs(uniqueJobs(jobs).flatMap(bookingQuotations)).filter((job) => job.paid === true);
 }
 
 export function awaitingCustomerPayments(jobs: any[]) {
-  return uniqueJobs(jobs).filter((job) => ['Approved', 'In progress', 'Awaiting payment'].includes(job.status) && job.quoteApproved && job.paid !== true);
+  return uniqueJobs(uniqueJobs(jobs).flatMap(bookingQuotations)).filter((job) => ['Approved', 'In progress', 'Awaiting payment'].includes(job.status) && job.quoteApproved && job.paid !== true);
 }
 
 export function paymentRecordTotal(jobs: any[]) {

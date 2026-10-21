@@ -5,13 +5,11 @@ import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { BookingProgress } from '../../components/jobs/BookingProgress';
 import { JobConversation } from '../../components/jobs/JobConversation';
-import { QuoteEditor } from '../../components/jobs/QuoteEditor';
-import { QuoteSummary } from '../../components/jobs/QuoteSummary';
+import { BookingQuotations } from '../../components/jobs/BookingQuotations';
 import { merchantIdentityLabel } from '../../features/account/customerIdentity';
 import { customerNameForJob, customerRecords } from '../../features/admin/customerRecords';
 import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { bookingReference } from '../../features/jobs/jobViews';
-import { quoteEditable } from '../../features/jobs/quotations';
 import { pricingNote } from '../../features/jobs/pricingModel';
 import { sharedRecordsForProfessional } from '../../features/garage/historyAccess';
 import { activeMechanicProfessionalId } from '../../features/identity/participants';
@@ -51,7 +49,6 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const history = sharedRecordsForProfessional(data, job, professionalId);
   const events = Array.isArray(job.events) ? job.events : [];
   const unread = unreadMessageCount(data, job.id, 'mechanic');
-  const editable = !job.paid && (job.status !== 'Approved' || !!job.customerRequest) && quoteEditable(job.status);
 
   function choose(next: string) {
     setTab(next);
@@ -93,7 +90,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         onChange={choose}
         tabs={[
           { id: 'overview', label: 'Overview' },
-          { id: 'quote', label: 'Quote & payment' },
+          { id: 'quote', label: 'Quotes & payments' },
           { id: 'messages', label: 'Messages', badge: unread || undefined },
         ]}
       />
@@ -150,7 +147,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
               ) : null}
               {job.status === 'Awaiting payment' ? (
                 <>
-                  <p>The invoice is unpaid.</p>
+                  <p>Approved quotations still have an outstanding balance.</p>
                   <button className="secondary" type="button" onClick={() => choose('quote')}>
                     View quotation
                   </button>
@@ -213,25 +210,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         </div>
       </DetailPanel>
       <DetailPanel scope="mechanic-job" tabId="quote" value={tab}>
-        <DetailCard title="Quote & payment">
-          {editable ? (
-            <>
-              <h3>Draft</h3>
-              <QuoteEditor
-                key={job.id}
-                actor={{ role: 'mechanic', id: professionalId }}
-                job={job}
-                notify={notify}
-                onSent={() => choose('quote')}
-                update={update}
-              />
-            </>
-          ) : null}
-          {job.status === 'Approved' ? <p>Only selected repairs are authorised. Any revision before payment requires fresh customer approval.</p> : null}
-          {job.status === 'Awaiting payment' ? <p>Unpaid invoice. You cannot mark this invoice paid.</p> : null}
-          <QuoteSummary job={job} title={job.items?.length ? 'Sent quotation' : 'Sent quotation'} />
-          <p className="muted">{pricingNote(job)}</p>
-        </DetailCard>
+        <BookingQuotations key={job.id} job={job} mechanic actor={{ role: 'mechanic', id: professionalId }} update={update} notify={notify} onAction={onAction} />
       </DetailPanel>
       <DetailPanel scope="mechanic-job" tabId="messages" value={tab}>
         <DetailCard title="Messages">

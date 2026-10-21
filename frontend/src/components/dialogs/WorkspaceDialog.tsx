@@ -471,6 +471,7 @@ export function WorkspaceDialog({
             <div className="invoice-line total">
               <span>Total</span>
               <b>R{quoteTotal(dialog.job)}</b>
+              {dialog.job.quoteNumber ? <span>Quotation {dialog.job.quoteNumber}</span> : null}
             </div>
             <div className="notice">
               No real payment processor is connected. No card details are requested and no money is
