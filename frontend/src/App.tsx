@@ -108,8 +108,7 @@ export default function App() {
     setPage(p);
     location.hash = p;
     setMenu(false);
-    if (!modal) document.documentElement.classList.remove('scroll-lock');
-    document.body.style.overflow = '';
+    if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = '';
     window.scrollTo({ top: 0, behavior: p === 'find' ? 'auto' : 'smooth' });
   }
   useEffect(() => {
@@ -121,7 +120,7 @@ export default function App() {
       if (!['home', 'find', 'login', 'register', 'forgot'].includes(p) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(p))
         p = 'home';
       setPage(p);
-      document.body.style.overflow = '';
+      if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = '';
       if (canonicalPage(role, raw) !== raw) location.hash = p;
     };
     window.addEventListener('hashchange', change);

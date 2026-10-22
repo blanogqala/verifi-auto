@@ -2180,6 +2180,10 @@ assert.ok(!connectedProfile.includes('Change password unavailable'));
 assert.ok(!connectedProfile.includes('Use sample details'));
 assert.ok(connectedProfile.includes('readOnly=""'));
 console.log('Connected profile retains the shared demo layout with real-account wording.');
+assert.ok(
+  !readFileSync(join('src', 'App.tsx'), 'utf8').includes("classList.remove('scroll-lock')"),
+  'Demo navigation must not unlock a modal owned by useModalBehaviour',
+);
 assert.equal(calendarDateInput('2026-12-31T00:00:00.000Z'), '2026-12-31');
 assert.equal(calendarDateInput('2026-01-01'), '2026-01-01');
 assert.equal(calendarDateInput(null), '');
