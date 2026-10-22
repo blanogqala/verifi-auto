@@ -37,6 +37,43 @@ adminRoutes.get("/applications", async (req, res) =>
     }),
   ),
 );
+adminRoutes.get("/professionals", async (req, res) => {
+  const rows = await db.professional.findMany({
+    where: { status: { in: ["APPROVED", "SUSPENDED"] } },
+    include: { user: { select: { email: true, disabledAt: true } } },
+    take: takeQuery.parse(req.query.take),
+    orderBy: { name: "asc" },
+  });
+  res.json(
+    rows.map(({ user, ...p }) => ({
+      ...p,
+      email: user.email,
+      disabledAt: user.disabledAt,
+    })),
+  );
+});
+adminRoutes.get("/application-history", async (req, res) =>
+  res.json(
+    await db.professional.findMany({
+      where: { status: { in: ["CHANGES_REQUESTED", "APPROVED", "SUSPENDED"] } },
+      take: takeQuery.parse(req.query.take),
+      orderBy: { updatedAt: "desc" },
+    }),
+  ),
+);
+adminRoutes.get("/users/:id", async (req, res) => {
+  const user = await db.user.findUnique({
+    where: { id: id.parse(req.params.id) },
+    select: { ...publicUser, disabledAt: true, createdAt: true },
+  });
+  requireThat(
+    user && user.role !== "ADMIN",
+    404,
+    "NOT_FOUND",
+    "Account not found.",
+  );
+  res.json(user);
+});
 adminRoutes.get("/professionals/:id", async (req, res) => {
   const pro = await db.professional.findUnique({
     where: { id: id.parse(req.params.id) },
@@ -167,6 +204,9 @@ adminRoutes.post("/users/:id/status", async (req, res) => {
 adminRoutes.get("/activity", async (req, res) =>
   res.json(
     await db.auditLog.findMany({
+      where: req.query.resourceId
+        ? { resourceId: id.parse(req.query.resourceId) }
+        : {},
       take: takeQuery.parse(req.query.take),
       orderBy: { createdAt: "desc" },
     }),

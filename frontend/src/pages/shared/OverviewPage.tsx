@@ -155,29 +155,39 @@ export function OverviewPage({
           <>
             <Metric
               label="Pending applications"
-              value={apps.filter((a: any) => a.status === 'Pending review').length}
+              value={
+                summary?.applications ??
+                apps.filter((a: any) => a.status === 'Pending review').length
+              }
               note="Ready for review"
               Icon={ClipboardCheck}
             />
             <Metric
               label="Approved profiles"
-              value={apps.filter((a: any) => a.status === 'Approved').length}
-              note="Sample professional directory"
+              value={
+                summary?.professionals ?? apps.filter((a: any) => a.status === 'Approved').length
+              }
+              note={live ? 'Approved professional directory' : 'Sample professional directory'}
               Icon={ShieldCheck}
             />
             <Metric
               label="Active jobs"
               value={
+                summary?.activeJobs ??
                 jobs.filter((j: any) => !['Cancelled', 'Completed', 'Rejected'].includes(j.status))
                   .length
               }
-              note="Across the demo platform"
+              note={live ? 'Across the platform' : 'Across the demo platform'}
               Icon={Wrench}
             />
             <Metric
-              label="Open reports"
-              value={data.reports.filter((r: any) => r.status === 'Open').length}
-              note="Support follow-up needed"
+              label={live ? 'Total customers' : 'Open reports'}
+              value={
+                live
+                  ? (summary?.customers ?? 0)
+                  : data.reports.filter((r: any) => r.status === 'Open').length
+              }
+              note={live ? 'Registered customer accounts' : 'Support follow-up needed'}
               Icon={AlertCircle}
             />
           </>

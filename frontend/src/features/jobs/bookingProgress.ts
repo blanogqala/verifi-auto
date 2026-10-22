@@ -30,7 +30,7 @@ const indexByStatus: Record<string, number> = {
   Completed: 6,
 };
 
-export function bookingProgress(job: { status?: string; accepted?: boolean; rejectionReason?: string }) {
+export function bookingProgress(job: { status?: string; accepted?: boolean; rejectionReason?: string; live?: boolean }) {
   const status = typeof job?.status === 'string' ? job.status : '';
   let terminal: '' | 'rejected' | 'cancelled' = '';
   let index = indexByStatus[status] ?? 0;
@@ -47,7 +47,7 @@ export function bookingProgress(job: { status?: string; accepted?: boolean; reje
     if (terminal) state = step < index ? 'complete' : step === index ? 'stopped' : 'upcoming';
     else if (complete || step < index) state = 'complete';
     else if (step === index) state = 'current';
-    let note = notes[step];
+    let note = job.live && step === 6 ? 'This booking is complete. Its service and payment records remain available.' : notes[step];
     if (status === 'Changes requested' && step === 2) note = 'Changes were requested. This quotation is not approved.';
     if (terminal === 'rejected' && step === index) note = job?.rejectionReason ? `Rejected: ${job.rejectionReason}` : 'This request was rejected. It is not complete.';
     if (terminal === 'cancelled' && step === index) note = 'This request was cancelled. It is not complete.';

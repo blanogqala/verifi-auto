@@ -3,7 +3,7 @@ import { Search, ShieldCheck } from 'lucide-react';
 import { DetailCard } from '../../components/ui/DetailChrome';
 import { formatWhen } from '../../features/jobs/bookingProgress';
 
-export function SecurityActivityPage({ data }: any) {
+export function SecurityActivityPage({ data, live = false }: any) {
   const [query, setQuery] = useState('');
   const [role, setRole] = useState('All');
   const [action, setAction] = useState('All');
@@ -21,8 +21,9 @@ export function SecurityActivityPage({ data }: any) {
   return (
     <DetailCard title="Security & activity" icon={<ShieldCheck size={20} />}>
       <p className="muted">
-        Activity recorded in this browser demo, from this update onward. This is not a server
-        security audit or a list of people currently online. The latest 500 events are retained.
+        {live
+          ? 'Recent server-recorded sign-ins, sign-outs and administrative actions. This is an audit trail, not a list of people currently online.'
+          : 'Activity recorded in this browser demo, from this update onward. This is not a server security audit or a list of people currently online. The latest 500 events are retained.'}
       </p>
       <div className="table-controls">
         <label className="search-input">

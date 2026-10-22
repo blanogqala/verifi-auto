@@ -1,3 +1,7 @@
+import { AdminJobsPage } from '../pages/admin/AdminJobsPage';
+import { JobCard } from '../components/jobs/JobCard';
+import { bookingCardData, WorkspaceHeading } from './LiveWorkspaceViews';
+import { LiveNotifications } from './LiveNotifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, apiBase, ApiFailure, displayStatus, money, setCsrf, type LiveUser } from './api';
 import { useResource } from './useResource';
@@ -176,6 +180,8 @@ export default function LiveApp() {
     setUser(account);
     const pending = sessionStorage.getItem('verifi-pending-professional');
     sessionStorage.removeItem('verifi-pending-professional');
+    if (pending && account.role === 'CUSTOMER')
+      sessionStorage.setItem('verifi-resume-assessment', pending);
     go(pending && account.role === 'CUSTOMER' ? 'dashboard/find/' + pending : 'dashboard/overview');
   }
   const logout = () => {
@@ -189,10 +195,13 @@ export default function LiveApp() {
   const section = page.startsWith('dashboard/') ? page.slice('dashboard/'.length) : '',
     base = section.split('/')[0].split('?')[0];
   const role = user?.role.toLowerCase() as Role;
-  const { data: notifications } = useResource(user ? '/notifications' : null, revision);
+  const { data: notifications, error: notificationsError } = useResource(
+    user ? '/notifications' : null,
+    revision,
+  );
   const bookingList =
     !!user?.verifiedAt &&
-    ['overview', 'bookings', 'jobs', 'appointments', 'payments'].includes(base);
+    ['overview', 'bookings', 'jobs', 'appointments', 'payments', 'finance'].includes(base);
   const { data: bookings, error: bookingsError } = useResource(
     bookingList ? '/bookings?take=100' : null,
     revision,
@@ -202,7 +211,9 @@ export default function LiveApp() {
     revision,
   );
   const detailId = ['bookings', 'jobs'].includes(base)
-    ? section.split('/')[1]
+    ? section.split('/')[1] === 'disputes'
+      ? ''
+      : section.split('/')[1]
     : base === 'appointments'
       ? section.split('/')[2]
       : '';
@@ -256,7 +267,7 @@ export default function LiveApp() {
             type={type}
           />
         ) : (
-          <div className="live-public">
+          <div>
             <LiveDirectory
               professionalId={page.startsWith('professional/') ? page.split('/')[1] : ''}
               user={user}
@@ -273,48 +284,24 @@ export default function LiveApp() {
     let workspace;
     if (base === 'profile' || base === 'settings')
       workspace = (
-        <LiveProfile user={user} run={run} revision={revision} refresh={refresh} onUser={setUser} />
+        <LiveProfile
+          section={section}
+          user={user}
+          run={run}
+          revision={revision}
+          refresh={refresh}
+          onUser={setUser}
+        />
       );
     else if (base === 'notifications')
       workspace = (
-        <div className="detail-page">
-          <h1>Notifications</h1>
-          {notifications?.map((note: any) => (
-            <DetailCard key={note.id} title={note.title}>
-              <p>{new Date(note.createdAt).toLocaleString()}</p>
-              <div className="button-row">
-                {['booking', 'quotation', 'message', 'payment', 'history-access'].includes(
-                  note.topic,
-                ) ? (
-                  <button
-                    className="primary"
-                    onClick={() =>
-                      go(
-                        `dashboard/${role === 'customer' ? 'bookings' : 'jobs'}/${note.resourceId}`,
-                      )
-                    }
-                  >
-                    View booking
-                  </button>
-                ) : null}
-                {!note.readAt ? (
-                  <button
-                    className="secondary"
-                    onClick={() =>
-                      run(
-                        () => api('/notifications/read', 'POST', { ids: [note.id] }),
-                        'Marked read.',
-                      )
-                    }
-                  >
-                    Mark read
-                  </button>
-                ) : null}
-              </div>
-            </DetailCard>
-          ))}
-          {notifications?.length === 0 ? <p>You're all caught up.</p> : null}
-        </div>
+        <LiveNotifications
+          notes={notifications}
+          error={notificationsError}
+          role={role}
+          run={run}
+          go={go}
+        />
       );
     else if (!user.verifiedAt)
       workspace = (
@@ -348,6 +335,7 @@ export default function LiveApp() {
     else if (base === 'find')
       workspace = (
         <LiveDirectory
+          embedded
           professionalId={section.split('/')[1]}
           user={user}
           revision={revision}
@@ -402,42 +390,47 @@ export default function LiveApp() {
       );
     else if (['payments', 'finance'].includes(base))
       workspace = (
-        <div className="detail-page">
-          <h1>Payments</h1>
-          {paymentsError ? (
-            <p role="alert">{paymentsError}</p>
-          ) : !payments ? (
-            <RoadLoader label="Loading payments…" />
-          ) : payments.length ? (
-            payments.map((payment: any) => (
-              <DetailCard key={payment.id} title={money(payment.amountCents)}>
-                <p>
-                  {payment.provider === 'TEST' ? 'Test payment' : 'Confirmed payment'} ·{' '}
-                  {new Date(payment.paidAt).toLocaleDateString()}
-                </p>
-                <p>
-                  Quotation {payment.quote.number} · {payment.providerReference}
-                </p>
-                <button
-                  className="secondary"
-                  onClick={() =>
-                    go(
-                      `dashboard/${role === 'customer' ? 'bookings' : 'jobs'}/${payment.quote.bookingId}`,
-                    )
-                  }
-                >
-                  View booking and invoice
-                </button>
-              </DetailCard>
-            ))
-          ) : (
-            <p>No confirmed payments yet.</p>
-          )}
-        </div>
+        <LivePayments
+          payments={payments}
+          error={paymentsError || bookingsError}
+          bookings={bookings}
+          go={go}
+          role={role}
+        />
       );
     else if (role === 'admin' && !['jobs', 'appointments'].includes(base))
       workspace = (
         <LiveAdmin section={section} revision={revision} run={run} go={go} refresh={refresh} />
+      );
+    else if (role === 'admin' && base === 'jobs')
+      workspace = (
+        <>
+          <WorkspaceHeading title="Jobs & activity" />
+          {bookingsError ? (
+            <p role="alert">{bookingsError}</p>
+          ) : !bookings ? (
+            <RoadLoader label="Loading jobs…" />
+          ) : (
+            <AdminJobsPage
+              live
+              section={section.split('/')[1] || 'jobs'}
+              data={{
+                jobs: bookings.map((j: any) => ({
+                  ...bookingCardData(j),
+                  city: j.professional.city,
+                  type: j.professional.type,
+                })),
+                disputes: [],
+              }}
+              route={(p: string) => go('dashboard/' + p)}
+              cardJobs={(rows: any[]) =>
+                rows.map((j) => (
+                  <JobCard key={j.id} job={j} onView={() => go('dashboard/jobs/' + j.id)} />
+                ))
+              }
+            />
+          )}
+        </>
       );
     else if (bookingList) {
       workspace = (

@@ -24,16 +24,36 @@ function rowsFor(jobs: any[], filter: string) {
 }
 
 function amount(job: any) {
+  if (typeof job.amountCents === 'number')
+    return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(
+      job.amountCents / 100,
+    );
   return job.items?.length ? money(quoteTotal(job)) : 'Not recorded';
 }
 
 /** Recorded customer-to-mechanic payments. A paid invoice is not a bank settlement. */
-export function FinancePage({ customers, filter, jobs, query, setDialog, setFilter, setQuery }: any) {
-  const recorded = recordedCustomerPayments(jobs);
-  const awaiting = awaitingCustomerPayments(jobs);
+export function FinancePage({
+  customers,
+  filter,
+  jobs,
+  query,
+  setDialog,
+  setFilter,
+  setQuery,
+  connected,
+}: any) {
+  const recorded = connected ? connected.recorded : recordedCustomerPayments(jobs);
+  const awaiting = connected ? connected.awaiting : awaitingCustomerPayments(jobs);
   const selected = filters.includes(filter) ? filter : 'All';
   const needle = query.toLowerCase();
-  const visible = rowsFor(jobs, selected).filter((job) => {
+  const visible = (
+    connected
+      ? [
+          ...(selected === 'Customer payment recorded' ? [] : awaiting),
+          ...(selected === 'Awaiting customer payment' ? [] : recorded),
+        ]
+      : rowsFor(jobs, selected)
+  ).filter((job: any) => {
     const customer = customerNameForJob(job, customers);
     return `${bookingReference(job)} ${customer} ${job.provider || ''} ${job.paymentReference || ''}`
       .toLowerCase()
@@ -43,19 +63,28 @@ export function FinancePage({ customers, filter, jobs, query, setDialog, setFilt
   return (
     <div className="admin-finance">
       <div className="notice">
-        Demo payments only. “Customer payment recorded” means the customer preview marked the
-        invoice paid. It does not confirm a bank payout or a platform settlement.
+        {connected
+          ? 'Customer payment records. A recorded payment is not confirmation of a bank payout. Test transactions are labelled.'
+          : 'Demo payments only. Customer payment recorded means the customer preview marked the invoice paid. It does not confirm a bank payout or a platform settlement.'}
       </div>
       <div className="metrics">
         <Metric
           label="Customer payments recorded"
-          value={money(paymentRecordTotal(recorded))}
-          note={`${recorded.length} demo invoice${recorded.length === 1 ? '' : 's'} · Not a bank settlement`}
+          value={money(
+            connected
+              ? recorded.reduce((n: number, r: any) => n + r.amountCents, 0) / 100
+              : paymentRecordTotal(recorded),
+          )}
+          note={`${recorded.length} ${connected ? 'recorded' : 'demo'} invoice${recorded.length === 1 ? '' : 's'} · Not a bank settlement`}
           Icon={FileText}
         />
         <Metric
           label="Awaiting customer payment"
-          value={money(paymentRecordTotal(awaiting))}
+          value={money(
+            connected
+              ? awaiting.reduce((n: number, r: any) => n + r.amountCents, 0) / 100
+              : paymentRecordTotal(awaiting),
+          )}
           note="Completed work, payment not recorded"
           Icon={Wallet}
         />
@@ -86,29 +115,41 @@ export function FinancePage({ customers, filter, jobs, query, setDialog, setFilt
             <div className="payment-row" key={job.id}>
               <FileText size={23} />
               <div>
-                <b>{bookingReference(job)}{job.quoteNumber ? ` · Quotation ${job.quoteNumber}` : ''}</b>
+                <b>
+                  {bookingReference(job)}
+                  {job.quoteNumber ? ` · Quotation ${job.quoteNumber}` : ''}
+                </b>
                 <small>
                   {customerNameForJob(job, customers)} · {job.provider || 'Mechanic not recorded'}
                 </small>
                 <span>
                   {job.paidAt ? `Recorded ${job.paidAt}` : 'Payment date not recorded'}
                   {job.paymentReference ? ` · ${job.paymentReference}` : ''}
+                  {job.test ? ' · Test payment' : ''}
                 </span>
               </div>
               <strong>{amount(job)}</strong>
-              <Status value={job.paid ? 'Customer payment recorded' : 'Awaiting customer payment'} />
+              <Status
+                value={job.paid ? 'Customer payment recorded' : 'Awaiting customer payment'}
+              />
               <button
                 className="secondary"
                 type="button"
                 onClick={() => setDialog({ kind: job.paid ? 'receipt' : 'invoice', job })}
               >
-                {job.paid ? 'View receipt' : 'View invoice'}
+                {connected ? 'View booking' : job.paid ? 'View receipt' : 'View invoice'}
               </button>
             </div>
           ))
         ) : (
           <Empty
-            title={recorded.length || awaiting.length ? 'No matching payments.' : 'No demo payments yet'}
+            title={
+              recorded.length || awaiting.length
+                ? 'No matching payments.'
+                : connected
+                  ? 'No payments yet'
+                  : 'No demo payments yet'
+            }
             text={
               recorded.length || awaiting.length
                 ? 'Try another search or payment status.'

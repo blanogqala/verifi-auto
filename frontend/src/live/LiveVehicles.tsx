@@ -1,3 +1,6 @@
+import { VehiclePage } from '../pages/customer/VehiclePage';
+import { LiveDialog } from './LiveDialog';
+import { bookingCardData } from './LiveWorkspaceViews';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 const VehicleModelViewer = lazy(() => import('../components/garage/VehicleModelViewer'));
 
@@ -124,6 +127,11 @@ export function LiveVehicles({ vehicleId, revision, run, go, refresh }: any) {
     revision,
   );
   const [adding, setAdding] = useState(false);
+  const [detailDialog, setDetailDialog] = useState<any>(null);
+  const { data: related, error: relatedError } = useResource(
+    vehicleId ? '/bookings?take=100' : null,
+    revision,
+  );
   const [modelFailed, setModelFailed] = useState(false);
   const [selectedId, setSelectedId] = useState('');
   const vehicles = Array.isArray(data) ? data : [];
@@ -151,79 +159,69 @@ export function LiveVehicles({ vehicleId, revision, run, go, refresh }: any) {
   if (!data) return <RoadLoader label="Loading your garage…" />;
   if (vehicleId)
     return (
-      <div className="detail-page">
-        <DetailBack label="Back to My garage" onClick={() => go('dashboard/garage')} />
-        <DetailCard title={`${data.year} ${data.make} ${data.model}`}>
-          <DetailFields
-            items={[
-              { label: 'Registration', value: data.registration },
-              { label: 'Mileage', value: `${data.mileage} km` },
-              { label: 'Colour', value: data.paintColorName || 'Not recorded' },
-            ]}
-          />
-          <p>
-            {data.modelMatch === 'verified'
-              ? 'A verified model is available for this exact vehicle specification.'
-              : 'An accurate 3D model is not available for this specification yet.'}
-          </p>
-          {data.modelAsset?.modelUrl && !modelFailed ? (
-            <div className="live-model-stage">
-              <Suspense fallback={<RoadLoader label="Loading your vehicle…" />}>
-                <VehicleModelViewer
-                  src={data.modelAsset.modelUrl}
-                  paintColor={data.paintColor || '#b8bcc2'}
-                  paintMaterials={data.modelAsset.paintMaterials || []}
-                  label={`${data.make} ${data.model}`}
-                  onFail={() => setModelFailed(true)}
-                />
-              </Suspense>
-            </div>
-          ) : null}
-          {modelFailed ? (
-            <p>The verified model could not be loaded. Please try again later.</p>
-          ) : null}
-          {data.modelAsset ? (
-            <p className="muted">
-              {data.modelAsset.attribution} · {data.modelAsset.licence}
-            </p>
-          ) : null}
-          {data.modelAsset?.previewUrl ? (
-            <img
-              className="live-vehicle-image"
-              src={data.modelAsset.previewUrl}
-              alt={`${data.make} ${data.model}`}
-            />
-          ) : null}
-          <details className="fold">
-            <summary>Edit vehicle</summary>
-            <VehicleForm vehicle={data} run={run} onSave={refresh} />
-          </details>
-          <button
-            className="secondary"
-            type="button"
-            onClick={() =>
-              run(async () => {
-                await api(`/vehicles/${data.id}`, 'DELETE');
-                go('dashboard/garage');
-              }, 'Vehicle archived. Service records kept.')
-            }
+      <>
+        <VehiclePage
+          live
+          vehicleId={vehicleId}
+          go={go}
+          setDialog={setDetailDialog}
+          data={{
+            vehicles: [{ ...data, archived: Boolean(data.archivedAt) }],
+            jobs: (related || [])
+              .filter((j: any) => j.vehicleId === vehicleId)
+              .map((j: any) => ({ ...bookingCardData(j), vehicleId: j.vehicleId })),
+            records: (data.history || []).map((r: any) => ({
+              ...r,
+              vehicleId,
+              date: r.createdAt,
+              title: 'Completed service',
+            })),
+          }}
+        />
+        {relatedError ? (
+          <p role="alert">Related bookings could not be loaded: {relatedError}</p>
+        ) : null}
+        {detailDialog ? (
+          <LiveDialog
+            title={detailDialog.kind === 'vehicle' ? 'Edit vehicle' : 'Archive vehicle'}
+            onClose={() => setDetailDialog(null)}
           >
-            Archive vehicle
-          </button>
-        </DetailCard>
-        <DetailCard title="Service history">
-          {data.history.length ? (
-            data.history.map((record: any) => (
-              <article key={record.id}>
-                <h3>{new Date(record.createdAt).toLocaleDateString()}</h3>
-                <p>{record.notes}</p>
-              </article>
-            ))
-          ) : (
-            <p>Completed repairs will appear here.</p>
-          )}
-        </DetailCard>
-      </div>
+            {detailDialog.kind === 'vehicle' ? (
+              <VehicleForm
+                vehicle={data}
+                run={run}
+                onSave={() => {
+                  setDetailDialog(null);
+                  refresh();
+                }}
+              />
+            ) : (
+              <>
+                <p>
+                  Remove this vehicle from the showroom? Its bookings and service records will be
+                  kept.
+                </p>
+                <div className="button-row">
+                  <button
+                    className="primary"
+                    onClick={() =>
+                      run(async () => {
+                        await api('/vehicles/' + data.id, 'DELETE');
+                        go('dashboard/garage');
+                      }, 'Vehicle archived. Service records kept.')
+                    }
+                  >
+                    Archive vehicle
+                  </button>
+                  <button className="secondary" onClick={() => setDetailDialog(null)}>
+                    Keep vehicle
+                  </button>
+                </div>
+              </>
+            )}
+          </LiveDialog>
+        ) : null}
+      </>
     );
   return (
     <>

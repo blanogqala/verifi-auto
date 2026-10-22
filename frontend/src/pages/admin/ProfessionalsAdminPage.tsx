@@ -32,6 +32,8 @@ export function ProfessionalsAdminPage({
   query,
   setFilter,
   setQuery,
+  live = false,
+  revenueCents = 0,
 }: any) {
   const [city, setCity] = useState('All');
   const [type, setType] = useState('All');
@@ -60,8 +62,14 @@ export function ProfessionalsAdminPage({
         />
         <MetricCard
           label="Recorded revenue"
-          value={money(paymentRecordTotal(recordedCustomerPayments(paidJobs)))}
-          note="Gross demo payments · linked professionals"
+          value={money(
+            live ? revenueCents / 100 : paymentRecordTotal(recordedCustomerPayments(paidJobs)),
+          )}
+          note={
+            live
+              ? 'Confirmed gross payments · not commission'
+              : 'Gross demo payments · linked professionals'
+          }
           Icon={Wallet}
         />
       </div>
@@ -87,8 +95,9 @@ export function ProfessionalsAdminPage({
         </select>
       </div>
       <p className="muted">
-        Sample professional records. Verification status is separate from approval history, so a
-        suspended profile stays in this list.
+        {live
+          ? 'Approved and suspended professionals. Open a profile to review credentials and platform activity.'
+          : 'Sample professional records. Verification status is separate from approval history, so a suspended profile stays in this list.'}
       </p>
       {visible.length ? (
         <div className="table-scroll">

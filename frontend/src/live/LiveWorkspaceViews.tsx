@@ -1,3 +1,5 @@
+import { MechanicPaymentsPage } from '../pages/mechanic/MechanicPaymentsPage';
+import { FinancePage } from '../pages/admin/FinancePage';
 import { useState } from 'react';
 import { Calendar, Plus, Wallet, FileText, CheckCircle2 } from 'lucide-react';
 import { OverviewPage } from '../pages/shared/OverviewPage';
@@ -218,6 +220,8 @@ export function LiveBookingList({ bookings, error, role, base, section, go }: an
 }
 export function LivePayments({ payments, error, bookings, go, role }: any) {
   const [tab, setTab] = useState('outstanding');
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('All');
   const outstanding = (bookings || []).flatMap((job: any) =>
     job.quotes
       .filter((q: any) => ['APPROVED', 'IN_PROGRESS'].includes(q.status) && !q.payment)
@@ -234,6 +238,61 @@ export function LivePayments({ payments, error, bookings, go, role }: any) {
   for (const payment of payments || []) {
     const day = new Date(payment.paidAt).toLocaleDateString('en-ZA');
     grouped.set(day, [...(grouped.get(day) || []), payment]);
+  }
+  if (role !== 'customer') {
+    const row = (job: any, quote: any, amountCents: number) => ({
+      id: quote.id,
+      bookingId: job.id,
+      quoteNumber: quote.number,
+      vehicle: bookingCardData(job).vehicle,
+      provider: job.professional.name,
+      customerId: job.customerId,
+      amountCents,
+    });
+    const connected = {
+      awaiting: outstanding.map(({ job, quote, amount }: any) => row(job, quote, amount)),
+      recorded: (payments || []).map((p: any) => {
+        const job = (bookings || []).find((j: any) => j.id === p.quote.bookingId);
+        return {
+          ...(job
+            ? row(job, p.quote, p.amountCents)
+            : {
+                id: p.id,
+                bookingId: p.quote.bookingId,
+                quoteNumber: p.quote.number,
+                amountCents: p.amountCents,
+              }),
+          paid: true,
+          paidAt: new Date(p.paidAt).toLocaleDateString(),
+          paymentReference: p.providerReference,
+          test: p.provider === 'TEST',
+        };
+      }),
+    };
+    const setDialog = ({ job }: any) => go('dashboard/jobs/' + job.bookingId);
+    return (
+      <>
+        <WorkspaceHeading title={role === 'admin' ? 'Finance' : 'Payments'} />
+        {error ? (
+          <p role="alert">{error}</p>
+        ) : !bookings || !payments ? (
+          <RoadLoader label="Loading payment records…" />
+        ) : role === 'mechanic' ? (
+          <MechanicPaymentsPage jobs={[]} connected={connected} setDialog={setDialog} />
+        ) : (
+          <FinancePage
+            connected={connected}
+            jobs={[]}
+            customers={(bookings || []).map((j: any) => j.customer)}
+            query={query}
+            setQuery={setQuery}
+            filter={filter}
+            setFilter={setFilter}
+            setDialog={setDialog}
+          />
+        )}
+      </>
+    );
   }
   return (
     <>
@@ -294,7 +353,7 @@ export function LivePayments({ payments, error, bookings, go, role }: any) {
                     go(`dashboard/${role === 'customer' ? 'bookings' : 'jobs'}/${job.id}`)
                   }
                 >
-                  Review & pay
+                  {role === 'customer' ? 'Review & pay' : 'View quotation'}
                 </button>
               </div>
             ))
@@ -370,7 +429,7 @@ export function LiveMechanicOverview({ user, bookings, error, revision, go }: an
           jobs={jobs}
           data={{ documents }}
           apps={[]}
-          route={(tab: string) => go('dashboard/' + tab)}
+          route={(tab: string) => go('dashboard/' + (tab === 'quotes' ? 'bookings?review=1' : tab))}
           cardJobs={(rows: any[], count: number) =>
             rows
               .slice(0, count)

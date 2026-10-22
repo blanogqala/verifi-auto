@@ -9,11 +9,18 @@ import { vehicleCardImage } from '../../features/garage/garageSelection';
 import { grantsOf } from '../../features/garage/historyAccess';
 import { bookingReference } from '../../features/jobs/jobViews';
 import { formatDay } from '../../features/jobs/bookingProgress';
-import { careSourceLabel, careStateLabel, dateCareState, mileageCareState } from '../../features/garage/vehicleCare';
+import {
+  careSourceLabel,
+  careStateLabel,
+  dateCareState,
+  mileageCareState,
+} from '../../features/garage/vehicleCare';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
 
 function bookingsFor(data: any, vehicle: any) {
-  return (data.vehicles && data.jobs ? data.jobs : []).filter((job: any) => job.vehicleId === vehicle.id);
+  return (data.vehicles && data.jobs ? data.jobs : []).filter(
+    (job: any) => job.vehicleId === vehicle.id,
+  );
 }
 
 function recorded(value: unknown) {
@@ -40,7 +47,17 @@ function VehicleArt({ image }: { image: string }) {
   );
 }
 
-function Reminder({ label, state, detail, source }: { label: string; state: string; detail: string; source: string }) {
+function Reminder({
+  label,
+  state,
+  detail,
+  source,
+}: {
+  label: string;
+  state: string;
+  detail: string;
+  source: string;
+}) {
   return (
     <article className="reminder-row">
       <div>
@@ -58,7 +75,7 @@ function urgentCare(label: string, state: string) {
   return `${label} is ${careStateLabel(state).toLowerCase()}`;
 }
 
-export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
+export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: any) {
   const [tab, setTab] = useState('overview');
   const vehicle = (data.vehicles || []).find((item: any) => item.id === vehicleId);
   const here = 'dashboard/garage/' + encodeURIComponent(vehicleId || '');
@@ -87,12 +104,18 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
   }
   const records = (data.records || []).filter((record: any) => record.vehicleId === vehicle.id);
   const bookings = bookingsFor(data, vehicle);
-  const linked = [...(data.jobs || []), ...(data.records || [])].some((item) => historyCouldBelongTo(item, vehicle));
+  const linked =
+    live ||
+    [...(data.jobs || []), ...(data.records || [])].some((item) =>
+      historyCouldBelongTo(item, vehicle),
+    );
   const disc = dateCareState(vehicle.licenceDiscExpiry);
   const serviceDate = dateCareState(vehicle.nextServiceDate);
   const serviceMileage = mileageCareState(vehicle.mileage, vehicle.nextServiceMileage);
   const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ') || 'Vehicle';
-  const image = vehicleCardImage(resolveVehicleAsset(vehicle));
+  const image = live
+    ? vehicle.modelAsset?.previewUrl || ''
+    : vehicleCardImage(resolveVehicleAsset(vehicle));
   const shared = grantsOf(data).filter(
     (grant: any) => grant?.vehicleId === vehicle.id && grant?.status === 'active',
   );
@@ -117,7 +140,11 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
           </p>
         </div>
         <div className="detail-header-aside">
-          <button className="primary" type="button" onClick={() => setDialog({ kind: 'vehicle', vehicle })}>
+          <button
+            className="primary"
+            type="button"
+            onClick={() => setDialog({ kind: 'vehicle', vehicle })}
+          >
             Edit
           </button>
         </div>
@@ -141,7 +168,11 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
         <DetailCard
           title="Care reminders"
           action={
-            <button className="text-link" type="button" onClick={() => setDialog({ kind: 'vehicle', vehicle })}>
+            <button
+              className="text-link"
+              type="button"
+              onClick={() => setDialog({ kind: 'vehicle', vehicle })}
+            >
               Edit reminders
             </button>
           }
@@ -155,13 +186,19 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
           <Reminder
             label="Next service mileage"
             state={careStateLabel(serviceMileage)}
-            detail={recorded(vehicle.nextServiceMileage) ? mileageText(vehicle.nextServiceMileage) : 'No mileage saved'}
+            detail={
+              recorded(vehicle.nextServiceMileage)
+                ? mileageText(vehicle.nextServiceMileage)
+                : 'No mileage saved'
+            }
             source={careSourceLabel(vehicle.nextServiceSource)}
           />
           <Reminder
             label="Licence disc expiry"
             state={careStateLabel(disc)}
-            detail={vehicle.licenceDiscExpiry ? formatDay(vehicle.licenceDiscExpiry) : 'No date saved'}
+            detail={
+              vehicle.licenceDiscExpiry ? formatDay(vehicle.licenceDiscExpiry) : 'No date saved'
+            }
             source={careSourceLabel(vehicle.licenceDiscSource)}
           />
           <p className="muted">Only saved dates are shown.</p>
@@ -194,7 +231,9 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
         <DetailCard title={linked ? 'Archive vehicle' : 'Remove vehicle'}>
           <p>
             {linked
-              ? 'Bookings and service records stay in this browser. Archiving removes the vehicle from the showroom.'
+              ? live
+                ? 'Bookings and service records are kept securely. Archiving removes the vehicle from the showroom.'
+                : 'Bookings and service records stay in this browser. Archiving removes the vehicle from the showroom.'
               : 'This vehicle has no linked history. Removing it deletes only this vehicle record.'}
           </p>
           <button
@@ -234,12 +273,20 @@ export function VehiclePage({ data, go, setDialog, vehicleId }: any) {
               {shared.map((grant: any) => (
                 <li key={grant.id}>
                   <b>Shared for booking {grant.bookingId}</b>
-                  <span>{Array.isArray(grant.recordIds) ? `${grant.recordIds.length} record(s)` : 'Records selected'}</span>
+                  <span>
+                    {Array.isArray(grant.recordIds)
+                      ? `${grant.recordIds.length} record(s)`
+                      : 'Records selected'}
+                  </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p>No service history is shared for this vehicle.</p>
+            <p>
+              {live
+                ? 'Manage access to selected service records inside each accepted booking.'
+                : 'No service history is shared for this vehicle.'}
+            </p>
           )}
         </details>
       </DetailPanel>
@@ -264,7 +311,15 @@ function HistoryList({ records }: { records: any[] }) {
   );
 }
 
-function BookingList({ bookings, go, here }: { bookings: any[]; go: (path: string) => void; here: string }) {
+function BookingList({
+  bookings,
+  go,
+  here,
+}: {
+  bookings: any[];
+  go: (path: string) => void;
+  here: string;
+}) {
   if (!bookings.length) return <p>No bookings are linked to this vehicle.</p>;
   return (
     <div className="related-bookings">
@@ -281,7 +336,9 @@ function BookingList({ bookings, go, here }: { bookings: any[]; go: (path: strin
           <button
             className="secondary"
             type="button"
-            onClick={() => followDetail(go, here, 'dashboard/bookings/' + encodeURIComponent(job.id))}
+            onClick={() =>
+              followDetail(go, here, 'dashboard/bookings/' + encodeURIComponent(job.id))
+            }
           >
             Open booking
           </button>

@@ -12,7 +12,15 @@ function matches(application: any, query: string) {
 }
 
 /** Pending applications, or the retained decisions that have left that queue. */
-export function ApplicationsPage({ apps, history, openReview, query, route, setQuery }: any) {
+export function ApplicationsPage({
+  apps,
+  history,
+  openReview,
+  query,
+  route,
+  setQuery,
+  live = false,
+}: any) {
   const [city, setCity] = useState('All');
   const [type, setType] = useState('All');
   const visible = apps.filter(
@@ -69,7 +77,11 @@ export function ApplicationsPage({ apps, history, openReview, query, route, setQ
                     <b>{application.name}</b>
                     <small>
                       {application.type}
-                      {application.own ? ' · Your demo application' : ' · Sample application'}
+                      {live
+                        ? ''
+                        : application.own
+                          ? ' · Your demo application'
+                          : ' · Sample application'}
                     </small>
                   </td>
                   <td>{application.city}</td>

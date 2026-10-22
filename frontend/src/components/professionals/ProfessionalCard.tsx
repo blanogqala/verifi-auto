@@ -13,7 +13,14 @@ export function ProfessionalCard({ professional: p, onView, onBook }: any) {
       <div className="provider-body">
         <div className="provider-art">
           {photo ? (
-            <img src={photo} alt="Illustrative workshop photograph. Not a picture of this fictional business." />
+            <img
+              src={photo}
+              alt={
+                p.sample === false
+                  ? p.name + ' profile photo'
+                  : 'Illustrative workshop photograph. Not a picture of this fictional business.'
+              }
+            />
           ) : (
             <Wrench size={56} aria-hidden="true" />
           )}
@@ -36,23 +43,32 @@ export function ProfessionalCard({ professional: p, onView, onBook }: any) {
         </div>
       </div>
       <div className="provider-card-footer">
-      <div className="provider-card-reputation">
-        <RatingLine summary={rating} />
-        {p.distanceLabel && p.distanceLabel !== 'Distance unavailable' ? <p className="provider-distance">{p.distanceLabel}</p> : null}
-      </div>
-      <div className="provider-actions">
-        <button className="secondary view-profile" type="button" onClick={onView}>
-          View profile <ArrowUpRight size={14} />
-        </button>
-        <button className="primary" type="button" onClick={onBook}>
-          Book assessment <ArrowUpRight size={16} />
-        </button>
-        {directions ? (
-          <a className="text-link directions-link" href={directions} target="_blank" rel="noopener noreferrer">
-            Directions <ArrowUpRight size={14} />
-          </a>
-        ) : null}
-      </div>
+        <div className="provider-card-reputation">
+          <RatingLine summary={rating} />
+          {p.distanceLabel && p.distanceLabel !== 'Distance unavailable' ? (
+            <p className="provider-distance">{p.distanceLabel}</p>
+          ) : null}
+        </div>
+        <div className="provider-actions">
+          <button className="secondary view-profile" type="button" onClick={onView}>
+            View profile <ArrowUpRight size={14} />
+          </button>
+          {onBook ? (
+            <button className="primary" type="button" onClick={onBook}>
+              Book assessment <ArrowUpRight size={16} />
+            </button>
+          ) : null}
+          {directions ? (
+            <a
+              className="text-link directions-link"
+              href={directions}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Directions <ArrowUpRight size={14} />
+            </a>
+          ) : null}
+        </div>
       </div>
     </Card>
   );

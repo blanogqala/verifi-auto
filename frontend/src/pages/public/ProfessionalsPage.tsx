@@ -10,8 +10,13 @@ import {
   geolocationMessage,
   type DiscoverySession,
 } from '../../features/professionals/discovery';
-import { rememberDirectoryScroll, restoreDirectoryScroll, takeDirectoryScroll } from '../../features/professionals/discoveryState';
+import {
+  rememberDirectoryScroll,
+  restoreDirectoryScroll,
+  takeDirectoryScroll,
+} from '../../features/professionals/discoveryState';
 import { followDetail } from '../../features/navigation/returnPath';
+import { RoadLoader } from '../../components/ui/RoadLoader';
 import { Search } from 'lucide-react';
 
 let automaticLocationAttempted = false;
@@ -28,6 +33,10 @@ export function ProfessionalsPage({
   setService,
   setType,
   type,
+  live = false,
+  loading = false,
+  error = '',
+  children,
 }: any) {
   const state: DiscoverySession = discovery || { ...defaultDiscovery, service, type };
   const requestVersion = useRef(0);
@@ -58,13 +67,19 @@ export function ProfessionalsPage({
         if (version !== requestVersion.current) return;
         setLocating(false);
         setDiscovery?.((current: DiscoverySession) =>
-          discoveryWithBrowser(current || state, position.coords.latitude, position.coords.longitude),
+          discoveryWithBrowser(
+            current || state,
+            position.coords.latitude,
+            position.coords.longitude,
+          ),
         );
       },
       (error) => {
         if (version !== requestVersion.current) return;
         setLocating(false);
-        setLocationError(geolocationMessage(typeof error?.code === 'number' ? error.code : null, true));
+        setLocationError(
+          geolocationMessage(typeof error?.code === 'number' ? error.code : null, true),
+        );
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
     );
@@ -79,14 +94,18 @@ export function ProfessionalsPage({
         useMyLocation();
       }
     });
-    return () => { active = false; requestVersion.current += 1; };
+    return () => {
+      active = false;
+      requestVersion.current += 1;
+    };
   }, []);
 
   function openProfile(professional: any) {
     if (!professional?.id || typeof go !== 'function') return;
     rememberDirectoryScroll(bucket);
     const from = embedded ? 'dashboard/find' : 'find';
-    const to = (embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(professional.id);
+    const to =
+      (embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(professional.id);
     followDetail(go, from, to);
   }
 
@@ -99,29 +118,58 @@ export function ProfessionalsPage({
       <div className="filters directory-simple-filters">
         <label>
           Location
-          <select ref={areaRef} aria-label="Search area" value={state.areaId}
+          <select
+            ref={areaRef}
+            aria-label="Search area"
+            value={state.areaId}
             onChange={(event) => {
               requestVersion.current += 1;
               setLocating(false);
               setLocationError('');
-              if (!event.target.value) { useMyLocation(); return; }
-              setDiscovery?.((current: DiscoverySession) => discoveryWithArea(current || state, event.target.value));
-            }}>
-            <option value="">{state.origin?.kind === 'browser' ? 'Current location' : 'Choose area / current location'}</option>
-            {demoAreas.map((area) => <option key={area.id} value={area.id}>{area.label}</option>)}
+              if (!event.target.value) {
+                useMyLocation();
+                return;
+              }
+              setDiscovery?.((current: DiscoverySession) =>
+                discoveryWithArea(current || state, event.target.value),
+              );
+            }}
+          >
+            <option value="">
+              {state.origin?.kind === 'browser'
+                ? 'Current location'
+                : 'Choose area / current location'}
+            </option>
+            {demoAreas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.label}
+              </option>
+            ))}
           </select>
         </label>
         <label>
           Service
           <select value={service} onChange={(event) => setService(event.target.value)}>
-            {['All services', 'Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical', 'Not sure yet'].map((item) => (
+            {[
+              'All services',
+              'Servicing',
+              'Diagnostics',
+              'Brakes',
+              'Batteries',
+              'Auto electrical',
+              'Not sure yet',
+            ].map((item) => (
               <option key={item}>{item}</option>
             ))}
           </select>
         </label>
         <label>
           Professional
-          <select aria-label="Professional type" value={type} onChange={(event) => setType(event.target.value)}>
+          <select
+            aria-label="Professional type"
+            value={type}
+            onChange={(event) => setType(event.target.value)}
+          >
             <option>Either</option>
             <option>Workshop</option>
             <option>Mobile mechanic</option>
@@ -129,17 +177,36 @@ export function ProfessionalsPage({
         </label>
       </div>
       <div className="results-top" aria-live="polite">
-        <b>{results.length} professionals{state.origin ? ' · nearest first' : ''}</b>
-        <span>{locating ? 'Finding your location…' : state.origin ? `From ${state.origin.label}` : 'Choose an area to see distances'}</span>
+        <b>
+          {loading ? 'Loading' : results.length} professionals
+          {state.origin ? ' · nearest first' : ''}
+        </b>
+        <span>
+          {locating
+            ? 'Finding your location…'
+            : state.origin
+              ? `From ${state.origin.label}`
+              : 'Choose an area to see distances'}
+        </span>
       </div>
-      {locationError ? <p className="directory-note" role="status">{locationError}</p> : null}
+      {locationError ? (
+        <p className="directory-note" role="status">
+          {locationError}
+        </p>
+      ) : null}
+      {loading ? <RoadLoader label="Finding verified professionals…" /> : null}
+      {error ? <p role="alert">{error}</p> : null}
       <div className="provider-grid">
         {results.map((professional: any) => (
-          <ProfessionalCard key={professional.id || professional.name} professional={professional}
-            onView={() => openProfile(professional)} onBook={() => book(professional)} />
+          <ProfessionalCard
+            key={professional.id || professional.name}
+            professional={professional}
+            onView={() => openProfile(professional)}
+            onBook={book ? () => book(professional) : undefined}
+          />
         ))}
       </div>
-      {!results.length ? (
+      {!loading && !error && !results.length ? (
         <Card as="div" className="empty">
           <Search aria-hidden="true" />
           <h3>No professionals offer this service yet</h3>
@@ -147,8 +214,15 @@ export function ProfessionalsPage({
         </Card>
       ) : null}
       <p className="directory-note directory-disclosure">
-        Sample professionals for this demo. {disclosure || 'Distances appear when a location is available.'}
+        {live ? 'Approved professionals. ' : 'Sample professionals for this demo. '}{' '}
+        {live
+          ? (disclosure || 'Distances appear when a location is available.').replace(
+              'demo area centre',
+              'area centre',
+            )
+          : disclosure || 'Distances appear when a location is available.'}
       </p>
+      {children}
     </Tag>
   );
 }

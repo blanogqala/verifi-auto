@@ -352,6 +352,20 @@ test(
       const listing = await send("get", "/api/professionals");
       assert.equal(listing.body.length, 1);
       assert.ok(!JSON.stringify(listing.body).includes("passwordHash"));
+      assert.equal(listing.body[0].user, undefined, 'Public directory must not expose the account relation');
+      const publicProfile = await send("get", `/api/professionals/${pro.id}`);
+      assert.equal(publicProfile.status, 200);
+      assert.equal(publicProfile.body.reviewCount, 0);
+      assert.equal(publicProfile.body.rating, null);
+      assert.equal(publicProfile.body.user, undefined);
+      for (const path of ["/api/admin/professionals", "/api/admin/application-history", `/api/admin/users/${alice.user.id}`]) {
+        assert.equal((await send("get", path, undefined, alice)).status, 403);
+        const result = await send("get", path, undefined, admin);
+        assert.equal(result.status, 200);
+        assert.ok(!JSON.stringify(result.body).includes("passwordHash"));
+      }
+      const managed = await send("get", "/api/admin/professionals", undefined, admin);
+      assert.equal(managed.body[0].id, pro.id);
       const bookingInput = {
         vehicleId: car.body.id,
         professionalId: pro.id,

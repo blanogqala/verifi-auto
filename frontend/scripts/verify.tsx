@@ -1,3 +1,4 @@
+import { directoryCard } from '../src/live/LiveDirectory';
 import { SettingsPage } from '../src/pages/shared/SettingsPage';
 import { CustomerOverviewView, LiveBookingList, LivePayments } from '../src/live/LiveWorkspaceViews';
 import { bookingQuotations, newQuotation } from '../src/features/jobs/bookingQuotes';
@@ -2178,3 +2179,23 @@ assert.ok(!connectedProfile.includes('Change password unavailable'));
 assert.ok(!connectedProfile.includes('Use sample details'));
 assert.ok(connectedProfile.includes('readOnly=""'));
 console.log('Connected profile retains the shared demo layout with real-account wording.');
+
+// Connected screens must keep the shared presentation without fictional credentials or fees.
+const liveProfessional = directoryCard({id:'server-pro',name:'Real workshop',type:'Workshop',city:'Cape Town',services:['Brakes'],latitude:-33.9,longitude:18.4,rating:4.5,reviewCount:2,photo:''}, null);
+assert.equal(liveProfessional.distanceLabel, '');
+assert.equal(liveProfessional.sample, false);
+const liveDirectoryHtml = renderToString(<ProfessionalsPage live embedded results={[liveProfessional]} discovery={{...defaultDiscovery}} service="All services" type="Either" go={()=>{}} book={()=>{}}/>);
+for (const value of ['directory-simple-filters','provider-card','Professional type','View profile','Book assessment','4.5/5']) assert.ok(liveDirectoryHtml.includes(value),value);
+assert.ok(!liveDirectoryHtml.includes('SAMPLE PROFILE'));
+assert.ok(!liveDirectoryHtml.includes('Sample professionals for this demo'));
+const nearest = directoryCard({...liveProfessional, latitude:-33.9, longitude:18.4, rating:4.5, reviewCount:2}, {latitude:-33.9, longitude:18.4});
+assert.equal(nearest.sortKm, 0);
+assert.ok(nearest.distanceLabel.includes('0.0 km'));
+const mechanicPaymentsHtml = renderToString(<LivePayments role="mechanic" payments={[]} bookings={[]} go={()=>{}}/>);
+assert.ok(mechanicPaymentsHtml.includes('Awaiting customer payment'));
+assert.ok(mechanicPaymentsHtml.includes('Payment records'));
+assert.ok(!mechanicPaymentsHtml.includes('No demo payments yet'));
+const adminFinanceHtml = renderToString(<LivePayments role="admin" payments={[]} bookings={[]} go={()=>{}}/>);
+assert.ok(adminFinanceHtml.includes('Filter payments'));
+assert.ok(adminFinanceHtml.includes('Finance'));
+console.log('Connected directory, mechanic payment and admin finance presentation checks passed.');

@@ -19,13 +19,13 @@ import { commitUpdate } from '../../features/demo/commitUpdate';
 import { appendAdminActivity } from '../../features/admin/detailRecords';
 import { formatWhen } from '../../features/jobs/bookingProgress';
 
-export function AdminJobsPage({ data, cardJobs, route, section }: any) {
+export function AdminJobsPage({ data, cardJobs, route, section, live = false }: any) {
   const [query, setQuery] = useState('');
   const [city, setCity] = useState('All');
   const [type, setType] = useState('All');
   const [jobStatus, setJobStatus] = useState('All');
   const [disputeStatus, setDisputeStatus] = useState('All');
-  const jobs = adminJobRows(data);
+  const jobs = live ? data.jobs || [] : adminJobRows(data);
   const disputes = disputeRows(data).map((d: any) => {
     const job = jobs.find((j: any) => j.id === d.bookingId);
     return { ...d, city: job?.city || 'Not recorded', type: job?.type || 'Not recorded', job };
@@ -79,7 +79,12 @@ export function AdminJobsPage({ data, cardJobs, route, section }: any) {
             <option key={s}>{s}</option>
           ))}
         </select>
-        <CityFilter rows={jobs} label="Customer city" value={city} onChange={setCity} />
+        <CityFilter
+          rows={jobs}
+          label={live ? 'Professional city' : 'Customer city'}
+          value={city}
+          onChange={setCity}
+        />
         <ProfessionalTypeFilter value={type} onChange={setType} />
       </div>
       <nav className="profile-tablist" aria-label="Jobs and activity sections">
@@ -99,8 +104,10 @@ export function AdminJobsPage({ data, cardJobs, route, section }: any) {
         </button>
       </nav>
       <p className="muted">
-        {visible.length} matching {showingDisputes ? 'disputes' : 'jobs'} · City refers to the
-        customer’s recorded city.
+        {visible.length} matching {showingDisputes ? 'disputes' : 'jobs'} ·{' '}
+        {live
+          ? 'City refers to the professional’s recorded city.'
+          : 'City refers to the customer’s recorded city.'}
       </p>
       {visible.length ? (
         showingDisputes ? (
@@ -130,7 +137,9 @@ export function AdminJobsPage({ data, cardJobs, route, section }: any) {
           <h2>{showingDisputes ? 'No disputes to show' : 'No jobs match these filters'}</h2>
           <p>
             {showingDisputes && !disputes.length
-              ? 'Booking disputes will appear here when recorded. No dispute has been created in this browser demo.'
+              ? live
+                ? 'Dispute management is not connected to the server yet. Contact support about a booking issue.'
+                : 'Booking disputes will appear here when recorded. No dispute has been created in this browser demo.'
               : 'Try another city, professional type or status.'}
           </p>
         </Card>

@@ -15,7 +15,7 @@ function matches(customer: any, query: string) {
 }
 
 /** Read-only view of demo customer accounts. Jobs are not turned into extra customers. */
-export function CustomersPage({ customers, jobs, query, setDialog, setQuery }: any) {
+export function CustomersPage({ customers, jobs, query, setDialog, setQuery, live = false }: any) {
   const [city, setCity] = useState('All');
   const visible = customers.filter(
     (customer: any) => matches(customer, query) && matchesAdminFilters(customer, city),
@@ -60,8 +60,9 @@ export function CustomersPage({ customers, jobs, query, setDialog, setQuery }: a
         <CityFilter rows={customers} value={city} onChange={setCity} />
       </div>
       <p className="muted">
-        Sample customer records from this browser. Booking links use the existing customer account
-        and are not created from job titles.
+        {live
+          ? 'Registered customers. Open an account to review its details and linked bookings.'
+          : 'Sample customer records from this browser. Booking links use the existing customer account and are not created from job titles.'}
       </p>
       {visible.length ? (
         <div className="table-scroll">

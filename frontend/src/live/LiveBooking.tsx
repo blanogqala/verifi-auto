@@ -1,5 +1,9 @@
+import { BookingProgress } from '../components/jobs/BookingProgress';
+import { bookingCardData } from './LiveWorkspaceViews';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { LiveDialog } from './LiveDialog';
 import { useState } from 'react';
-import { DetailBack, DetailCard, DetailFields } from '../components/ui/DetailChrome';
+import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../components/ui/DetailChrome';
 import { DetailTabs, DetailPanel } from '../components/ui/DetailTabs';
 import { RoadLoader } from '../components/ui/RoadLoader';
 import { api, displayStatus, money } from './api';
@@ -242,53 +246,61 @@ function RepairChoices({ quote, bookingId, run, done }: any) {
     </div>
   );
 }
-function Conversation({ bookingId, revision, run, refresh }: any) {
+function Conversation({ bookingId, revision, run, refresh, user }: any) {
   const { data, error } = useResource(`/bookings/${bookingId}/messages`, revision);
   const [body, setBody] = useState(''),
     [busy, setBusy] = useState(false);
   return (
     <DetailCard title="Messages">
       {error ? <p role="alert">{error}</p> : null}
-      <div className="live-messages" aria-live="polite">
+      <div className="conversation-log" aria-live="polite">
         {data
           ?.slice()
           .reverse()
           .map((message: any) => (
-            <article key={message.id}>
+            <article
+              className={message.authorId === user.id ? 'bubble mine' : 'bubble theirs'}
+              key={message.id}
+            >
               <strong>{message.author.name}</strong>
               <p>{message.body}</p>
               <small>{new Date(message.createdAt).toLocaleString()}</small>
             </article>
           ))}
       </div>
-      <form
-        onSubmit={async (event) => {
-          event.preventDefault();
-          setBusy(true);
-          await run(async () => {
-            await api(`/bookings/${bookingId}/messages`, 'POST', {
-              body,
-              clientRequestId: crypto.randomUUID(),
-            });
-            setBody('');
-            refresh();
-          }, 'Message sent.');
-          setBusy(false);
-        }}
-      >
-        <label>
-          Message
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            required
-            maxLength={4000}
-          />
-        </label>
-        <button className="primary" disabled={busy || !body.trim()}>
-          Send message
-        </button>
-      </form>
+      {user.role !== 'ADMIN' ? (
+        <form
+          className="conversation-compose"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            setBusy(true);
+            await run(async () => {
+              await api(`/bookings/${bookingId}/messages`, 'POST', {
+                body,
+                clientRequestId: crypto.randomUUID(),
+              });
+              setBody('');
+              refresh();
+            }, 'Message sent.');
+            setBusy(false);
+          }}
+        >
+          <label>
+            Message
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              required
+              maxLength={4000}
+            />
+          </label>
+          <button className="primary" disabled={busy || !body.trim()}>
+            Send message
+          </button>
+        </form>
+      ) : (
+        <p className="muted">Read-only conversation for administration.</p>
+      )}
     </DetailCard>
   );
 }
@@ -297,7 +309,12 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
   const [tab, setTab] = useState('overview'),
     [adding, setAdding] = useState(false),
     [reviewing, setReviewing] = useState(''),
-    [invoice, setInvoice] = useState<any>(null);
+    [invoice, setInvoice] = useState<any>(null),
+    [checkout, setCheckout] = useState<any>(null);
+  const { data: activity, error: activityError } = useResource(
+    user.role === 'ADMIN' ? '/admin/activity?resourceId=' + bookingId : null,
+    revision,
+  );
   const mechanic = user.role === 'MECHANIC',
     customer = user.role === 'CUSTOMER';
   const [historyIds, setHistoryIds] = useState<string[]>([]);
@@ -317,17 +334,38 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
       refresh();
     }, 'Booking updated.');
   return (
-    <div className="detail-page">
+    <div className="detail-page booking-detail">
       <DetailBack
-        label={mechanic ? 'Back to Jobs' : 'Back to My bookings'}
-        onClick={() => go(mechanic ? 'dashboard/jobs' : 'dashboard/bookings')}
+        label={
+          user.role === 'ADMIN'
+            ? 'Back to Jobs & activity'
+            : mechanic
+              ? job.status === 'REQUESTED'
+                ? 'Back to appointments'
+                : 'Back to Jobs'
+              : 'Back to My bookings'
+        }
+        onClick={() =>
+          go(
+            user.role === 'ADMIN'
+              ? 'dashboard/jobs'
+              : mechanic
+                ? job.status === 'REQUESTED'
+                  ? 'dashboard/appointments/pending'
+                  : 'dashboard/jobs'
+                : 'dashboard/bookings',
+          )
+        }
       />
-      <div className="workspace-heading">
-        <h1>
-          {job.vehicle.year} {job.vehicle.make} {job.vehicle.model}
-        </h1>
-        <span className="quotation-state">{displayStatus(job.status)}</span>
-      </div>
+      <DetailHeader
+        title={bookingCardData(job).vehicle}
+        kicker={'Booking ' + job.id.slice(0, 8).toUpperCase()}
+        summary={`${job.professional.name} · ${new Date(job.appointmentAt).toLocaleString()}`}
+        aside={<StatusBadge value={bookingCardData(job).status} />}
+      />
+      <DetailCard title="Progress">
+        <BookingProgress job={{ ...bookingCardData(job), live: true }} />
+      </DetailCard>
       <DetailTabs
         id="live-booking"
         label="Booking details"
@@ -337,6 +375,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
           { id: 'overview', label: 'Overview' },
           { id: 'quotes', label: 'Quotes & payments' },
           { id: 'messages', label: 'Messages' },
+          ...(user.role === 'ADMIN' ? [{ id: 'activity', label: 'Activity' }] : []),
         ]}
       />
       <DetailPanel scope="live-booking" tabId="overview" value={tab}>
@@ -354,6 +393,22 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
             ]}
           />
           <div className="button-row">
+            {customer ? (
+              <>
+                <button
+                  className="secondary"
+                  onClick={() => go('dashboard/find/' + job.professionalId)}
+                >
+                  View professional
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => go('dashboard/garage/' + job.vehicleId)}
+                >
+                  View vehicle
+                </button>
+              </>
+            ) : null}
             {mechanic && job.status === 'REQUESTED' ? (
               <button className="primary" onClick={() => action('accept')}>
                 Accept request
@@ -409,46 +464,49 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
         </DetailCard>
         {customer &&
         ['CONFIRMED', 'APPROVED', 'IN_PROGRESS', 'AWAITING_PAYMENT'].includes(job.status) ? (
-          <DetailCard title="Vehicle history access">
-            <p>Only records you select are shared, for this booking only.</p>
-            {vehicleHistory?.history?.map((record: any) => (
-              <label className="check-label" key={record.id}>
-                <input
-                  type="checkbox"
-                  checked={historyIds.includes(record.id)}
-                  onChange={(e) =>
-                    setHistoryIds(
-                      e.target.checked
-                        ? [...historyIds, record.id]
-                        : historyIds.filter((id) => id !== record.id),
-                    )
-                  }
-                />
-                <span>{record.notes}</span>
-              </label>
-            ))}
-            <div className="button-row">
-              {[true, false].map((grant) => (
-                <button
-                  type="button"
-                  key={String(grant)}
-                  className="secondary"
-                  onClick={() =>
-                    run(
-                      () =>
-                        api(`/bookings/${job.id}/history-access`, 'PUT', {
-                          grant,
-                          recordIds: historyIds,
-                        }),
-                      grant ? 'Selected history shared.' : 'History access revoked.',
-                    )
-                  }
-                >
-                  {grant ? 'Share selected history' : 'Revoke access'}
-                </button>
+          <details className="fold">
+            <summary>History sharing</summary>
+            <DetailCard title="Vehicle history access">
+              <p>Only records you select are shared, for this booking only.</p>
+              {vehicleHistory?.history?.map((record: any) => (
+                <label className="check-label" key={record.id}>
+                  <input
+                    type="checkbox"
+                    checked={historyIds.includes(record.id)}
+                    onChange={(e) =>
+                      setHistoryIds(
+                        e.target.checked
+                          ? [...historyIds, record.id]
+                          : historyIds.filter((id) => id !== record.id),
+                      )
+                    }
+                  />
+                  <span>{record.notes}</span>
+                </label>
               ))}
-            </div>
-          </DetailCard>
+              <div className="button-row">
+                {[true, false].map((grant) => (
+                  <button
+                    type="button"
+                    key={String(grant)}
+                    className="secondary"
+                    onClick={() =>
+                      run(
+                        () =>
+                          api(`/bookings/${job.id}/history-access`, 'PUT', {
+                            grant,
+                            recordIds: historyIds,
+                          }),
+                        grant ? 'Selected history shared.' : 'History access revoked.',
+                      )
+                    }
+                  >
+                    {grant ? 'Share selected history' : 'Revoke access'}
+                  </button>
+                ))}
+              </div>
+            </DetailCard>
+          </details>
         ) : null}
         {mechanic && Array.isArray(vehicleHistory) ? (
           <DetailCard title="Shared service history">
@@ -572,32 +630,23 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
                     {quote.approvedAt ? 'Edit repair selection' : 'Review and approve'}
                   </button>
                   {reviewing === quote.id ? (
-                    <RepairChoices
-                      key={quote.version}
-                      bookingId={job.id}
-                      quote={quote}
-                      run={run}
-                      done={() => {
-                        setReviewing('');
-                        refresh();
-                      }}
-                    />
+                    <LiveDialog title="Choose your repairs" onClose={() => setReviewing('')}>
+                      <RepairChoices
+                        key={quote.version}
+                        bookingId={job.id}
+                        quote={quote}
+                        run={run}
+                        done={() => {
+                          setReviewing('');
+                          refresh();
+                        }}
+                      />
+                    </LiveDialog>
                   ) : null}
                 </>
               ) : null}
               {customer && quote.approvedAt && !quote.payment ? (
-                <button
-                  className="primary"
-                  onClick={() =>
-                    run(
-                      () =>
-                        api(`/bookings/${job.id}/quotes/${quote.id}/checkout`, 'POST', {
-                          version: quote.version,
-                        }),
-                      '',
-                    )
-                  }
-                >
+                <button className="primary" onClick={() => setCheckout(quote)}>
                   Review and pay
                 </button>
               ) : null}
@@ -659,7 +708,10 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
             </DetailCard>
           ))}
           {invoice ? (
-            <DetailCard title={`Invoice · Quotation ${invoice.quoteNumber}`}>
+            <LiveDialog
+              title={`Invoice · Quotation ${invoice.quoteNumber}`}
+              onClose={() => setInvoice(null)}
+            >
               <p>
                 {invoice.issuer} · {invoice.vehicle}
               </p>
@@ -678,13 +730,72 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
               <button className="secondary" onClick={() => setInvoice(null)}>
                 Close invoice
               </button>
-            </DetailCard>
+            </LiveDialog>
           ) : null}
         </div>
       </DetailPanel>
+      {checkout ? (
+        <LiveDialog
+          title={`Review payment · Quotation ${checkout.number}`}
+          onClose={() => setCheckout(null)}
+        >
+          <div className="quote-table">
+            {checkout.lines
+              .filter((l: any) => l.selected)
+              .map((l: any) => (
+                <div className="quote-line" key={l.id}>
+                  <span>{l.description}</span>
+                  <b>{money(l.quantity * l.unitPriceCents)}</b>
+                </div>
+              ))}
+          </div>
+          <p>
+            Selected total{' '}
+            <strong>
+              {money(
+                checkout.lines
+                  .filter((l: any) => l.selected)
+                  .reduce((sum: number, l: any) => sum + l.quantity * l.unitPriceCents, 0),
+              )}
+            </strong>
+          </p>
+          <p>Online payments are not available yet. No payment has been taken.</p>
+          <button className="secondary" onClick={() => setCheckout(null)}>
+            Back to quotation
+          </button>
+        </LiveDialog>
+      ) : null}
+      {user.role === 'ADMIN' ? (
+        <DetailPanel scope="live-booking" tabId="activity" value={tab}>
+          <DetailCard title="Job activity">
+            {activityError ? (
+              <p role="alert">{activityError}</p>
+            ) : !activity ? (
+              <RoadLoader label="Loading job activity…" />
+            ) : activity.length ? (
+              <ol className="activity-list">
+                {activity.map((e: any) => (
+                  <li key={e.id}>
+                    <b>{displayStatus(e.action)}</b>
+                    <time>{new Date(e.createdAt).toLocaleString()}</time>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p>No activity recorded for this booking yet.</p>
+            )}
+          </DetailCard>
+        </DetailPanel>
+      ) : null}
       <DetailPanel scope="live-booking" tabId="messages" value={tab}>
         {tab === 'messages' ? (
-          <Conversation bookingId={job.id} revision={revision} run={run} refresh={refresh} />
+          <Conversation
+            user={user}
+            bookingId={job.id}
+            revision={revision}
+            run={run}
+            refresh={refresh}
+          />
         ) : null}
       </DetailPanel>
     </div>

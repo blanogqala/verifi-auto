@@ -19,6 +19,7 @@ export const professionalPublicSelect = {
   latitude: true,
   longitude: true,
   credentialId: true,
+  user: { select: { photo: true } },
 } as const;
 export const directoryRoutes = Router();
 directoryRoutes.get("/", async (req, res) => {
@@ -53,8 +54,9 @@ directoryRoutes.get("/", async (req, res) => {
     _count: true,
   });
   res.json(
-    rows.map((row) => ({
+    rows.map(({ user, ...row }) => ({
       ...row,
+      photo: user.photo,
       rating:
         ratings.find((r) => r.professionalId === row.id)?._avg.rating || null,
       reviewCount:
@@ -84,8 +86,17 @@ directoryRoutes.get("/:id", async (req, res) => {
     take: 30,
     orderBy: { createdAt: "desc" },
   });
+  const summary = await db.review.aggregate({
+    where: { professionalId: row.id },
+    _avg: { rating: true },
+    _count: true,
+  });
+  const { user, ...publicRow } = row;
   res.json({
-    ...row,
+    ...publicRow,
+    photo: user.photo,
+    rating: summary._avg.rating,
+    reviewCount: summary._count,
     reviews: reviews.map(({ customer, ...review }) => ({
       ...review,
       customerName: customer.name.split(" ")[0],

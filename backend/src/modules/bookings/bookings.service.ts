@@ -8,7 +8,14 @@ export type Actor = NonNullable<Express.Request["auth"]>;
 export const bookingInclude = {
   vehicle: true,
   professional: {
-    select: { id: true, userId: true, name: true, phone: true, city: true },
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      phone: true,
+      city: true,
+      type: true,
+    },
   },
   customer: { select: { id: true, name: true, phone: true } },
   quotes: {
