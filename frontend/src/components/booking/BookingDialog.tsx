@@ -1,5 +1,5 @@
 import { PaintColourField } from '../garage/PaintColourField';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
 import { commitUpdate } from '../../features/demo/commitUpdate';
@@ -29,6 +29,12 @@ export function BookingDialog({
   notify,
   vehicleId,
   vehicles,
+  vehiclesLoading = false,
+  connected = false,
+  manageFocus = false,
+  onLiveBook,
+  onLiveVehicle,
+  onJoin,
 }: any) {
   const [adding, setAdding] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -40,6 +46,38 @@ export function BookingDialog({
     setModal(null);
     setAdding(false);
   }
+
+  useEffect(() => {
+    if (!manageFocus) return;
+    document.documentElement.classList.add('scroll-lock');
+    const root = document.querySelector('.modal-backdrop .modal');
+    const focusables = () =>
+      Array.from(
+        root?.querySelectorAll<HTMLElement>(
+          'button,a[href],input,select,textarea,summary,[tabindex="0"]',
+        ) || [],
+      ).filter((element) => !element.hasAttribute('disabled'));
+    focusables()[0]?.focus();
+    function key(event: KeyboardEvent) {
+      if (event.key === 'Escape') close();
+      if (event.key !== 'Tab') return;
+      const items = focusables();
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+    document.addEventListener('keydown', key);
+    return () => {
+      document.documentElement.classList.remove('scroll-lock');
+      document.removeEventListener('keydown', key);
+    };
+  }, [manageFocus, modal, step, adding]);
 
   return (
     <div className="modal-backdrop" onClick={close}>
@@ -63,24 +101,27 @@ export function BookingDialog({
             </h2>
             <p>Verifi Auto is being designed for independent mobile mechanics and workshops.</p>
             <div className="notice">
-              Applications are not open in this design preview. Verification criteria and the pilot
-              city are still being finalised.
+              {onJoin
+                ? 'Create a professional account to apply. Your profile is listed after verification.'
+                : 'Applications are not open in this design preview. Verification criteria and the pilot city are still being finalised.'}
             </div>
             <button
               className="primary"
               onClick={() => {
                 close();
-                anchor('trust');
+                if (onJoin) onJoin();
+                else anchor?.('trust');
               }}
             >
-              Explore our proposed standard <ArrowRight size={18} />
+              {onJoin ? 'Continue to registration' : 'Explore our proposed standard'}{' '}
+              <ArrowRight size={18} />
             </button>
           </>
         ) : step === 2 ? (
           <div className="success">
             <CheckCircle2 size={60} />
             <h2>
-              Your demo request
+              {connected ? 'Your request' : 'Your demo request'}
               <br />
               is ready.
             </h2>
@@ -90,8 +131,9 @@ export function BookingDialog({
               {date} at {time}
             </p>
             <div className="notice">
-              No appointment has been sent to a professional and no payment has been taken. The time
-              is a preference, not confirmed availability.
+              {connected
+                ? 'Your request has been sent. No payment has been taken. The time is a preference, not confirmed availability.'
+                : 'No appointment has been sent to a professional and no payment has been taken. The time is a preference, not confirmed availability.'}
             </div>
             <button
               className="primary"
@@ -105,9 +147,21 @@ export function BookingDialog({
           </div>
         ) : adding ? (
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
               const form = new FormData(event.currentTarget);
+              if (onLiveVehicle) {
+                try {
+                  const createdId = await onLiveVehicle(Object.fromEntries(form));
+                  if (!createdId) return;
+                  setVehicleId(createdId);
+                  setAdding(false);
+                  setError('');
+                } catch (reason: any) {
+                  setError(reason?.message || 'The vehicle could not be saved.');
+                }
+                return;
+              }
               let createdId = '';
               const saved = commitUpdate(
                 update,
@@ -161,7 +215,7 @@ export function BookingDialog({
             </div>
             <label>
               Registration
-              <input name="registration" required autoComplete="off" defaultValue="DEMO 002" />
+              <input name="registration" required autoComplete="off" defaultValue={connected ? '' : 'DEMO 002'} />
             </label>
             <div className="form-row">
               <label>
@@ -197,11 +251,23 @@ export function BookingDialog({
           </form>
         ) : (
           <form
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
               if (submitting) return;
               setSubmitting(true);
               setError('');
+              if (onLiveBook) {
+                try {
+                  await onLiveBook({ vehicleId, date, time, description });
+                  setRequestId?.(crypto.randomUUID());
+                  setStep(2);
+                } catch (reason: any) {
+                  setError(reason?.message || 'The request could not be sent.');
+                } finally {
+                  setSubmitting(false);
+                }
+                return;
+              }
               try {
                 const vehicle = choices.find((item) => item.id === vehicleId);
                 let duplicate = false;
@@ -250,13 +316,15 @@ export function BookingDialog({
               }
             }}
           >
-            <span className="chip">SAMPLE PROFESSIONAL</span>
+            {connected ? null : <span className="chip">SAMPLE PROFESSIONAL</span>}
             <h2>{modal.name}</h2>
             <p>
               {modal.area} · {modal.type}
             </p>
             <p className="muted">Charges are confirmed in your quotation before approval. A preferred time is not confirmed availability.</p>
-            {choices.length ? (
+            {vehiclesLoading ? (
+              <p role="status">Loading your vehicles…</p>
+            ) : choices.length ? (
               <label>
                 Your vehicle
                 <select
@@ -318,7 +386,13 @@ export function BookingDialog({
               </p>
             ) : null}
             <button className="primary full" type="submit" disabled={submitting || !choices.length}>
-              {submitting ? 'Saving request' : editingJob ? 'Save changes' : 'Create demo request'}
+              {submitting
+                ? 'Saving request'
+                : editingJob
+                  ? 'Save changes'
+                  : connected
+                    ? 'Request assessment'
+                    : 'Create demo request'}
               <ArrowRight size={18} />
             </button>
           </form>

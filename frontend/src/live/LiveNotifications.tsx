@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Calendar, FileText, MessageSquare, Search, Wallet, Wrench } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { RoadLoader } from '../components/ui/RoadLoader';
 import { WorkspaceHeading } from './LiveWorkspaceViews';
@@ -24,6 +24,14 @@ export function LiveNotifications({ notes, error, role, run, go }: any) {
           ? 'dashboard/applications/' + note.resourceId
           : 'dashboard/profile/verification'
         : 'dashboard/profile';
+  const topicIcon: Record<string, any> = {
+    booking: Calendar,
+    quotation: FileText,
+    message: MessageSquare,
+    payment: Wallet,
+    application: Wrench,
+    'history-access': FileText,
+  };
   return (
     <>
       <WorkspaceHeading title="Notifications" />
@@ -66,7 +74,9 @@ export function LiveNotifications({ notes, error, role, run, go }: any) {
             <RoadLoader label="Loading updates…" />
           ) : visible.length ? (
             <div className="inbox-threads">
-              {visible.map((n: any) => (
+              {visible.map((n: any) => {
+                const Icon = topicIcon[n.topic] || Bell;
+                return (
                 <button
                   key={n.id}
                   className={
@@ -79,14 +89,15 @@ export function LiveNotifications({ notes, error, role, run, go }: any) {
                     if (!n.readAt) void mark([n.id]);
                   }}
                 >
-                  <Bell size={16} />
+                  <Icon size={16} aria-hidden="true" />
                   <span>
                     <b>{n.title}</b>
                     <small>{new Date(n.createdAt).toLocaleString()}</small>
                   </span>
                   {!n.readAt ? <i aria-label="Unread" /> : null}
                 </button>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p>

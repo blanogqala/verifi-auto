@@ -214,7 +214,7 @@ export function ProfessionalsPage({
         </Card>
       ) : null}
       <p className="directory-note directory-disclosure">
-        {live ? 'Approved professionals. ' : 'Sample professionals for this demo. '}{' '}
+        {live ? 'Approved professionals. ' : 'Sample professionals for this demo. '}
         {live
           ? (disclosure || 'Distances appear when a location is available.').replace(
               'demo area centre',

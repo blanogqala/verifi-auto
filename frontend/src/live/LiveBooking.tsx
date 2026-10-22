@@ -55,7 +55,7 @@ function QuoteForm({ bookingId, quote, run, done }: any) {
       }}
     >
       {lines.map((line: any, index: number) => (
-        <div className="live-quote-line" key={index}>
+        <div className="quote-editor-row" key={index}>
           <label>
             Description
             <input
@@ -125,11 +125,11 @@ function QuoteForm({ bookingId, quote, run, done }: any) {
           </label>
           <button
             type="button"
-            className="text-link"
+            aria-label={'Remove line ' + (index + 1)}
             disabled={lines.length === 1}
             onClick={() => setLines(lines.filter((_: any, i: number) => i !== index))}
           >
-            Remove line {index + 1}
+            ×
           </button>
         </div>
       ))}
@@ -308,6 +308,8 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
   const { data: job, error } = useResource(`/bookings/${bookingId}`, revision);
   const [tab, setTab] = useState('overview'),
     [adding, setAdding] = useState(false),
+    [editingQuote, setEditingQuote] = useState<any>(null),
+    [confirm, setConfirm] = useState<'' | 'cancel' | 'reject' | 'complete'>(''),
     [reviewing, setReviewing] = useState(''),
     [invoice, setInvoice] = useState<any>(null),
     [checkout, setCheckout] = useState<any>(null);
@@ -415,7 +417,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
               </button>
             ) : null}
             {customer && ['REQUESTED', 'CONFIRMED'].includes(job.status) ? (
-              <button className="secondary" onClick={() => action('cancel')}>
+              <button className="secondary" onClick={() => setConfirm('cancel')}>
                 Cancel request
               </button>
             ) : null}
@@ -426,39 +428,14 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
             ) : null}
           </div>
           {mechanic && job.status === 'REQUESTED' ? (
-            <details className="fold">
-              <summary>Reject request</summary>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void action('reject', {
-                    reason: String(new FormData(event.currentTarget).get('reason')),
-                  });
-                }}
-              >
-                <label>
-                  Reason
-                  <textarea name="reason" required minLength={3} />
-                </label>
-                <button className="secondary">Reject request</button>
-              </form>
-            </details>
+            <button className="secondary" type="button" onClick={() => setConfirm('reject')}>
+              Reject request
+            </button>
           ) : null}
           {mechanic && job.status === 'IN_PROGRESS' ? (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void action('complete', {
-                  completionNotes: String(new FormData(event.currentTarget).get('completionNotes')),
-                });
-              }}
-            >
-              <label>
-                Completed repairs
-                <textarea name="completionNotes" minLength={3} maxLength={4000} required />
-              </label>
-              <button className="primary">Mark work finished</button>
-            </form>
+            <button className="secondary" type="button" onClick={() => setConfirm('complete')}>
+              Mark work complete
+            </button>
           ) : null}
           {job.completionNotes ? <p>{job.completionNotes}</p> : null}
         </DetailCard>
@@ -564,12 +541,13 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
       <DetailPanel scope="live-booking" tabId="quotes" value={tab}>
         <div className="booking-quotations">
           {mechanic && ['CONFIRMED', 'APPROVED', 'IN_PROGRESS'].includes(job.status) ? (
-            <button className="primary" type="button" onClick={() => setAdding(!adding)}>
-              {adding ? 'Close new quotation' : 'Add quotation'}
+            <button className="primary" type="button" onClick={() => setAdding(true)}>
+              Add quotation
             </button>
           ) : null}
           {adding ? (
-            <DetailCard title="Additional quotation">
+            <LiveDialog title="Prepare a clear quote." onClose={() => setAdding(false)}>
+              <p>Itemise parts and labour. The customer must approve before work begins.</p>
               <QuoteForm
                 bookingId={job.id}
                 run={run}
@@ -578,7 +556,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
                   refresh();
                 }}
               />
-            </DetailCard>
+            </LiveDialog>
           ) : null}
           {!job.quotes.length ? (
             <DetailCard title="Quotations">
@@ -667,9 +645,10 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
               {mechanic &&
               !quote.payment &&
               ['DRAFT', 'SENT', 'CHANGES_REQUESTED'].includes(quote.status) ? (
-                <details className="fold">
-                  <summary>Edit quotation</summary>
-                  <QuoteForm bookingId={job.id} quote={quote} run={run} done={refresh} />
+                <div className="button-row">
+                  <button className="secondary" type="button" onClick={() => setEditingQuote(quote)}>
+                    Edit quotation
+                  </button>
                   <button
                     className="secondary"
                     onClick={() =>
@@ -684,7 +663,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
                   >
                     Withdraw quotation
                   </button>
-                </details>
+                </div>
               ) : null}
               {mechanic &&
               job.status === 'IN_PROGRESS' &&
@@ -708,25 +687,30 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
             </DetailCard>
           ))}
           {invoice ? (
-            <LiveDialog
-              title={`Invoice · Quotation ${invoice.quoteNumber}`}
-              onClose={() => setInvoice(null)}
-            >
+            <LiveDialog title="Repair invoice." heading={false} onClose={() => setInvoice(null)}>
+              <span className="chip">PAYMENT PREVIEW</span>
+              <h2>Repair invoice.</h2>
               <p>
-                {invoice.issuer} · {invoice.vehicle}
-              </p>
-              <p>
-                {invoice.demo ? 'Test payment — no real money transferred' : 'Payment confirmed'}
-              </p>
-              <p>
-                {money(invoice.payment.amountCents)} ·{' '}
-                {new Date(invoice.payment.paidAt).toLocaleString()}
+                {invoice.issuer}
+                <br />
+                {invoice.vehicle}
               </p>
               {invoice.lines.map((line: any) => (
-                <p key={line.id}>
-                  {line.description} · {money(line.quantity * line.unitPriceCents)}
-                </p>
+                <div className="invoice-line" key={line.id}>
+                  <span>{line.description}</span>
+                  <b>{money(line.quantity * line.unitPriceCents)}</b>
+                </div>
               ))}
+              <div className="invoice-line total">
+                <span>Total</span>
+                <b>{money(invoice.payment.amountCents)}</b>
+                <span>Quotation {invoice.quoteNumber}</span>
+              </div>
+              <div className="notice">
+                {invoice.demo
+                  ? 'No real payment processor is connected. No card details are requested and no money is transferred.'
+                  : 'Payment confirmed. No further charge is taken from this screen.'}
+              </div>
               <button className="secondary" onClick={() => setInvoice(null)}>
                 Close invoice
               </button>
@@ -735,34 +719,112 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
         </div>
       </DetailPanel>
       {checkout ? (
-        <LiveDialog
-          title={`Review payment · Quotation ${checkout.number}`}
-          onClose={() => setCheckout(null)}
-        >
-          <div className="quote-table">
-            {checkout.lines
-              .filter((l: any) => l.selected)
-              .map((l: any) => (
-                <div className="quote-line" key={l.id}>
-                  <span>{l.description}</span>
-                  <b>{money(l.quantity * l.unitPriceCents)}</b>
-                </div>
-              ))}
-          </div>
-          <p>
-            Selected total{' '}
-            <strong>
+        <LiveDialog title="Review payment." heading={false} onClose={() => setCheckout(null)}>
+          <span className="chip">PAYMENT PREVIEW</span>
+          <h2>Review payment.</h2>
+          <p>Quotation {checkout.number}</p>
+          {checkout.lines
+            .filter((line: any) => line.selected)
+            .map((line: any) => (
+              <div className="invoice-line" key={line.id}>
+                <span>{line.description}</span>
+                <b>{money(line.quantity * line.unitPriceCents)}</b>
+              </div>
+            ))}
+          <div className="invoice-line total">
+            <span>Total</span>
+            <b>
               {money(
                 checkout.lines
-                  .filter((l: any) => l.selected)
-                  .reduce((sum: number, l: any) => sum + l.quantity * l.unitPriceCents, 0),
+                  .filter((line: any) => line.selected)
+                  .reduce((sum: number, line: any) => sum + line.quantity * line.unitPriceCents, 0),
               )}
-            </strong>
-          </p>
-          <p>Online payments are not available yet. No payment has been taken.</p>
-          <button className="secondary" onClick={() => setCheckout(null)}>
-            Back to quotation
+            </b>
+          </div>
+          <div className="notice">
+            Online payments are not available yet. No card details are requested and no money is
+            transferred.
+          </div>
+          <button className="primary full" type="button" onClick={() => setCheckout(null)}>
+            Close
           </button>
+        </LiveDialog>
+      ) : null}
+      {editingQuote ? (
+        <LiveDialog title="Prepare a clear quote." onClose={() => setEditingQuote(null)}>
+          <p>Itemise parts and labour. The customer must approve before work begins.</p>
+          <QuoteForm
+            bookingId={job.id}
+            quote={editingQuote}
+            run={run}
+            done={() => {
+              setEditingQuote(null);
+              refresh();
+            }}
+          />
+        </LiveDialog>
+      ) : null}
+      {confirm === 'cancel' ? (
+        <LiveDialog title="Cancel this request?" heading={false} onClose={() => setConfirm('')}>
+          <h2>Cancel this request?</h2>
+          <p>
+            {job.professional.name}
+            <br />
+            {new Date(job.appointmentAt).toLocaleString()}
+          </p>
+          <button
+            className="primary full"
+            onClick={() => {
+              setConfirm('');
+              void action('cancel');
+            }}
+          >
+            Confirm cancellation
+          </button>
+          <button className="text-link back" onClick={() => setConfirm('')}>
+            Keep appointment
+          </button>
+        </LiveDialog>
+      ) : null}
+      {confirm === 'reject' ? (
+        <LiveDialog title="Reject this request?" heading={false} onClose={() => setConfirm('')}>
+          <h2>Reject this request?</h2>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const reason = String(new FormData(event.currentTarget).get('reason'));
+              setConfirm('');
+              void action('reject', { reason });
+            }}
+          >
+            <label>
+              Reason
+              <textarea name="reason" required minLength={3} maxLength={240} />
+            </label>
+            <button className="primary full">Reject request</button>
+          </form>
+          <button className="text-link back" type="button" onClick={() => setConfirm('')}>
+            Keep request
+          </button>
+        </LiveDialog>
+      ) : null}
+      {confirm === 'complete' ? (
+        <LiveDialog title="Mark work complete" heading={false} onClose={() => setConfirm('')}>
+          <h2>Mark this work complete.</h2>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const completionNotes = String(new FormData(event.currentTarget).get('completionNotes'));
+              setConfirm('');
+              void action('complete', { completionNotes });
+            }}
+          >
+            <label>
+              Completed repairs
+              <textarea name="completionNotes" minLength={3} maxLength={4000} required />
+            </label>
+            <button className="primary full">Mark work finished</button>
+          </form>
         </LiveDialog>
       ) : null}
       {user.role === 'ADMIN' ? (

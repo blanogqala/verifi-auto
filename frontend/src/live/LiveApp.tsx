@@ -17,6 +17,7 @@ import { LiveDirectory } from './LiveDirectory';
 import { LiveBooking } from './LiveBooking';
 import { LiveProfile } from './LiveProfile';
 import { LiveAdmin } from './LiveAdmin';
+import { BookingDialog } from '../components/booking/BookingDialog';
 import { WorkspaceSidebar } from '../layouts/WorkspaceSidebar';
 import { WorkspaceTopbar } from '../layouts/WorkspaceTopbar';
 import { PublicHeader } from '../layouts/PublicHeader';
@@ -38,7 +39,8 @@ export default function LiveApp() {
     [side, setSide] = useState(false);
   const [drawer, setDrawer] = useState(window.matchMedia('(max-width: 1100px)').matches),
     [connected, setConnected] = useState(false),
-    [busy, setBusy] = useState(0);
+    [busy, setBusy] = useState(0),
+    [join, setJoin] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const [city, setCity] = useState('Cape Town'),
     [service, setService] = useState(''),
@@ -277,7 +279,7 @@ export default function LiveApp() {
             />
           </div>
         )}
-        <PublicFooter go={go} anchor={anchor} setModal={() => go('register')} />
+        <PublicFooter go={go} anchor={anchor} setModal={() => setJoin(true)} />
       </>
     );
   else if (user) {
@@ -306,30 +308,34 @@ export default function LiveApp() {
     else if (!user.verifiedAt)
       workspace = (
         <DetailCard title="Verify your email">
-          <p>Check your inbox to activate bookings and your professional application.</p>
-          <button
-            className="primary"
-            onClick={() =>
-              run(
-                () => api('/auth/resend-verification', 'POST', {}),
-                'Verification email requested.',
-              )
-            }
-          >
-            Resend verification email
-          </button>
-          <button
-            className="secondary"
-            onClick={() =>
-              run(async () => {
-                const result = await api('/auth/session');
-                setCsrf(result.csrf);
-                setUser(result.user);
-              }, 'Account refreshed.')
-            }
-          >
-            I have verified my email
-          </button>
+          <p className="notice">
+            Check your inbox to activate bookings and your professional application.
+          </p>
+          <div className="button-row">
+            <button
+              className="primary"
+              onClick={() =>
+                run(
+                  () => api('/auth/resend-verification', 'POST', {}),
+                  'Verification email requested.',
+                )
+              }
+            >
+              Resend verification email
+            </button>
+            <button
+              className="secondary"
+              onClick={() =>
+                run(async () => {
+                  const result = await api('/auth/session');
+                  setCsrf(result.csrf);
+                  setUser(result.user);
+                }, 'Account refreshed.')
+              }
+            >
+              I have verified my email
+            </button>
+          </div>
         </DetailCard>
       );
     else if (base === 'find')
@@ -517,16 +523,24 @@ export default function LiveApp() {
   return (
     <>
       {content}
+      {join ? (
+        <BookingDialog
+          modal="join"
+          manageFocus
+          step={0}
+          go={go}
+          anchor={anchor}
+          setModal={() => setJoin(false)}
+          onJoin={() => go('register')}
+        />
+      ) : null}
       {busy > 0 ? (
         <div className="live-saving" role="status">
           Saving securely…
         </div>
       ) : null}
       {notice ? (
-        <div
-          className={'live-toast' + (notice.error ? ' error' : '')}
-          role={notice.error ? 'alert' : 'status'}
-        >
+        <div className={'toast' + (notice.error ? ' error' : '')} role={notice.error ? 'alert' : 'status'}>
           <span>{notice.message}</span>
           <button type="button" aria-label="Dismiss notification" onClick={() => setNotice(null)}>
             ×

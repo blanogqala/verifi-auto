@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { MailCheck } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Car, MailCheck, ShieldCheck, Wrench } from 'lucide-react';
 import { api, setCsrf } from './api';
 import { Card } from '../components/ui/Card';
+
 export function LiveAuth({ page, go, onSession, run }: any) {
   const mode = page.split('?')[0];
   const [role, setRole] = useState('CUSTOMER');
@@ -10,6 +11,7 @@ export function LiveAuth({ page, go, onSession, run }: any) {
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [verificationError, setVerificationError] = useState('');
   const verificationRequest = useRef<Promise<unknown> | null>(null);
+  const pendingBooking = Boolean(sessionStorage.getItem('verifi-pending-professional'));
   useEffect(() => {
     if (mode !== 'verify') return;
     let active = true;
@@ -24,7 +26,6 @@ export function LiveAuth({ page, go, onSession, run }: any) {
     verificationRequest.current
       .then(() => {
         if (!active) return;
-        // Replace the token URL so Back does not attempt to use the same link again.
         window.history.replaceState(null, '', '#login?verified=1');
         go('login?verified=1');
       })
@@ -44,25 +45,50 @@ export function LiveAuth({ page, go, onSession, run }: any) {
     mode === 'register'
       ? 'Start your journey.'
       : mode === 'forgot'
-        ? 'Reset your password.'
+        ? 'Let’s get you back in.'
         : mode === 'reset'
           ? 'Choose a new password.'
           : mode === 'verify'
             ? 'Verify your email.'
             : 'Welcome back.';
+  const story =
+    mode === 'register'
+      ? {
+          kicker: 'Your next chapter.',
+          emphasis: 'Driven by trust.',
+          text: 'Find trusted care for your car, or build your professional presence. Your journey starts here.',
+        }
+      : mode === 'forgot' || mode === 'reset'
+        ? {
+            kicker: 'A fresh start.',
+            emphasis: 'Back on the road.',
+            text: 'One simple step towards reconnecting with your vehicle’s story.',
+          }
+        : {
+            kicker: 'Good care.',
+            emphasis: 'For every journey.',
+            text: 'Your professionals, appointments and vehicle history. Together in one place.',
+          };
   return (
     <main className="auth-page">
       <div className="auth-backdrop" aria-hidden="true">
         <img className="auth-visual-image" src="/images/auth-workshop.webp" alt="" />
       </div>
-      <aside className="auth-story auth-visual">
+      <aside className="auth-story auth-visual" aria-label="Verifi Auto">
         <div className="auth-visual-copy">
+          <span className="eyebrow">VERIFIED PROFESSIONALS. TRUSTED REPAIRS.</span>
           <h1>
-            Good care.
+            {story.kicker}
             <br />
-            <em>For every journey.</em>
+            <em>{story.emphasis}</em>
           </h1>
-          <p>Your professionals, appointments and vehicle history. Together in one place.</p>
+          <p>{story.text}</p>
+        </div>
+        <div className="auth-visual-caption">
+          <ShieldCheck size={22} />
+          <span>
+            A clearer standard of care.<small>Connected journeys. Lasting confidence.</small>
+          </span>
         </div>
       </aside>
       <div className="auth-form-side">
@@ -75,10 +101,11 @@ export function LiveAuth({ page, go, onSession, run }: any) {
           >
             <img src="/logo.png" alt="" />
             <span>
-              verifi<span className="auth-brand-auto">auto</span>.
+              verifi<span className="auth-brand-auto">auto</span>
+              <i>.</i>
             </span>
           </button>
-          <h1>{registeredEmail ? 'Check your email.' : title}</h1>
+          <h2>{registeredEmail ? 'Check your email.' : title}</h2>
           {verified ? (
             <p className="auth-confirmation" role="status">
               Your email is verified. Sign in to continue.
@@ -101,7 +128,7 @@ export function LiveAuth({ page, go, onSession, run }: any) {
                 registered? Sign in to continue or request another verification email.
               </p>
               <button type="button" className="primary full" onClick={() => go('login')}>
-                Go to sign in
+                Go to sign in <ArrowRight size={18} />
               </button>
               <button
                 type="button"
@@ -127,7 +154,7 @@ export function LiveAuth({ page, go, onSession, run }: any) {
                     verification email.
                   </p>
                   <button type="button" className="primary full" onClick={() => go('login')}>
-                    Go to sign in
+                    Go to sign in <ArrowRight size={18} />
                   </button>
                 </>
               ) : (
@@ -138,6 +165,17 @@ export function LiveAuth({ page, go, onSession, run }: any) {
             </div>
           ) : (
             <>
+              <p>
+                {pendingBooking && mode === 'login'
+                  ? 'Sign in as a customer to continue your booking.'
+                  : mode === 'register'
+                    ? 'Choose how you’ll use Verifi Auto.'
+                    : mode === 'forgot'
+                      ? 'Enter your email and we’ll send a reset link.'
+                      : mode === 'reset'
+                        ? 'Choose a new password for your account.'
+                        : 'Sign in to your Verifi Auto account.'}
+              </p>
               {sent ? <p role="status">{sent}</p> : null}
               <form
                 onSubmit={async (event) => {
@@ -175,7 +213,8 @@ export function LiveAuth({ page, go, onSession, run }: any) {
                         aria-pressed={role === 'CUSTOMER'}
                         onClick={() => setRole('CUSTOMER')}
                       >
-                        Customer
+                        <Car />
+                        <span>Customer</span>
                       </button>
                       <button
                         type="button"
@@ -183,7 +222,8 @@ export function LiveAuth({ page, go, onSession, run }: any) {
                         aria-pressed={role === 'MECHANIC'}
                         onClick={() => setRole('MECHANIC')}
                       >
-                        Mechanic / workshop
+                        <Wrench />
+                        <span>Mechanic</span>
                       </button>
                     </div>
                     <label>
@@ -230,6 +270,14 @@ export function LiveAuth({ page, go, onSession, run }: any) {
                     ) : null}
                   </label>
                 ) : null}
+                {mode === 'login' ? (
+                  <div className="auth-sub">
+                    <span />
+                    <button type="button" className="text-link" onClick={() => go('forgot')}>
+                      Forgot password?
+                    </button>
+                  </div>
+                ) : null}
                 <button className="primary full" disabled={busy}>
                   {busy
                     ? 'Please wait…'
@@ -237,28 +285,30 @@ export function LiveAuth({ page, go, onSession, run }: any) {
                       ? 'Sign in'
                       : mode === 'register'
                         ? 'Create account'
-                        : mode === 'verify'
-                          ? 'Verify email'
+                        : mode === 'forgot'
+                          ? 'Send reset link'
                           : 'Continue'}
+                  {busy ? null : <ArrowRight size={18} />}
                 </button>
               </form>
-              <div className="button-row">
-                <button
-                  type="button"
-                  className="text-link"
-                  onClick={() => go(mode === 'login' ? 'register' : 'login')}
-                >
-                  {mode === 'login' ? 'Create an account' : 'Back to sign in'}
-                </button>
+              <div className="auth-switch">
                 {mode === 'login' ? (
-                  <button type="button" className="text-link" onClick={() => go('forgot')}>
-                    Forgot password?
-                  </button>
-                ) : null}
+                  <>
+                    New to Verifi? <button onClick={() => go('register')}>Create an account</button>
+                  </>
+                ) : (
+                  <button onClick={() => go('login')}>Back to sign in</button>
+                )}
               </div>
+              <button className="text-link" type="button" onClick={() => go('find')}>
+                Browse professionals first <ArrowUpRight size={16} />
+              </button>
             </>
           )}
         </Card>
+        <button type="button" className="auth-home-link" onClick={() => go('home')}>
+          Back to home <ArrowUpRight size={15} />
+        </button>
       </div>
     </main>
   );

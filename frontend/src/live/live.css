@@ -29,41 +29,35 @@
   font-size: 1.15rem;
 }
 .live-quote-line,
-.live-filters {
+.modal .quote-editor-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(72px, 0.7fr) minmax(0, 1fr) auto;
   gap: 0.75rem;
-  margin-block: 1rem;
+  align-items: end;
+  margin-block: 0.75rem;
 }
 .live-filters {
+  display: grid;
   grid-template-columns: 2fr 1fr;
+  gap: 0.75rem;
+  margin-block: 1rem;
 }
 .live-workspace input,
 .live-workspace textarea,
 .live-workspace select {
   font-size: max(16px, 1rem);
 }
-.live-toast {
-  position: fixed;
-  bottom: max(1rem, env(safe-area-inset-bottom));
-  right: 1rem;
-  z-index: 300;
+.live-toast,
+.toast.error {
+  border-color: #ffadb8;
+}
+.toast {
   display: flex;
   gap: 1rem;
   align-items: center;
-  max-width: min(480px, calc(100vw - 2rem));
-  padding: 1rem 1.25rem;
-  border: 1px solid #b790ed;
-  border-radius: 1rem;
-  background: #302047;
-  color: white;
-  box-shadow: 0 12px 40px #0004;
+  z-index: 300;
 }
-.live-toast.error {
-  border-color: #ffadb8;
-  background: #49232e;
-}
-.live-toast button {
+.toast button {
   color: inherit;
   background: transparent;
   font-size: 1.5rem;
@@ -77,8 +71,8 @@
   right: 0;
   z-index: 250;
   text-align: center;
-  background: #7541b9;
-  color: white;
+  background: var(--purple);
+  color: #140b22;
   padding: 0.35rem;
 }
 .live-connection {
@@ -108,8 +102,9 @@
   object-fit: contain;
 }
 @media (max-width: 749px) {
-  .live-quote-line,
-  .live-filters {
+  .live-filters,
+  .modal .quote-editor-row,
+  .live-quote-line {
     grid-template-columns: 1fr;
   }
 }
@@ -196,17 +191,6 @@
 .live-showroom-stage .vehicle-fallback {
   min-height: 360px;
 }
-.live-vehicle-dialog {
-  margin: auto;
-  color: var(--ink);
-}
-.live-vehicle-dialog::backdrop {
-  background: #130d20aa;
-  backdrop-filter: blur(4px);
-}
-.live-vehicle-dialog .form-grid > button {
-  grid-column: 1 / -1;
-}
 .live-list-tabs {
   margin-bottom: 1.25rem;
 }
@@ -217,9 +201,6 @@
   .live-showroom-stage,
   .live-showroom-stage .vehicle-fallback {
     min-height: 280px;
-  }
-  .live-vehicle-dialog {
-    width: calc(100% - 2rem);
   }
 }
 

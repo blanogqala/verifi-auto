@@ -280,10 +280,11 @@ export function LiveProfile({
                   PDF, JPEG or PNG; up to 5 MB each.
                 </p>
                 {docs?.map((doc: any) => (
-                  <div className="button-row" key={doc.id}>
-                    <span>
-                      {doc.kind} · {doc.name}
-                    </span>
+                  <div className="document-row" key={doc.id}>
+                    <div>
+                      <b>{doc.kind}</b>
+                      <small>{doc.name}</small>
+                    </div>
                     <button
                       className="secondary"
                       onClick={() =>

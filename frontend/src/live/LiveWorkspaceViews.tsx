@@ -7,6 +7,7 @@ import { JobsPage } from '../pages/shared/JobsPage';
 import { JobCard } from '../components/jobs/JobCard';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
+import { StatusBadge } from '../components/ui/StatusBadge';
 import { MetricCard } from '../components/ui/MetricCard';
 import { DetailTabs, DetailPanel } from '../components/ui/DetailTabs';
 import { RoadLoader } from '../components/ui/RoadLoader';
@@ -347,13 +348,15 @@ export function LivePayments({ payments, error, bookings, go, role }: any) {
                   </small>
                 </div>
                 <strong>{money(amount)}</strong>
+                <StatusBadge value="Awaiting payment" />
+                <button className="text-link" type="button" onClick={() => go(`dashboard/bookings/${job.id}`)}>
+                  View booking
+                </button>
                 <button
                   className="primary"
-                  onClick={() =>
-                    go(`dashboard/${role === 'customer' ? 'bookings' : 'jobs'}/${job.id}`)
-                  }
+                  onClick={() => go(`dashboard/bookings/${job.id}`)}
                 >
-                  {role === 'customer' ? 'Review & pay' : 'View quotation'}
+                  Review & pay
                 </button>
               </div>
             ))

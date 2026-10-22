@@ -36,6 +36,7 @@ export function WorkspaceDialog({
   setQuoteNotes,
   setReviewNote,
   update,
+  liveActions,
 }: any) {
   return (
     <div className="modal-backdrop" onClick={() => setDialog(null)}>
@@ -51,7 +52,7 @@ export function WorkspaceDialog({
         </button>
         {dialog.kind === 'vehicle' && (
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
               const vehicle = {
@@ -72,6 +73,11 @@ export function WorkspaceDialog({
                 paintColor: f.get('paintColor'),
                 paintColorName: f.get('paintColorName'),
               };
+              if (liveActions?.saveVehicle) {
+                const saved = await liveActions.saveVehicle(vehicle);
+                if (saved !== false) setDialog(null);
+                return;
+              }
               try {
                 const saved = commitUpdate(
                   update,
@@ -151,7 +157,7 @@ export function WorkspaceDialog({
                 name="registration"
                 required
                 autoComplete="off"
-                defaultValue={dialog.vehicle?.registration || 'DEMO 002'}
+                defaultValue={dialog.vehicle?.registration || (liveActions ? '' : 'DEMO 002')}
               />
             </label>
             <div className="form-row">
@@ -523,14 +529,21 @@ export function WorkspaceDialog({
               {dialog.vehicle.year} {dialog.vehicle.make} {dialog.vehicle.model} · {dialog.vehicle.registration}
             </p>
             <p className="muted">
-              {dialog.linked
-                ? 'Bookings and service records stay in this browser. The vehicle leaves the showroom.'
-                : 'This vehicle has no linked bookings or service records.'}
+              {liveActions
+                ? 'Bookings and service records are kept. The vehicle leaves the showroom.'
+                : dialog.linked
+                  ? 'Bookings and service records stay in this browser. The vehicle leaves the showroom.'
+                  : 'This vehicle has no linked bookings or service records.'}
             </p>
             <button
               className="primary full"
               type="button"
-              onClick={() => {
+              onClick={async () => {
+                if (liveActions?.archiveVehicle) {
+                  const saved = await liveActions.archiveVehicle(dialog.vehicle);
+                  if (saved !== false) setDialog(null);
+                  return;
+                }
                 const saved = commitUpdate(
                   update,
                   (current: any) => removeOrArchiveVehicle(current, dialog.vehicle.id),

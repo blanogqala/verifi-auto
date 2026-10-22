@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { MapPin, ShieldCheck, ArrowRight, ArrowUpRight } from 'lucide-react';
+import { MapPin, ShieldCheck, ArrowRight, ArrowUpRight, Star } from 'lucide-react';
 import { ProfessionalsPage } from '../pages/public/ProfessionalsPage';
+import { BookingDialog } from '../components/booking/BookingDialog';
 import { Card } from '../components/ui/Card';
 import { RatingLine } from '../components/professionals/RatingLine';
 import { DetailBack, DetailCard } from '../components/ui/DetailChrome';
@@ -13,7 +14,6 @@ import {
 } from '../features/professionals/geo';
 import { initialsFromName } from '../features/account/customerIdentity';
 import { useResource } from './useResource';
-import { LiveDialog } from './LiveDialog';
 import { api } from './api';
 
 export function directoryCard(pro: any, origin: any) {
@@ -45,7 +45,12 @@ export function directoryCard(pro: any, origin: any) {
 export function LiveDirectory({ professionalId, user, revision, run, go, embedded = false }: any) {
   const [discovery, setDiscovery] = useState<DiscoverySession>(defaultDiscovery);
   const [booking, setBooking] = useState<any>(null),
-    [busy, setBusy] = useState(false);
+    [addedVehicles, setAddedVehicles] = useState<any[]>([]);
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('09:00');
+  const [vehicleId, setVehicleId] = useState('');
+  const [description, setDescription] = useState('');
+  const [step, setStep] = useState(0);
   const [cursor, setCursor] = useState(''),
     [previous, setPrevious] = useState<any[]>([]);
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
@@ -72,7 +77,12 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
       return;
     }
     if (user.role !== 'CUSTOMER') return;
-    setBooking(pro);
+    setBooking({ ...pro, area: pro.area || pro.place || pro.city || '' });
+    setStep(0);
+    setDate('');
+    setTime('09:00');
+    setDescription('');
+    setVehicleId('');
     setRequestId(crypto.randomUUID());
   };
   useEffect(() => {
@@ -109,9 +119,9 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
               <section className="pro-banner">
                 <div className="pro-banner-art">
                   {data.photo ? (
-                    <img src={data.photo} alt={data.name} />
+                    <img src={data.photo} alt="" />
                   ) : (
-                    initialsFromName(data.name)
+                    <span aria-hidden="true">{initialsFromName(data.name)}</span>
                   )}
                 </div>
                 <div>
@@ -123,6 +133,9 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
                     <ShieldCheck size={16} /> Credentials reviewed by Verifi Auto
                   </p>
                   <RatingLine summary={directoryCard(data, discovery.origin).rating} />
+                  {directoryCard(data, discovery.origin).distanceLabel ? (
+                    <p>{directoryCard(data, discovery.origin).distanceLabel}</p>
+                  ) : null}
                   <p>Charges are confirmed in your quotation before approval.</p>
                   <div className="button-row">
                     {canBook ? (
@@ -145,13 +158,13 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
               </section>
               <div className="pro-profile-content">
                 <div className="detail-main">
-                  <Card className="pro-information dash-panel">
+                  <Card as="section" className="pro-information dash-panel">
                     <section className="pro-information-section">
                       <h2>About</h2>
                       {data.about.length > 320 ? (
                         <>
                           <p>{data.about.slice(0, 320)}…</p>
-                          <details className="fold">
+                          <details className="pro-about-more">
                             <summary>Read full introduction</summary>
                             <p>{data.about}</p>
                           </details>
@@ -176,6 +189,11 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
                             <a href={'tel:' + data.phone}>{data.phone}</a>
                           </li>
                         ) : null}
+                        {data.email ? (
+                          <li>
+                            <a href={'mailto:' + data.email}>{data.email}</a>
+                          </li>
+                        ) : null}
                         {data.address ? <li>{data.address}</li> : null}
                         {data.website ? (
                           <li>
@@ -185,7 +203,7 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
                           </li>
                         ) : null}
                       </ul>
-                      {!data.phone && !data.website && !data.address ? (
+                      {!data.phone && !data.website && !data.address && !data.email ? (
                         <p>No public contact details recorded.</p>
                       ) : null}
                     </section>
@@ -195,12 +213,14 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
                       data.reviews.map((review: any) => (
                         <article className="review-card" key={review.id}>
                           <p>
+                            <Star size={16} aria-hidden="true" />{' '}
+                            <span className="visually-hidden">Rating</span>
                             {'★'.repeat(review.rating)}
                             {'☆'.repeat(5 - review.rating)} · {review.customerName}
                           </p>
                           <p className="muted">{new Date(review.createdAt).toLocaleDateString()}</p>
                           {review.body.length > 180 ? (
-                            <details className="fold">
+                            <details className="pro-about-more">
                               <summary>Read full review</summary>
                               <p>{review.body}</p>
                             </details>
@@ -256,73 +276,66 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
         </ProfessionalsPage>
       )}
       {booking ? (
-        <LiveDialog
-          title={`Book an assessment with ${booking.name}`}
-          onClose={() => setBooking(null)}
-        >
-          <p>
-            Choose your vehicle and preferred appointment. The professional will confirm
-            availability.
-          </p>
-          <form
-            className="settings-form"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (busy) return;
-              setBusy(true);
-              const values = Object.fromEntries(new FormData(event.currentTarget));
-              await run(async () => {
-                const job = await api('/bookings', 'POST', {
-                  ...values,
-                  professionalId: booking.id,
-                  appointmentAt: new Date(String(values.appointmentAt)).toISOString(),
-                  clientRequestId: requestId,
-                });
-                setBooking(null);
-                go('dashboard/bookings/' + job.id);
-              }, 'Booking request sent.');
-              setBusy(false);
-            }}
-          >
-            {vehicleError ? (
-              <p role="alert">{vehicleError}</p>
-            ) : !vehicles ? (
-              <RoadLoader label="Loading your vehicles…" />
-            ) : null}
-            <label>
-              Vehicle
-              <select name="vehicleId" required>
-                <option value="">Choose your car</option>
-                {vehicles?.map((v: any) => (
-                  <option key={v.id} value={v.id}>
-                    {v.year} {v.make} {v.model} · {v.registration}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {vehicles?.length === 0 ? (
-              <button type="button" className="text-link" onClick={() => go('dashboard/garage')}>
-                Add a vehicle first
-              </button>
-            ) : null}
-            <label>
-              Preferred appointment
-              <input name="appointmentAt" type="datetime-local" required />
-            </label>
-            <label>
-              What needs attention?
-              <textarea name="description" minLength={3} maxLength={4000} required />
-            </label>
-            <div className="button-row">
-              <button className="primary" disabled={busy || !vehicles?.length}>
-                {busy ? 'Sending…' : 'Request assessment'}
-              </button>
-              <button type="button" className="secondary" onClick={() => setBooking(null)}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        </LiveDialog>
+        <BookingDialog
+          connected
+          manageFocus
+          modal={booking}
+          step={step}
+          setStep={setStep}
+          date={date}
+          setDate={setDate}
+          time={time}
+          setTime={setTime}
+          vehicleId={vehicleId}
+          setVehicleId={setVehicleId}
+          description={description}
+          setDescription={setDescription}
+          requestId={requestId}
+          setRequestId={setRequestId}
+          vehicles={[...(vehicles || []), ...addedVehicles]}
+          vehiclesLoading={Boolean(!vehicles && !vehicleError)}
+          go={go}
+          setModal={(value: any) => {
+            if (!value) {
+              setBooking(null);
+              setStep(0);
+            }
+          }}
+          onLiveBook={async ({
+            vehicleId: chosenVehicle,
+            date: chosenDate,
+            time: chosenTime,
+            description: chosenDescription,
+          }: any) => {
+            const appointmentAt = new Date(`${chosenDate}T${chosenTime}:00`).toISOString();
+            if (Number.isNaN(Date.parse(appointmentAt)))
+              throw new Error('Choose a valid date and time.');
+            await api('/bookings', 'POST', {
+              vehicleId: chosenVehicle,
+              professionalId: booking.id,
+              appointmentAt,
+              description: chosenDescription,
+              clientRequestId: requestId,
+            });
+          }}
+          onLiveVehicle={async (fields: any) => {
+            const paint = String(fields.paintColor || '');
+            const created = await api('/vehicles', 'POST', {
+              make: String(fields.make || ''),
+              model: String(fields.model || ''),
+              year: Number(fields.year),
+              mileage: Number(fields.mileage || 0),
+              registration: String(fields.registration || ''),
+              variant: String(fields.variant || ''),
+              paintColorName: String(fields.paintColorName || ''),
+              paintColor: /^#[0-9a-fA-F]{6}$/.test(paint) ? paint : '',
+              licenceDiscExpiry: null,
+              nextServiceDate: null,
+            });
+            setAddedVehicles((current) => [...current, created]);
+            return created.id;
+          }}
+        />
       ) : null}
     </>
   );
