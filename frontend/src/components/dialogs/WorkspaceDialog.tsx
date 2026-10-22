@@ -1,4 +1,7 @@
+import { useState } from 'react';
+import { useModalBehaviour } from './useModalBehaviour';
 import { quoteReviewToken } from '../../features/jobs/quotations';
+import { calendarDateInput } from '../../features/garage/vehicleDates';
 import { QuoteReview } from '../jobs/QuoteReview';
 import { PaintColourField } from '../garage/PaintColourField';
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
@@ -38,9 +41,12 @@ export function WorkspaceDialog({
   update,
   liveActions,
 }: any) {
+  const [saving, setSaving] = useState(false);
+  const modalRef = useModalBehaviour(() => setDialog(null));
   return (
     <div className="modal-backdrop" onClick={() => setDialog(null)}>
       <section
+        ref={modalRef}
         className="modal workspace-dialog"
         role="dialog"
         aria-modal="true"
@@ -74,8 +80,14 @@ export function WorkspaceDialog({
                 paintColorName: f.get('paintColorName'),
               };
               if (liveActions?.saveVehicle) {
-                const saved = await liveActions.saveVehicle(vehicle);
-                if (saved !== false) setDialog(null);
+                if (saving) return;
+                setSaving(true);
+                try {
+                  const saved = await liveActions.saveVehicle(vehicle);
+                  if (saved !== false) setDialog(null);
+                } finally {
+                  setSaving(false);
+                }
                 return;
               }
               try {
@@ -163,11 +175,11 @@ export function WorkspaceDialog({
             <div className="form-row">
               <label>
                 Licence disc expiry
-                <input name="licenceDiscExpiry" type="date" defaultValue={dialog.vehicle?.licenceDiscExpiry || ''} />
+                <input name="licenceDiscExpiry" type="date" defaultValue={calendarDateInput(dialog.vehicle?.licenceDiscExpiry)} />
               </label>
               <label>
                 Who recorded the licence date
-                <select name="licenceDiscSource" defaultValue={dialog.vehicle?.licenceDiscSource || 'owner'}>
+                <select name="licenceDiscSource" defaultValue={dialog.vehicle?.licenceDiscSource || 'owner'} disabled={Boolean(liveActions)}>
                   <option value="owner">Entered by the owner</option>
                   <option value="mechanic">Recorded by a mechanic</option>
                 </select>
@@ -176,7 +188,7 @@ export function WorkspaceDialog({
             <div className="form-row">
               <label>
                 Next service date
-                <input name="nextServiceDate" type="date" defaultValue={dialog.vehicle?.nextServiceDate || ''} />
+                <input name="nextServiceDate" type="date" defaultValue={calendarDateInput(dialog.vehicle?.nextServiceDate)} />
               </label>
               <label>
                 Next service mileage
@@ -190,14 +202,20 @@ export function WorkspaceDialog({
             </div>
             <label>
               Who recorded the next service
-              <select name="nextServiceSource" defaultValue={dialog.vehicle?.nextServiceSource || 'owner'}>
+              <select name="nextServiceSource" defaultValue={dialog.vehicle?.nextServiceSource || 'owner'} disabled={Boolean(liveActions)}>
                 <option value="owner">Entered by the owner</option>
                 <option value="mechanic">Recorded by a mechanic</option>
               </select>
             </label>
             <p className="muted">Leave a date blank when it has not been recorded. No service interval is assumed.</p>
-            <button className="primary full">
-              Save vehicle <Check size={17} />
+            {liveActions ? (
+              <p className="muted">
+                Changing a date or the next-service mileage marks that reminder as entered by you. A
+                mechanic label is kept only when a professional recorded it.
+              </p>
+            ) : null}
+            <button className="primary full" disabled={saving}>
+              {saving ? 'Saving vehicle' : 'Save vehicle'} <Check size={17} />
             </button>
           </form>
         )}

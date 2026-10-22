@@ -1,5 +1,6 @@
 import { PaintColourField } from '../garage/PaintColourField';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useModalBehaviour } from '../dialogs/useModalBehaviour';
 import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
 import { commitUpdate } from '../../features/demo/commitUpdate';
@@ -31,7 +32,6 @@ export function BookingDialog({
   vehicles,
   vehiclesLoading = false,
   connected = false,
-  manageFocus = false,
   onLiveBook,
   onLiveVehicle,
   onJoin,
@@ -47,41 +47,12 @@ export function BookingDialog({
     setAdding(false);
   }
 
-  useEffect(() => {
-    if (!manageFocus) return;
-    document.documentElement.classList.add('scroll-lock');
-    const root = document.querySelector('.modal-backdrop .modal');
-    const focusables = () =>
-      Array.from(
-        root?.querySelectorAll<HTMLElement>(
-          'button,a[href],input,select,textarea,summary,[tabindex="0"]',
-        ) || [],
-      ).filter((element) => !element.hasAttribute('disabled'));
-    focusables()[0]?.focus();
-    function key(event: KeyboardEvent) {
-      if (event.key === 'Escape') close();
-      if (event.key !== 'Tab') return;
-      const items = focusables();
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last?.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first?.focus();
-      }
-    }
-    document.addEventListener('keydown', key);
-    return () => {
-      document.documentElement.classList.remove('scroll-lock');
-      document.removeEventListener('keydown', key);
-    };
-  }, [manageFocus, modal, step, adding]);
+  const modalRef = useModalBehaviour(close);
 
   return (
     <div className="modal-backdrop" onClick={close}>
       <section
+        ref={modalRef}
         role="dialog"
         aria-modal="true"
         aria-label={modal === 'join' ? 'Join Verifi' : editingJob ? 'Edit request' : 'Book an assessment'}

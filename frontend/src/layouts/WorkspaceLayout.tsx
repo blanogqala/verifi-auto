@@ -186,6 +186,7 @@ export function Workspace({
     sidebar?.querySelector<HTMLElement>('button')?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (document.querySelector('.modal-backdrop')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         setSide(false);
@@ -215,36 +216,6 @@ export function Workspace({
         menuButtonRef.current.focus();
     };
   }, [side, drawer]);
-  useEffect(() => {
-    if (!dialog) return;
-    const before = document.activeElement as HTMLElement;
-    const el = document.querySelector('.workspace-dialog') as HTMLElement;
-    const fs = () =>
-      Array.from(
-        el.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,summary,[tabindex="0"]'),
-      ).filter((e) => !e.hasAttribute('disabled') && !e.closest('[hidden],[inert]'));
-    fs()[0]?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDialog(null);
-      if (e.key === 'Tab') {
-        const a = fs(),
-          first = a[0],
-          last = a[a.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', key);
-    return () => {
-      document.removeEventListener('keydown', key);
-      before?.focus();
-    };
-  }, [dialog?.kind]);
   const jobs = data.jobs;
   const selfId = participantId(data, role);
   const unread = unreadNotificationCount(data, role, selfId);

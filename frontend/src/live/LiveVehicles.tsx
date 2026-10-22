@@ -8,13 +8,24 @@ import { api } from './api';
 import { useResource } from './useResource';
 import { RoadLoader } from '../components/ui/RoadLoader';
 import { useState } from 'react';
+import { calendarDateOrNull } from '../features/garage/vehicleDates';
+
+const bodyStyles = new Set([
+  '',
+  'hatchback',
+  'sedan',
+  'estate',
+  'coupe',
+  'concept coupe',
+  'suv',
+  'van',
+  'other',
+]);
 
 function vehicleBody(vehicle: any, version?: number) {
   const paint = String(vehicle.paintColor || '');
-  const date = (value: unknown) => {
-    const text = String(value || '').slice(0, 10);
-    return text ? text : null;
-  };
+  const style = String(vehicle.bodyStyle || '');
+  const serviceMileage = String(vehicle.nextServiceMileage ?? '').trim();
   return {
     make: String(vehicle.make || ''),
     model: String(vehicle.model || ''),
@@ -22,10 +33,12 @@ function vehicleBody(vehicle: any, version?: number) {
     variant: String(vehicle.variant || ''),
     registration: String(vehicle.registration || ''),
     mileage: Number(vehicle.mileage || 0),
+    bodyStyle: bodyStyles.has(style) ? style : '',
     paintColorName: String(vehicle.paintColorName || ''),
     paintColor: /^#[0-9a-fA-F]{6}$/.test(paint) ? paint : '',
-    licenceDiscExpiry: date(vehicle.licenceDiscExpiry),
-    nextServiceDate: date(vehicle.nextServiceDate),
+    licenceDiscExpiry: calendarDateOrNull(vehicle.licenceDiscExpiry),
+    nextServiceDate: calendarDateOrNull(vehicle.nextServiceDate),
+    nextServiceMileage: serviceMileage === '' ? null : Number(serviceMileage),
     ...(vehicle.id ? { version } : {}),
   };
 }

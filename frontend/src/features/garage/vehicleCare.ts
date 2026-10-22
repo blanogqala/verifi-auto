@@ -1,3 +1,5 @@
+import { calendarDateInput } from './vehicleDates';
+
 export type CareState = 'upcoming' | 'due' | 'expired' | 'unknown';
 
 function startOfDay(date: Date) {
@@ -5,8 +7,9 @@ function startOfDay(date: Date) {
 }
 
 export function dateCareState(value: unknown, today = new Date()): CareState {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'unknown';
-  const expiry = new Date(`${value}T00:00:00`);
+  const day = calendarDateInput(value);
+  if (!day) return 'unknown';
+  const expiry = new Date(`${day}T00:00:00`);
   if (Number.isNaN(expiry.getTime())) return 'unknown';
   const days = Math.round((expiry.getTime() - startOfDay(today)) / 86400000);
   if (days < 0) return 'expired';
