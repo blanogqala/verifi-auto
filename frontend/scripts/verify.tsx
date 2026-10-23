@@ -510,7 +510,7 @@ assert.ok(mechanicVerification.includes('id="profile-tab-verification"'));
 assert.ok(mechanicVerification.includes('Verification status'));
 assert.ok(mechanicVerification.includes('data-profile-target="profile/business"'));
 assert.ok(mechanicVerification.includes('data-profile-target="profile/documents"'));
-assert.ok(mechanicVerification.includes('Submit for demo review'));
+assert.ok(mechanicVerification.includes('Submit for review'));
 assert.ok(!mechanicVerification.includes('Verified'));
 const mechanicQuotes = screen('mechanic', 'quotes');
 assert.ok(mechanicQuotes.includes('Quotes &amp; invoices'));
