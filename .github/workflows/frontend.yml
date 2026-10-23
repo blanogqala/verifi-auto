@@ -59,4 +59,8 @@ jobs:
             tail -n 120 e2e-output.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$code" -ne 0 ]; then
+            message=$(tail -n 30 e2e-output.txt | tr '\n' ' ' | cut -c1-900)
+            echo "::error::$message"
+          fi
           exit "$code"

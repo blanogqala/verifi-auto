@@ -20,7 +20,12 @@ const customerEmail = 'customer@example.test';
 const otherEmail = 'other@example.test';
 
 function start(command, args, cwd, ready) {
-  const child = spawn(command, args, { cwd, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(command, args, {
+    cwd,
+    shell: true,
+    env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   let output = '';
   const wait = new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(output || `${command} did not become ready`)), 120000);
@@ -246,13 +251,13 @@ async function connected(browser) {
 const demoAlready = await portOpen(5174);
 const demoServer = demoAlready
   ? null
-  : start('npm', ['run', 'dev', '--', '--mode', 'demo', '--port', '5174', '--strictPort', '--host', '127.0.0.1'], frontend, 'Local:');
+  : start('npm', ['run', 'dev', '--', '--mode', 'demo', '--port', '5174', '--strictPort', '--host', '127.0.0.1'], frontend, '127.0.0.1:5174');
 const api = start('node', ['--import', 'tsx', 'scripts/disposable-api.ts'], backend, 'DISPOSABLE_API_READY');
 const vite = start(
   'npm',
   ['run', 'dev', '--', '--mode', 'e2e', '--port', '5199', '--strictPort', '--host', '127.0.0.1'],
   frontend,
-  'Local:',
+  '127.0.0.1:5199',
 );
 const children = [api, vite, demoServer].filter(Boolean);
 try {
