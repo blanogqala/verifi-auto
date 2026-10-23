@@ -85,45 +85,6 @@ export default function App() {
     }
   }, [toast]);
   useEffect(() => {
-    if (!modal) return;
-    const prior = document.activeElement as HTMLElement;
-    document.documentElement.classList.add('scroll-lock');
-    const el = document.querySelector('.modal') as HTMLElement;
-    const focusables = () =>
-      Array.from(
-        el.querySelectorAll<HTMLElement>('button,a[href],input,select,textarea,summary,[tabindex="0"]'),
-      ).filter((e) => !e.hasAttribute('disabled'));
-    focusables()[0]?.focus();
-    function key(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (modal && typeof modal === 'object' && role === 'customer') {
-          clearBookingDraft();
-          setPending(null);
-        }
-        setModal(null);
-      }
-      if (e.key === 'Tab') {
-        const fs = focusables();
-        const first = fs[0],
-          last = fs[fs.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    }
-    document.addEventListener('keydown', key);
-    return () => {
-      document.documentElement.classList.remove('scroll-lock');
-      document.body.style.overflow = '';
-      document.removeEventListener('keydown', key);
-      prior?.focus();
-    };
-  }, [modal, step]);
-  useEffect(() => {
     function onFocusIn(event: FocusEvent) {
       const target = event.target;
       if (!(target instanceof HTMLElement)) return;
@@ -147,8 +108,7 @@ export default function App() {
     setPage(p);
     location.hash = p;
     setMenu(false);
-    if (!modal) document.documentElement.classList.remove('scroll-lock');
-    document.body.style.overflow = '';
+    if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = '';
     window.scrollTo({ top: 0, behavior: p === 'find' ? 'auto' : 'smooth' });
   }
   useEffect(() => {
@@ -160,7 +120,7 @@ export default function App() {
       if (!['home', 'find', 'login', 'register', 'forgot'].includes(p) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(p))
         p = 'home';
       setPage(p);
-      document.body.style.overflow = '';
+      if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = '';
       if (canonicalPage(role, raw) !== raw) location.hash = p;
     };
     window.addEventListener('hashchange', change);

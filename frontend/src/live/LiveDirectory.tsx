@@ -15,6 +15,7 @@ import {
 import { initialsFromName } from '../features/account/customerIdentity';
 import { useResource } from './useResource';
 import { api } from './api';
+import { calendarDateOrNull } from '../features/garage/vehicleDates';
 
 export function directoryCard(pro: any, origin: any) {
   const point = coordinatesOf(pro.latitude, pro.longitude);
@@ -278,7 +279,6 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
       {booking ? (
         <BookingDialog
           connected
-          manageFocus
           modal={booking}
           step={step}
           setStep={setStep}
@@ -320,6 +320,19 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
           }}
           onLiveVehicle={async (fields: any) => {
             const paint = String(fields.paintColor || '');
+            const styles = new Set([
+              '',
+              'hatchback',
+              'sedan',
+              'estate',
+              'coupe',
+              'concept coupe',
+              'suv',
+              'van',
+              'other',
+            ]);
+            const style = String(fields.bodyStyle || '');
+            const serviceMileage = String(fields.nextServiceMileage ?? '').trim();
             const created = await api('/vehicles', 'POST', {
               make: String(fields.make || ''),
               model: String(fields.model || ''),
@@ -327,10 +340,12 @@ export function LiveDirectory({ professionalId, user, revision, run, go, embedde
               mileage: Number(fields.mileage || 0),
               registration: String(fields.registration || ''),
               variant: String(fields.variant || ''),
+              bodyStyle: styles.has(style) ? style : '',
               paintColorName: String(fields.paintColorName || ''),
               paintColor: /^#[0-9a-fA-F]{6}$/.test(paint) ? paint : '',
-              licenceDiscExpiry: null,
-              nextServiceDate: null,
+              licenceDiscExpiry: calendarDateOrNull(fields.licenceDiscExpiry),
+              nextServiceDate: calendarDateOrNull(fields.nextServiceDate),
+              nextServiceMileage: serviceMileage === '' ? null : Number(serviceMileage),
             });
             setAddedVehicles((current) => [...current, created]);
             return created.id;

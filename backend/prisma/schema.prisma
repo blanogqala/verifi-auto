@@ -130,8 +130,12 @@ model Vehicle {
   paintColorName String @default("") @db.VarChar(80)
   paintColor String @default("") @db.VarChar(7)
   mileage Int @default(0)
+  bodyStyle String @default("") @db.VarChar(40)
   licenceDiscExpiry DateTime? @db.Date
+  licenceDiscSource String @default("owner") @db.VarChar(16)
   nextServiceDate DateTime? @db.Date
+  nextServiceMileage Int?
+  nextServiceSource String @default("owner") @db.VarChar(16)
   archivedAt DateTime?
   version Int @default(0)
   createdAt DateTime @default(now())

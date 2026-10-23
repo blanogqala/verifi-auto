@@ -7,6 +7,7 @@ import { QuoteSummary } from '../src/components/jobs/QuoteSummary';
 import { demoDocumentHtml } from '../src/features/payments/demoDocuments';
 import { quoteReviewToken } from '../src/features/jobs/quotations';
 import { resolvePaintColour } from '../src/features/garage/paintColours';
+import { calendarDateInput, calendarDateOrNull } from '../src/features/garage/vehicleDates';
 import { adminJobRows, matchesAdminFilters, cityName, resolveDispute } from '../src/features/admin/filters';
 import { accountMetrics, professionalJobs, appendAdminActivity } from '../src/features/admin/detailRecords';
 import assert from 'node:assert/strict';
@@ -2179,6 +2180,15 @@ assert.ok(!connectedProfile.includes('Change password unavailable'));
 assert.ok(!connectedProfile.includes('Use sample details'));
 assert.ok(connectedProfile.includes('readOnly=""'));
 console.log('Connected profile retains the shared demo layout with real-account wording.');
+assert.ok(
+  !readFileSync(join('src', 'App.tsx'), 'utf8').includes("classList.remove('scroll-lock')"),
+  'Demo navigation must not unlock a modal owned by useModalBehaviour',
+);
+assert.equal(calendarDateInput('2026-12-31T00:00:00.000Z'), '2026-12-31');
+assert.equal(calendarDateInput('2026-01-01'), '2026-01-01');
+assert.equal(calendarDateInput(null), '');
+assert.equal(calendarDateOrNull(''), null);
+assert.equal(calendarDateInput('2026-12-31T23:00:00.000Z'), '2026-12-31');
 
 // Connected screens must keep the shared presentation without fictional credentials or fees.
 const liveProfessional = directoryCard({id:'server-pro',name:'Real workshop',type:'Workshop',city:'Cape Town',services:['Brakes'],latitude:-33.9,longitude:18.4,rating:4.5,reviewCount:2,photo:''}, null);

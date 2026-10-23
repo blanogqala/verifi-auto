@@ -259,6 +259,134 @@ test(
           .body.modelMatch,
         "unavailable",
       );
+      assert.equal(car.body.bodyStyle, "");
+      assert.equal(car.body.licenceDiscSource, "owner");
+      assert.equal(car.body.nextServiceSource, "owner");
+      assert.equal(car.body.licenceDiscExpiry, null);
+      const keptInput = {
+        ...carInput,
+        registration: "CA777001",
+        bodyStyle: "hatchback",
+        mileage: 42000,
+        licenceDiscExpiry: "2026-12-31",
+        nextServiceDate: "2027-01-01",
+        nextServiceMileage: 50000,
+      };
+      const kept = await send("post", "/api/vehicles", keptInput, alice);
+      assert.equal(kept.status, 201, JSON.stringify(kept.body));
+      assert.equal(kept.body.bodyStyle, "hatchback");
+      assert.equal(kept.body.nextServiceMileage, 50000);
+      assert.equal(kept.body.licenceDiscExpiry, "2026-12-31");
+      assert.equal(kept.body.nextServiceDate, "2027-01-01");
+      assert.equal(kept.body.licenceDiscSource, "owner");
+      assert.equal(kept.body.nextServiceSource, "owner");
+      assert.equal(
+        (
+          await send("get", "/api/vehicles/" + kept.body.id, undefined, alice)
+        ).body.licenceDiscExpiry,
+        "2026-12-31",
+      );
+      await db.vehicle.update({
+        where: { id: kept.body.id },
+        data: { licenceDiscSource: "mechanic", nextServiceSource: "mechanic" },
+      });
+      const paintOnly = await send(
+        "patch",
+        "/api/vehicles/" + kept.body.id,
+        { ...keptInput, paintColorName: "White", version: kept.body.version },
+        alice,
+      );
+      assert.equal(paintOnly.status, 200, JSON.stringify(paintOnly.body));
+      assert.equal(paintOnly.body.licenceDiscSource, "mechanic");
+      assert.equal(paintOnly.body.nextServiceSource, "mechanic");
+      assert.equal(paintOnly.body.licenceDiscExpiry, "2026-12-31");
+      assert.equal(paintOnly.body.paintColorName, "White");
+      const dated = await send(
+        "patch",
+        "/api/vehicles/" + kept.body.id,
+        {
+          ...keptInput,
+          paintColorName: "White",
+          licenceDiscExpiry: "2026-06-15",
+          nextServiceMileage: 51000,
+          licenceDiscSource: "mechanic",
+          nextServiceSource: "mechanic",
+          version: paintOnly.body.version,
+        },
+        alice,
+      );
+      assert.equal(dated.status, 422);
+      const ownerAgain = await send(
+        "patch",
+        "/api/vehicles/" + kept.body.id,
+        {
+          ...keptInput,
+          paintColorName: "White",
+          licenceDiscExpiry: "2026-06-15",
+          nextServiceMileage: 51000,
+          version: paintOnly.body.version,
+        },
+        alice,
+      );
+      assert.equal(ownerAgain.status, 200, JSON.stringify(ownerAgain.body));
+      assert.equal(ownerAgain.body.licenceDiscSource, "owner");
+      assert.equal(ownerAgain.body.nextServiceSource, "owner");
+      assert.equal(ownerAgain.body.licenceDiscExpiry, "2026-06-15");
+      assert.equal(ownerAgain.body.nextServiceDate, "2027-01-01");
+      assert.equal(ownerAgain.body.nextServiceMileage, 51000);
+      const cleared = await send(
+        "patch",
+        "/api/vehicles/" + kept.body.id,
+        {
+          ...keptInput,
+          paintColorName: "White",
+          licenceDiscExpiry: null,
+          nextServiceDate: null,
+          nextServiceMileage: null,
+          version: ownerAgain.body.version,
+        },
+        alice,
+      );
+      assert.equal(cleared.status, 200, JSON.stringify(cleared.body));
+      assert.equal(cleared.body.licenceDiscExpiry, null);
+      assert.equal(cleared.body.nextServiceDate, null);
+      assert.equal(cleared.body.nextServiceMileage, null);
+      assert.equal(
+        (
+          await send("patch", "/api/vehicles/" + kept.body.id, {
+            ...keptInput,
+            version: 0,
+          }, alice)
+        ).status,
+        409,
+      );
+      assert.equal(
+        (
+          await send("post", "/api/vehicles", keptInput, alice)
+        ).status,
+        409,
+      );
+      assert.equal(
+        (
+          await send(
+            "post",
+            "/api/vehicles",
+            { ...keptInput, licenceDiscExpiry: "31-12-2026" },
+            alice,
+          )
+        ).status,
+        422,
+      );
+      assert.equal(
+        (await send("delete", "/api/vehicles/" + kept.body.id, {}, alice))
+          .status,
+        204,
+      );
+      assert.equal(
+        (await send("get", "/api/vehicles/" + kept.body.id, undefined, alice))
+          .body.archivedAt == null,
+        false,
+      );
       const otherCar = await send(
         "post",
         "/api/vehicles",

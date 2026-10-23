@@ -73,6 +73,7 @@ export default function LiveApp() {
     buttons()[0]?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        if (document.querySelector('.modal-backdrop')) return;
         setSide(false);
         menuButtonRef.current?.focus();
       }
@@ -526,7 +527,6 @@ export default function LiveApp() {
       {join ? (
         <BookingDialog
           modal="join"
-          manageFocus
           step={0}
           go={go}
           anchor={anchor}
