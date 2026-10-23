@@ -302,9 +302,13 @@ async function connected(browser) {
     .getByRole('button', { name: 'View application' }).waitFor();
   await page.getByRole('button', { name: 'View application' }).click();
   await page.getByRole('button', { name: 'Approve Identity evidence' }).click();
-  await page.getByRole('button', { name: 'Approve Identity evidence' }).waitFor({ state: 'detached' });
+  await page.waitForFunction(() =>
+    document.querySelector('[aria-label="Approve Identity evidence"]')?.hasAttribute('disabled') === true,
+  );
   await page.getByRole('button', { name: 'Approve Qualifications / experience' }).click();
-  await page.getByRole('button', { name: 'Approve Qualifications / experience' }).waitFor({ state: 'detached' });
+  await page.waitForFunction(() =>
+    document.querySelector('[aria-label="Approve Qualifications / experience"]')?.hasAttribute('disabled') === true,
+  );
   await page.getByLabel('Decision note').fill('Approved for the disposable test.');
   await page.getByRole('button', { name: 'Approve application' }).click();
   await page.getByText('Application updated.').waitFor();
