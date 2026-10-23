@@ -8,7 +8,7 @@ import {
 import { env } from "../../config/env.js";
 import { requireThat } from "../../lib/errors.js";
 import { accountEmailHtml } from "../../lib/accountEmail.js";
-import { audit } from "../../lib/events.js";
+import { announce, audit } from "../../lib/events.js";
 export const publicUser = {
   id: true,
   name: true,
@@ -72,6 +72,20 @@ export async function register(input: {
     });
     await queueToken(tx, user.id, user.email, "verify");
     await audit(tx, user.id, "ACCOUNT_REGISTERED", user.id);
+    if (input.role === "MECHANIC") {
+      const professional = await tx.professional.findUniqueOrThrow({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      const admins = await tx.user.findMany({
+        where: { role: "ADMIN", disabledAt: null },
+        select: { id: true },
+      });
+      await announce(
+        tx, admins.map((admin) => admin.id), "application", professional.id,
+        "New mechanic registration — profile incomplete",
+      );
+    }
   });
 }
 let dummyHash: Promise<string> | undefined;

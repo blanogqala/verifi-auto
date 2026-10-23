@@ -22,8 +22,9 @@ export function rememberApproval(record: any) {
   return { ...record, previouslyApproved };
 }
 
+/** Active onboarding contains unsubmitted registrations and submitted applications. */
 export function isPendingApplication(record: any) {
-  return record?.status === 'Pending review';
+  return record?.status === 'Incomplete' || record?.status === 'Pending review';
 }
 
 /** Approved profiles, plus profiles suspended after an earlier approval. */

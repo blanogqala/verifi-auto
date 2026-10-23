@@ -63,7 +63,7 @@ import {
   showcaseProfessionalId,
 } from '../data/mechanicShowcase';
 import { followDetail, readBookingFilters, writeBookingFilters } from '../features/navigation/returnPath';
-import { api } from '../data-access/api';
+import { api, apiBase } from '../data-access/api';
 import { VehicleStage } from '../components/garage/VehicleStage';
 import {
   Role,
@@ -619,7 +619,7 @@ export function Workspace({
               <p>The address could not be read. Open the page again from the menu.</p>
             </Card>
           ) : null}
-          {adminDetailKind === 'applications' && <ApplicationDetailPage key={adminDetailId} record={apps.find((a: any) => a.id === adminDetailId)} data={data} route={route} review={review} checks={checks} setChecks={setChecks} reviewNote={reviewNote} setReviewNote={setReviewNote} />}
+          {adminDetailKind === 'applications' && <ApplicationDetailPage key={adminDetailId} record={apps.find((a: any) => a.id === adminDetailId)} data={data} route={route} review={review} checks={checks} setChecks={setChecks} reviewNote={reviewNote} setReviewNote={setReviewNote} connected={live ? { documentUrl: (id: string) => `${apiBase}/api/documents/${encodeURIComponent(id)}` } : undefined} />}
           {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} />}
           {adminDetailKind === 'customers' && (
             <CustomerAdminDetailPage

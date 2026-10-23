@@ -292,6 +292,14 @@ async function connected(browser) {
 
   await signIn(page, 'admin@example.test');
   await page.goto(appUrl + '/#dashboard/applications');
+  // All registered mechanics must be visible, including drafts not yet ready for approval.
+  const freshDraft = page.getByRole('row').filter({ hasText: 'Incomplete Workshop' });
+  const editedDraft = page.getByRole('row').filter({ hasText: 'Updated Workshop' });
+  await freshDraft.getByRole('button', { name: 'View progress' }).waitFor();
+  // Editing an approved business intentionally resets its application to DRAFT.
+  await editedDraft.getByRole('button', { name: 'View progress' }).waitFor();
+  await page.getByRole('row').filter({ hasText: 'Pending Workshop' })
+    .getByRole('button', { name: 'View application' }).waitFor();
   await page.getByRole('button', { name: 'View application' }).click();
   await page.getByRole('button', { name: 'Decision' }).click();
   await page.getByLabel('Identity reviewed').check();
@@ -301,7 +309,12 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Approve application' }).click();
   await page.getByText('Application updated.').waitFor();
   await page.goto(appUrl + '/#dashboard/applications');
-  await page.getByText('No applications are waiting for review.').waitFor();
+  // Approval moves only that application to Professionals; the unsubmitted draft remains.
+  await freshDraft.getByRole('button', { name: 'View progress' }).waitFor();
+  await editedDraft.getByRole('button', { name: 'View progress' }).waitFor();
+  await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).waitFor({ state: 'detached' });
+  await page.goto(appUrl + '/#dashboard/professionals');
+  await page.getByText('Pending Workshop', { exact: true }).waitFor();
   await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
   await page.getByRole('heading', { name: 'Professional not found' }).waitFor();
   await page.close();

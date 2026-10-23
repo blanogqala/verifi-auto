@@ -28,12 +28,25 @@ adminRoutes.get("/overview", async (_req, res) => {
     confirmedPaymentCents: payments._sum.amountCents || 0,
   });
 });
+// List registrations immediately; only SUBMITTED applications can be approved.
+// Include metadata for the reviewer, never password hashes or document file bytes.
 adminRoutes.get("/applications", async (req, res) =>
   res.json(
     await db.professional.findMany({
-      where: { status: "SUBMITTED" },
+      where: { status: { in: ["DRAFT", "SUBMITTED"] } },
+      include: {
+        user: {
+          select: {
+            name: true, email: true, verifiedAt: true, createdAt: true, disabledAt: true,
+            documents: {
+              select: { id: true, kind: true, name: true, mime: true, createdAt: true },
+              orderBy: { createdAt: "asc" },
+            },
+          },
+        },
+      },
       take: takeQuery.parse(req.query.take),
-      orderBy: { updatedAt: "asc" },
+      orderBy: { updatedAt: "desc" },
     }),
   ),
 );

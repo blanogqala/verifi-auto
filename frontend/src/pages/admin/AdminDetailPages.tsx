@@ -120,10 +120,13 @@ export function ApplicationDetailPage({
         <DetailCard title="Business profile" icon={<Wrench size={20} />}>
           <DetailFields
             items={[
-              { label: 'Contact person', value: business.individualName || 'Not recorded' },
+              { label: 'Contact person', value: business.individualName || record.name || 'Not recorded' },
               { label: 'Email', value: record.email || 'Not recorded' },
               { label: 'Telephone', value: record.phone || 'Not recorded' },
-              { label: 'Submitted', value: record.date || 'Not recorded' },
+              { label: record.status === 'Incomplete' ? 'Registered' : 'Submitted', value: record.date || 'Not recorded' },
+              ...(connected
+                ? [{ label: 'Account', value: record.emailVerified ? 'Email verified' : 'Email not verified' }]
+                : []),
               { label: 'Services', value: (business.services || []).join(' · ') || 'Not recorded' },
             ]}
           />
@@ -149,7 +152,7 @@ export function ApplicationDetailPage({
                       target="_blank"
                       rel="noreferrer"
                     >
-                      View document
+                      Download document
                     </a>
                   )}
                   {!connected && (
@@ -177,6 +180,12 @@ export function ApplicationDetailPage({
       )}
       {section === 'Decision' && (
         <DetailCard title="Verification decision" icon={<ClipboardCheck size={20} />}>
+          {connected && record.status === 'Incomplete' && (
+            <p className="notice">
+              Registration received. The mechanic has not submitted their application.
+              Approval unlocks only after submission and email verification.
+            </p>
+          )}
           <p className="muted">
             {connected
               ? 'Review the submitted evidence before recording your decision.'
@@ -190,6 +199,7 @@ export function ApplicationDetailPage({
             <label className="check-label" key={c}>
               <input
                 type="checkbox"
+                disabled={Boolean(connected) && record.status !== 'Pending review'}
                 checked={checks.includes(c)}
                 onChange={(e) =>
                   setChecks(

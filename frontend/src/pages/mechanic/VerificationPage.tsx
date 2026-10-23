@@ -20,7 +20,7 @@ export function VerificationPage({
     <Card as="section" className="dash-panel application-panel">
       <div className="panel-title">
         <h2>Your verification journey</h2>
-        <Status value={data.application.status} />
+        <Status value={connected && data.application.status === 'Draft' ? 'Incomplete' : data.application.status} />
       </div>
       <p className="muted">
         {connected
