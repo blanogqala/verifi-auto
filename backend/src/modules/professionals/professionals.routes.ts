@@ -14,6 +14,7 @@ export const professionalPublicSelect = {
   address: true,
   about: true,
   services: true,
+  serviceAreas: true,
   phone: true,
   website: true,
   latitude: true,
@@ -37,7 +38,12 @@ directoryRoutes.get("/", async (req, res) => {
       status: "APPROVED",
       user: { disabledAt: null },
       ...(query.city
-        ? { city: { contains: query.city, mode: "insensitive" } }
+        ? {
+            OR: [
+              { city: { contains: query.city, mode: "insensitive" } },
+              { serviceAreas: { has: query.city } },
+            ],
+          }
         : {}),
       ...(query.type ? { type: query.type } : {}),
       ...(query.service ? { services: { has: query.service } } : {}),
