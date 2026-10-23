@@ -199,6 +199,7 @@ professionalRoutes.post("/me/submit", async (req, res) => {
       pro.id,
       "Professional application submitted",
     );
+    await audit(tx, actor(req).userId, "PROFESSIONAL_SUBMITTED", pro.id);
     return updated;
   });
   res.json(result);
