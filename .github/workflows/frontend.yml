@@ -46,5 +46,17 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:15439/postgres
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - run: npm run e2e
+      - id: browser-tests
         working-directory: frontend
+        run: |
+          set +e
+          npm run e2e > e2e-output.txt 2>&1
+          code=$?
+          tail -n 120 e2e-output.txt
+          {
+            echo "## Browser test output"
+            echo '```'
+            tail -n 120 e2e-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$code"

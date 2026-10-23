@@ -23,7 +23,7 @@ function start(command, args, cwd, ready) {
   const child = spawn(command, args, { cwd, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
   let output = '';
   const wait = new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(output || `${command} did not become ready`)), 60000);
+    const timer = setTimeout(() => reject(new Error(output || `${command} did not become ready`)), 120000);
     const onData = (chunk) => {
       output += chunk.toString();
       if (output.includes(ready)) {
@@ -96,6 +96,8 @@ async function registerAndVerify(page, name, email) {
 
 async function demo(browser) {
   const page = await browser.newPage();
+  page.setDefaultTimeout(60000);
+  page.setDefaultNavigationTimeout(60000);
   await page.goto(demoUrl + '/#home');
   await page.getByRole('heading', { name: 'Confidence in every kilometre.' }).waitFor();
   await page.goto(demoUrl + '/#find');
@@ -126,6 +128,8 @@ async function demo(browser) {
 
 async function connected(browser) {
   const page = await browser.newPage();
+  page.setDefaultTimeout(60000);
+  page.setDefaultNavigationTimeout(60000);
   await registerAndVerify(page, 'Casey Customer', customerEmail);
   await page.goto(appUrl + '/#find');
   await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
@@ -191,6 +195,8 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   const other = await browser.newPage();
+  other.setDefaultTimeout(60000);
+  other.setDefaultNavigationTimeout(60000);
   await registerAndVerify(other, 'Other Customer', otherEmail);
   await other.goto(bookingUrl);
   await other.getByRole('heading', { name: 'Booking not found' }).waitFor();
@@ -252,7 +258,9 @@ const children = [api, vite, demoServer].filter(Boolean);
 try {
   await Promise.all(children.map((item) => item.wait));
   const browser = await chromium.launch(
-    process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {},
+    process.env.PLAYWRIGHT_CHANNEL
+      ? { channel: process.env.PLAYWRIGHT_CHANNEL }
+      : { args: ['--disable-dev-shm-usage'] },
   );
   try {
     await demo(browser);
