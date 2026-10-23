@@ -2405,3 +2405,8 @@ setTimeout(() => {
   assert.deepEqual(approvedReviewMessages, ['Application updated.']);
   console.log('Application review waits for the server before closing.');
 }, 0);
+
+// Registered mechanics must remain visible to the admin before submission.
+assert.equal(isPendingApplication({ status: 'Incomplete' }), true);
+assert.equal(isPendingApplication({ status: 'Pending review' }), true);
+assert.equal(isPendingApplication({ status: 'Approved' }), false);
