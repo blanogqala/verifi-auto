@@ -2782,3 +2782,17 @@ td .text-link {
   .auth-page .auth-card.ui-card { background: #211a2e; backdrop-filter: none; }
   [data-theme='light'] .auth-page .auth-card.ui-card { background: #f4eefb; }
 }
+
+/* Mechanic service areas, custom services and evidence-review controls. */
+.tag-picker { display: grid; gap: 10px; margin: 8px 0 14px; min-width: 0; }
+.tag-picker-controls { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto; gap: 8px; align-items: center; }
+.tag-picker-controls > select, .tag-picker-controls > input { min-width: 0; width: 100%; }
+.tag-picker-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.tag-picker-tag { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid var(--purple); border-radius: 14px; background: color-mix(in srgb, var(--purple) 11%, transparent); font-size: .85rem; }
+.tag-picker-tag button { display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; color: inherit; padding: 2px; cursor: pointer; }
+.icon-action { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; padding: 7px; border: 1px solid color-mix(in srgb, var(--purple) 45%, transparent); border-radius: 9px; color: inherit; background: color-mix(in srgb, var(--purple) 8%, transparent); cursor: pointer; }
+.icon-action:hover { background: color-mix(in srgb, var(--purple) 24%, transparent); }
+.icon-action:disabled { opacity: .45; cursor: not-allowed; }
+.evidence-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.application-review-page { display: grid; gap: 18px; }
+@media (max-width: 740px) { .tag-picker-controls { grid-template-columns: 1fr; } .evidence-actions { width: 100%; } }

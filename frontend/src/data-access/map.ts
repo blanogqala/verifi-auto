@@ -271,6 +271,7 @@ export function mapApplication(row: any) {
       ? row.user?.createdAt || row.createdAt || ''
       : row.updatedAt || row.createdAt || '',
     services: row.services || [],
+    serviceAreas: row.serviceAreas || [],
     about: row.about || '',
     bio: row.about || '',
     address: row.address || '',

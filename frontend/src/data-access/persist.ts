@@ -180,6 +180,8 @@ function profileBody(profile: any) {
     address: profile.address || '',
     about: profile.bio || profile.about || '',
     services: profile.services || [],
+    serviceAreas: Array.isArray(profile.serviceAreas) && profile.serviceAreas.length
+      ? profile.serviceAreas : profile.city ? [profile.city] : [],
     phone: profile.phone,
     website: profile.website || '',
     latitude: profile.latitude ?? null,

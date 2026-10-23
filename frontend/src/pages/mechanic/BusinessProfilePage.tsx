@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card } from '../../components/ui/Card';
 import { commitUpdate } from '../../features/demo/commitUpdate';
-import { demoAreas, demoAreaById } from '../../data/demoAreas';
+import { demoAreas } from '../../data/demoAreas';
+import { TagPicker } from '../../components/ui/TagPicker';
 import { chargeConfirmation } from '../../features/jobs/pricingModel';
 
 import { ArrowRight, Wrench, Check } from 'lucide-react';
@@ -21,6 +22,14 @@ export function BusinessProfilePage({
   const [email, setEmail] = useState(initialEmail);
   const emailEdited = useRef(false);
   const [saving, setSaving] = useState(false);
+  const areas = Array.isArray(profile.serviceAreas)
+    ? profile.serviceAreas : profile.city ? [profile.city] : [];
+  const services = Array.isArray(profile.services) ? profile.services : [];
+  const areaSuggestions = [...new Set([
+    'Cape Town', 'Johannesburg', 'East London', 'Pretoria', 'Durban',
+    ...demoAreas.map((area) => area.city),
+    ...demoAreas.map((area) => area.label),
+  ])];
   useEffect(() => {
     if (!emailEdited.current) setEmail(initialEmail);
   }, [initialEmail]);
@@ -86,39 +95,20 @@ export function BusinessProfilePage({
         </label>
       </div>
       <div className="form-row">
-        <label>
-          Service area
-          <select
-            value={
-              profile.areaId ||
-              demoAreas.find((area) => area.label === profile.city || area.city === profile.city)
-                ?.id ||
-              (connected ? profile.city : '')
-            }
-            onChange={(e) => {
-              const area = demoAreaById(e.target.value);
-              setProfile({
-                ...profile,
-                areaId: area?.id || '',
-                city: area?.label || (connected ? e.target.value : ''),
-                serviceRadiusKm:
-                  profile.type === 'Mobile mechanic' ? profile.serviceRadiusKm || 25 : null,
-              });
-            }}
-          >
-            <option value="">{connected ? 'Select a service area' : 'Select a demo area'}</option>
-            {connected &&
-            profile.city &&
-            !demoAreas.some((area) => area.label === profile.city || area.city === profile.city) ? (
-              <option value={profile.city}>{profile.city}</option>
-            ) : null}
-            {demoAreas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div>
+          <label>Service areas</label>
+          <TagPicker
+            label="Service area"
+            values={areas}
+            suggestions={areaSuggestions}
+            onChange={(next) => setProfile({
+              ...profile,
+              serviceAreas: next,
+              city: next.includes(profile.city) ? profile.city : next[0] || '',
+            })}
+          />
+          <p className="muted">Select whole cities or individual areas. These are coverage labels, not verified GPS coordinates.</p>
+        </div>
         <label>
           Contact number
           <input
@@ -176,25 +166,9 @@ export function BusinessProfilePage({
       </label>
       <fieldset>
         <legend>Services offered</legend>
-        <div className="check-grid">
-          {['Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical'].map((s) => (
-            <label className="check-label" key={s}>
-              <input
-                type="checkbox"
-                checked={profile.services.includes(s)}
-                onChange={(e) =>
-                  setProfile({
-                    ...profile,
-                    services: e.target.checked
-                      ? [...profile.services, s]
-                      : profile.services.filter((v: string) => v !== s),
-                  })
-                }
-              />
-              {s}
-            </label>
-          ))}
-        </div>
+        <TagPicker label="Service" values={services}
+          suggestions={['Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical', 'Engine repairs', 'Tyres', 'Air conditioning', 'Suspension', 'Bodywork']}
+          maxItems={30} onChange={(next) => setProfile({ ...profile, services: next })} />
       </fieldset>
       {!connected && profile.type === 'Mobile mechanic' ? (
         <label>
@@ -209,36 +183,11 @@ export function BusinessProfilePage({
           </select>
         </label>
       ) : null}
-      {connected && (
-        <details className="fold">
-          <summary>Map coordinates (optional)</summary>
-          <div className="form-row">
-            {['latitude', 'longitude'].map((key) => (
-              <label key={key}>
-                {key === 'latitude' ? 'Latitude' : 'Longitude'}
-                <input
-                  type="number"
-                  step="any"
-                  min={key === 'latitude' ? -90 : -180}
-                  max={key === 'latitude' ? 90 : 180}
-                  value={profile[key] ?? ''}
-                  onChange={(event) =>
-                    setProfile({
-                      ...profile,
-                      [key]: event.target.value === '' ? null : Number(event.target.value),
-                    })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-        </details>
-      )}
       <p className="muted">
         {chargeConfirmation}{' '}
         {connected
           ? 'Changes to business details require a fresh review before the directory listing is shown again.'
-          : 'Choosing an area stores a demo area centre, not a geocoded street address.'}
+          : 'Coverage selections are labels, not geocoded street addresses.'}
       </p>
       <div className="button-row">
         <button className="primary" type="submit" disabled={saving}>
