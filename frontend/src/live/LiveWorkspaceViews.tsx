@@ -1,3 +1,4 @@
+import { AppointmentsPage } from '../pages/mechanic/AppointmentsPage';
 import { MechanicPaymentsPage } from '../pages/mechanic/MechanicPaymentsPage';
 import { FinancePage } from '../pages/admin/FinancePage';
 import { useState } from 'react';
@@ -156,26 +157,22 @@ export function LiveBookingList({ bookings, error, role, base, section, go }: an
           ) : null
         }
       />
-      {base === 'appointments' ? (
-        <div className="button-row live-list-tabs">
-          {['pending', 'rejected', 'cancelled'].map((tab) => (
-            <button
-              className={tab === appointmentTab ? 'primary' : 'secondary'}
-              aria-pressed={tab === appointmentTab}
-              key={tab}
-              onClick={() => go('dashboard/appointments/' + tab)}
-            >
-              {tab[0].toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
-      ) : null}
       {error ? (
         <Card as="section" className="dash-panel">
           <p role="alert">{error}</p>
         </Card>
       ) : !bookings ? (
         <RoadLoader label="Loading bookings…" />
+      ) : base === 'appointments' ? (
+        <AppointmentsPage
+          jobs={bookings.map((job: any) => ({ ...bookingCardData(job), vehicleId: job.vehicleId }))}
+          vehicles={bookings.map((job: any) => job.vehicle)}
+          live
+          customerName={(job: any) => job.customerName}
+          section={appointmentTab}
+          route={(path: string) => go('dashboard/' + path)}
+          onOpen={(job: any) => go('dashboard/jobs/' + job.id)}
+        />
       ) : (
         <JobsPage
           jobs={rows}

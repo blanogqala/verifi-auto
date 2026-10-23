@@ -16,14 +16,26 @@ export function BusinessProfilePage({
   route,
   setProfile,
   update,
+  connected,
 }: any) {
   const [email, setEmail] = useState(initialEmail);
+  const [saving, setSaving] = useState(false);
   return (
     <Card
       as="form"
       className="dash-panel settings-form"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
+        if (connected) {
+          if (saving) return;
+          setSaving(true);
+          try {
+            await connected.save(profile);
+          } finally {
+            setSaving(false);
+          }
+          return;
+        }
         commitUpdate(
           update,
           (d: any) => ({
@@ -73,18 +85,29 @@ export function BusinessProfilePage({
         <label>
           Service area
           <select
-            value={profile.areaId || demoAreas.find((area) => area.label === profile.city || area.city === profile.city)?.id || ''}
+            value={
+              profile.areaId ||
+              demoAreas.find((area) => area.label === profile.city || area.city === profile.city)
+                ?.id ||
+              (connected ? profile.city : '')
+            }
             onChange={(e) => {
               const area = demoAreaById(e.target.value);
               setProfile({
                 ...profile,
                 areaId: area?.id || '',
-                city: area?.label || '',
-                serviceRadiusKm: profile.type === 'Mobile mechanic' ? profile.serviceRadiusKm || 25 : null,
+                city: area?.label || (connected ? e.target.value : ''),
+                serviceRadiusKm:
+                  profile.type === 'Mobile mechanic' ? profile.serviceRadiusKm || 25 : null,
               });
             }}
           >
-            <option value="">Select a demo area</option>
+            <option value="">{connected ? 'Select a service area' : 'Select a demo area'}</option>
+            {connected &&
+            profile.city &&
+            !demoAreas.some((area) => area.label === profile.city || area.city === profile.city) ? (
+              <option value={profile.city}>{profile.city}</option>
+            ) : null}
             {demoAreas.map((area) => (
               <option key={area.id} value={area.id}>
                 {area.label}
@@ -97,7 +120,7 @@ export function BusinessProfilePage({
           <input
             required
             type="tel"
-            placeholder="Use a sample phone number"
+            placeholder={connected ? 'Contact number' : 'Use a sample phone number'}
             value={profile.phone}
             onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
           />
@@ -106,6 +129,7 @@ export function BusinessProfilePage({
       <label>
         Email address
         <input
+          readOnly={!!connected}
           name="accountEmail"
           type="email"
           required
@@ -114,6 +138,25 @@ export function BusinessProfilePage({
           onChange={(e) => setEmail(e.target.value)}
         />
       </label>
+      {connected ? (
+        <div className="form-row">
+          <label>
+            Business address
+            <input
+              value={profile.address || ''}
+              onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+            />
+          </label>
+          <label>
+            Website
+            <input
+              type="url"
+              value={profile.website || ''}
+              onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+            />
+          </label>
+        </div>
+      ) : null}
       <label>
         About your expertise
         <textarea
@@ -146,7 +189,7 @@ export function BusinessProfilePage({
           ))}
         </div>
       </fieldset>
-      {profile.type === 'Mobile mechanic' ? (
+      {!connected && profile.type === 'Mobile mechanic' ? (
         <label>
           Service radius
           <select
@@ -159,12 +202,39 @@ export function BusinessProfilePage({
           </select>
         </label>
       ) : null}
+      {connected && (
+        <details className="fold">
+          <summary>Map coordinates (optional)</summary>
+          <div className="form-row">
+            {['latitude', 'longitude'].map((key) => (
+              <label key={key}>
+                {key === 'latitude' ? 'Latitude' : 'Longitude'}
+                <input
+                  type="number"
+                  step="any"
+                  min={key === 'latitude' ? -90 : -180}
+                  max={key === 'latitude' ? 90 : 180}
+                  value={profile[key] ?? ''}
+                  onChange={(event) =>
+                    setProfile({
+                      ...profile,
+                      [key]: event.target.value === '' ? null : Number(event.target.value),
+                    })
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        </details>
+      )}
       <p className="muted">
-        {chargeConfirmation} This preview does not advertise a separate booking fee. Choosing an area stores a demo area centre, not a geocoded street address.
-        {profile.type === 'Mobile mechanic' ? ' A mobile listing uses that area as a service-area reference, not a private base address.' : ''}
+        {chargeConfirmation}{' '}
+        {connected
+          ? 'Changes to business details require a fresh review before the directory listing is shown again.'
+          : 'Choosing an area stores a demo area centre, not a geocoded street address.'}
       </p>
       <div className="button-row">
-        <button className="primary" type="submit">
+        <button className="primary" type="submit" disabled={saving}>
           Save profile <Check size={17} />
         </button>
         <button type="button" className="text-link" onClick={() => route('profile/documents')}>

@@ -1,36 +1,23 @@
-import { type ReactNode } from 'react';
-import { X } from 'lucide-react';
-import { useModalBehaviour } from '../components/dialogs/useModalBehaviour';
+import type { ReactNode } from 'react';
+import { DialogShell } from '../components/dialogs/DialogShell';
 
-/** Original modal shell. Focus, Escape, and the blurred backdrop match the approved dialog. */
 export function LiveDialog({
   title,
   onClose,
   children,
-  heading = true,
+  showTitle = true,
+  workspace = true,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
-  heading?: boolean;
+  showTitle?: boolean;
+  workspace?: boolean;
 }) {
-  const ref = useModalBehaviour(onClose);
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <section
-        ref={ref}
-        className="modal workspace-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title || 'Dialog'}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <button className="close" type="button" aria-label="Close dialog" onClick={onClose}>
-          <X />
-        </button>
-        {heading && title ? <h2>{title}</h2> : null}
-        {children}
-      </section>
-    </div>
+    <DialogShell label={title} onClose={onClose} workspace={workspace}>
+      {showTitle ? <h2>{title}</h2> : null}
+      {children}
+    </DialogShell>
   );
 }

@@ -20,7 +20,7 @@ const categoryOptions = [
   { id: 'other', label: 'Other' },
 ];
 
-export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
+export function QuoteEditor({ job, actor, update, notify, onSent, onSave }: any) {
   const starting = rowsFromJob(job);
   const [rows, setRows] = useState<QuoteRow[]>(starting.rows);
   const [notes, setNotes] = useState(starting.notes);
@@ -38,7 +38,9 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
   }, [stamp]);
 
   function patch(index: number, field: keyof QuoteRow, value: string) {
-    setRows((current) => current.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row)));
+    setRows((current) =>
+      current.map((row, rowIndex) => (rowIndex === index ? { ...row, [field]: value } : row)),
+    );
   }
 
   function total() {
@@ -49,17 +51,42 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
     }
   }
 
-  function save(kind: 'draft' | 'send') {
+  async function save(kind: 'draft' | 'send') {
     if (busy) return false;
     setBusy(kind);
     setError('');
     if (kind === 'send' && !submitId.current) submitId.current = crypto.randomUUID();
     const clientSubmitId = submitId.current;
+    if (onSave) {
+      try {
+        const lines = rowsToLines(rows);
+        if (notes.trim().length < 3)
+          throw new Error('Add a short description of the proposed work.');
+        await onSave({ lines, notes, send: kind === 'send', clientSubmitId });
+      } catch (reason: any) {
+        setError(reason.message || 'Could not save quotation.');
+      } finally {
+        setBusy('');
+      }
+      return;
+    }
+
     const saved = commitUpdate(
       update,
       (data: any) => {
-        if (kind === 'draft') return saveQuoteDraft(data, { bookingId: job.bookingId || job.id, quoteId: job.quoteId, rows, notes }, actor);
-        const result = applyJobTransition(data, job, 'quote', { rows, notes, clientSubmitId }, actor);
+        if (kind === 'draft')
+          return saveQuoteDraft(
+            data,
+            { bookingId: job.bookingId || job.id, quoteId: job.quoteId, rows, notes },
+            actor,
+          );
+        const result = applyJobTransition(
+          data,
+          job,
+          'quote',
+          { rows, notes, clientSubmitId },
+          actor,
+        );
         if (result.duplicate) return data;
         return result.data;
       },
@@ -87,7 +114,10 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
         save('send');
       }}
     >
-      <p className="muted">Include assessment or diagnostics, parts, labour, and any other charge. This draft stays private until you send it for approval.</p>
+      <p className="muted">
+        Include assessment or diagnostics, parts, labour, and any other charge. This draft stays
+        private until you send it for approval.
+      </p>
       {rows.map((row, index) => (
         <div className="quote-editor-line" key={row.id}>
           <label>
@@ -106,7 +136,10 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
           </label>
           <label className="quote-editor-description">
             Description
-            <input value={row.name} onChange={(event) => patch(index, 'name', event.target.value)} />
+            <input
+              value={row.name}
+              onChange={(event) => patch(index, 'name', event.target.value)}
+            />
           </label>
           <label>
             Qty
@@ -137,7 +170,11 @@ export function QuoteEditor({ job, actor, update, notify, onSent }: any) {
           </button>
         </div>
       ))}
-      <button className="text-link" type="button" onClick={() => setRows((current) => [...current, blankQuoteRow()])}>
+      <button
+        className="text-link"
+        type="button"
+        onClick={() => setRows((current) => [...current, blankQuoteRow()])}
+      >
         <Plus size={16} /> Add a line
       </button>
       <label>

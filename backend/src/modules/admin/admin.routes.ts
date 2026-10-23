@@ -78,6 +78,11 @@ adminRoutes.get("/professionals/:id", async (req, res) => {
   const pro = await db.professional.findUnique({
     where: { id: id.parse(req.params.id) },
     include: {
+      reviews: {
+        select: { id: true, rating: true, body: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      },
       user: {
         select: {
           ...publicUser,

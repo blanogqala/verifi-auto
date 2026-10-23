@@ -55,3 +55,19 @@ Admin-only read endpoints added: `GET /api/admin/professionals`, `/api/admin/app
 The interface retains visible sections for bank onboarding, platform configuration and disputes, but those backend capabilities are not implemented yet. They show unavailable states rather than accepting unsaved values. Checkout displays the selected repair summary and the existing online-payments-unavailable state; it cannot collect money. Admin aggregate counts are server-owned. Summaries based on recent lists explicitly state their 100-record scope. Customer city is not collected, so job-city filters and analytics use the professional city and label it accordingly.
 
 Validation: frontend typecheck, rendering/workflow tests and production build; backend Prisma build and HTTP/database integration tests, including admin access and public-profile field isolation. Headless Chromium exercised 128 connected page/viewport/theme combinations (375px and 1440px, both themes, three roles) using API fixtures, with no JavaScript errors or page-level horizontal overflow. This is not a physical mobile-device check or production end-to-end payment test.
+
+### Shared demo presentation (22 October 2026)
+
+The backend-connected frontend now imports the original garage, professional profile, notification inbox, mechanic appointment cards, business profile, document upload view, quote editor, quote summary and repair approval components. Vehicle and appointment fields are extracted from the original demo into shared components. Both modes use the same dialog shell, backdrop, surface, responsive field rows and colour preview. The dialog renders outside detail cards so card-specific heading/form rules cannot override it. Native modality supplies focus containment, Escape dismissal and return focus.
+
+Keep backend differences in API adapters and action handlers. Do not add another simplified form/page for connected mode. Demo sample labels, sample-filled registration numbers and simulated payment buttons must not be copied into real accounts. Real email verification, permission checks, API errors and unavailable payment/payout features remain explicit.
+
+Migration `202610220001_vehicle_care` restores storage for body style, licence-date source, next-service mileage and next-service source already present in the demo form. Run `npm run db:generate` and `npm run db:migrate` in `backend` before restarting. These are additive fields; existing vehicles and service records remain intact. A source selected by a customer is owner-reported metadata, not verified mechanic evidence.
+
+### Shared mechanic and admin presentation (23 October 2026)
+
+The connected mechanic profile uses `MerchantProfilePage` with its original banner, four folder tabs, business fields, evidence upload and verification checklist. Account security remains available under the business panel. Admin applications, professional details, customer details and account settings use the original admin page components. API adapters supply actual records and callbacks; they never substitute sample accounts, credentials, payments or documents. Payout setup and platform configuration remain explicitly unavailable where no secure server action exists.
+
+The existing `202610220001_vehicle_care` migration from main is retained, including date-only persistence. No duplicate vehicle-fields migration is required. Native dialogs share the existing modal scroll lock and use the original dialog styling via a portal.
+
+Verification: frontend component/flow tests and production build; backend integration tests with PostgreSQL-compatible PGlite and production TypeScript build. Browser tools were unavailable for the October 23 pass, so physical-device interaction and screenshot parity still require visual verification.

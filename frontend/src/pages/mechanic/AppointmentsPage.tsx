@@ -7,7 +7,12 @@ import type { AppointmentSection } from '../../config/navigation';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
 import { vehicleCardImage } from '../../features/garage/garageSelection';
 import { formatDay } from '../../features/jobs/bookingProgress';
-import { bookingReference, isCancelledRequest, isPendingRequest, isRejectedRequest } from '../../features/jobs/jobViews';
+import {
+  bookingReference,
+  isCancelledRequest,
+  isPendingRequest,
+  isRejectedRequest,
+} from '../../features/jobs/jobViews';
 
 const tabs: { id: AppointmentSection; label: string }[] = [
   { id: 'pending', label: 'Pending' },
@@ -34,7 +39,15 @@ function appointmentImage(job: any, vehicles: any[]) {
 }
 
 /** Requests waiting on the mechanic. Accepted work stays on Jobs. */
-export function AppointmentsPage({ customerName, jobs, onOpen, route, section, vehicles = [] }: any) {
+export function AppointmentsPage({
+  customerName,
+  jobs,
+  onOpen,
+  route,
+  section,
+  vehicles = [],
+  live = false,
+}: any) {
   const pending = jobs.filter(isPendingRequest);
   const rejected = jobs.filter(isRejectedRequest);
   const cancelled = jobs.filter(isCancelledRequest);
@@ -46,7 +59,10 @@ export function AppointmentsPage({ customerName, jobs, onOpen, route, section, v
   const visible = section === 'rejected' ? rejected : section === 'cancelled' ? cancelled : pending;
 
   function onTabsKey(event: KeyboardEvent<HTMLDivElement>) {
-    const index = Math.max(0, tabs.findIndex((tab) => tab.id === section));
+    const index = Math.max(
+      0,
+      tabs.findIndex((tab) => tab.id === section),
+    );
     const next =
       event.key === 'ArrowRight'
         ? tabs[(index + 1) % tabs.length]
@@ -64,7 +80,12 @@ export function AppointmentsPage({ customerName, jobs, onOpen, route, section, v
 
   return (
     <div className="mechanic-appointments">
-      <div className="profile-tablist folder-tabs" role="tablist" aria-label="Appointment requests" onKeyDown={onTabsKey}>
+      <div
+        className="profile-tablist folder-tabs"
+        role="tablist"
+        aria-label="Appointment requests"
+        onKeyDown={onTabsKey}
+      >
         {tabs.map((tab) => {
           const selected = section === tab.id;
           return (
@@ -89,7 +110,10 @@ export function AppointmentsPage({ customerName, jobs, onOpen, route, section, v
           {visible.map((job: any) => {
             const vehicleName = job.vehicleLabel || job.vehicle || 'Vehicle not recorded';
             const when = `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}`;
-            const registration = (vehicles || []).find((item: any) => item.id === job.vehicleId)?.registration || job.registration || '';
+            const registration =
+              (vehicles || []).find((item: any) => item.id === job.vehicleId)?.registration ||
+              job.registration ||
+              '';
             return (
               <Card as="article" className="job-card booking-card appointment-card" key={job.id}>
                 <button
@@ -99,7 +123,14 @@ export function AppointmentsPage({ customerName, jobs, onOpen, route, section, v
                   aria-label={`Open appointment ${bookingReference(job)}, ${vehicleName}`}
                 >
                   <span className="booking-card-art">
-                    <VehicleArt image={appointmentImage(job, vehicles)} />
+                    <VehicleArt
+                      image={
+                        live
+                          ? vehicles.find((v: any) => v.id === job.vehicleId)?.modelAsset
+                              ?.previewUrl || ''
+                          : appointmentImage(job, vehicles)
+                      }
+                    />
                   </span>
                   <span className="booking-card-copy">
                     <strong>{vehicleName}</strong>

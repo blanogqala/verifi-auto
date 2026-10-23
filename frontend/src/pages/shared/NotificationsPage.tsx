@@ -46,9 +46,12 @@ function threadKey(note: any) {
   return note.bookingId ? `booking:${note.bookingId}` : `notice:${note.id}`;
 }
 
-export function NotificationsPage({ data, go, notify, role, update }: any) {
+export function NotificationsPage({ data, go, notify, role, update, connected }: any) {
   const self = participantId(data, role);
-  const notes = useMemo(() => notificationsFor(data, role, self), [data, role, self]);
+  const notes = useMemo(
+    () => connected?.notes || notificationsFor(data, role, self),
+    [connected?.notes, data, role, self],
+  );
   const [filter, setFilter] = useState('All');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
@@ -68,20 +71,30 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
       if (filter === 'Unread' && note.read === true) continue;
       if (filter !== 'All' && filter !== 'Unread' && label !== filter) continue;
       const job = (data.jobs || []).find((item: any) => item.id === note.bookingId);
-      const haystack = `${note.title || ''} ${note.message || ''} ${bookingReference(job)} ${job?.vehicle || ''}`.toLowerCase();
+      const haystack =
+        `${note.title || ''} ${note.message || ''} ${bookingReference(job)} ${job?.vehicle || ''}`.toLowerCase();
       if (needle && !haystack.includes(needle)) continue;
       const key = threadKey(note);
       map.set(key, [...(map.get(key) || []), note]);
     }
     return [...map.entries()]
       .map(([key, items]) => {
-        const ordered = items.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+        const ordered = items
+          .slice()
+          .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
         return { key, items: ordered, latest: ordered[0] };
       })
-      .sort((a, b) => String(b.latest?.createdAt || '').localeCompare(String(a.latest?.createdAt || '')));
+      .sort((a, b) =>
+        String(b.latest?.createdAt || '').localeCompare(String(a.latest?.createdAt || '')),
+      );
   }, [data.jobs, filter, notes, query]);
   const active = threads.find((thread) => thread.key === selected) || null;
-  const unreadKey = active ? active.items.filter((item: any) => item.read !== true).map((item: any) => item.id).join('|') : '';
+  const unreadKey = active
+    ? active.items
+        .filter((item: any) => item.read !== true)
+        .map((item: any) => item.id)
+        .join('|')
+    : '';
 
   useEffect(() => {
     const media = window.matchMedia('(max-width: 800px)');
@@ -98,20 +111,34 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
   useEffect(() => {
     if (!unreadKey) return;
     const ids = unreadKey.split('|');
-    commitUpdate(update, (current: any) => markNotificationsRead(current, { role, id: self, ids }), () => {}, '');
+    if (connected) {
+      void connected.mark(ids);
+      return;
+    }
+    commitUpdate(
+      update,
+      (current: any) => markNotificationsRead(current, { role, id: self, ids }),
+      () => {},
+      '',
+    );
   }, [role, self, unreadKey, update]);
 
   function openThread(key: string) {
     setSelected(key);
   }
   function openDestination(note: any) {
-    const path = notificationDestination(data, role, note);
+    const path = connected
+      ? connected.destination(note)
+      : notificationDestination(data, role, note);
     if (!path) return;
     followDetail(go, 'dashboard/notifications', path);
   }
 
   const reading = !!active && (!narrow || !!selected);
-  const viewerName = role === 'customer' ? customerIdentityLabel(data.settings?.name) : merchantIdentityLabel(data.profile?.name);
+  const viewerName =
+    role === 'customer'
+      ? customerIdentityLabel(data.settings?.name)
+      : merchantIdentityLabel(data.profile?.name);
 
   return (
     <div className={'inbox' + (reading && narrow ? ' is-reading' : '')}>
@@ -122,7 +149,15 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
             className="text-link"
             type="button"
             onClick={() =>
-              commitUpdate(update, (current: any) => markNotificationsRead(current, { role, id: self, ids: 'all' }), notify, '')
+              connected
+                ? connected.mark(notes.filter((n: any) => !n.read).map((n: any) => n.id))
+                : commitUpdate(
+                    update,
+                    (current: any) =>
+                      markNotificationsRead(current, { role, id: self, ids: 'all' }),
+                    notify,
+                    '',
+                  )
             }
           >
             Mark all as read
@@ -131,11 +166,20 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
         <label className="search-input">
           <Search size={16} aria-hidden="true" />
           <span className="visually-hidden">Search updates</span>
-          <input aria-label="Search updates" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input
+            aria-label="Search updates"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </label>
         <div className="inbox-filters" role="toolbar" aria-label="Notification filters">
           {groups.map((item) => (
-            <button key={item} type="button" className={filter === item ? 'selected' : ''} onClick={() => setFilter(item)}>
+            <button
+              key={item}
+              type="button"
+              className={filter === item ? 'selected' : ''}
+              onClick={() => setFilter(item)}
+            >
               {item}
             </button>
           ))}
@@ -144,13 +188,19 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
           <div className="inbox-threads">
             {threads.map((thread) => {
               const unread = thread.items.some((item: any) => item.read !== true);
-              const job = (data.jobs || []).find((item: any) => item.id === thread.latest.bookingId);
+              const job = (data.jobs || []).find(
+                (item: any) => item.id === thread.latest.bookingId,
+              );
               const Icon = icons[notificationLabel(thread.latest.type)] || Bell;
               return (
                 <button
                   key={thread.key}
                   type="button"
-                  className={'inbox-thread' + (thread.key === selected ? ' selected' : '') + (unread ? ' unread' : '')}
+                  className={
+                    'inbox-thread' +
+                    (thread.key === selected ? ' selected' : '') +
+                    (unread ? ' unread' : '')
+                  }
                   onClick={() => openThread(thread.key)}
                 >
                   <Icon size={16} aria-hidden="true" />
@@ -167,7 +217,13 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
             })}
           </div>
         ) : (
-          <p>{filter === 'Unread' ? 'No unread updates.' : query ? 'No updates match that search.' : 'No updates yet.'}</p>
+          <p>
+            {filter === 'Unread'
+              ? 'No unread updates.'
+              : query
+                ? 'No updates match that search.'
+                : 'No updates yet.'}
+          </p>
         )}
       </Card>
       <Card as="section" className="dash-panel inbox-detail">
@@ -184,13 +240,19 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
                 className="text-link"
                 type="button"
                 onClick={() =>
-                  commitUpdate(
-                    update,
-                    (current: any) =>
-                      markNotificationsRead(current, { role, id: self, ids: active.items.map((item: any) => item.id) }),
-                    notify,
-                    '',
-                  )
+                  connected
+                    ? connected.mark(active.items.map((n: any) => n.id))
+                    : commitUpdate(
+                        update,
+                        (current: any) =>
+                          markNotificationsRead(current, {
+                            role,
+                            id: self,
+                            ids: active.items.map((item: any) => item.id),
+                          }),
+                        notify,
+                        '',
+                      )
                 }
               >
                 Mark as read
@@ -201,16 +263,24 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
                 <h3>{group.label}</h3>
                 {group.items.map((note: any) => {
                   const Icon = icons[notificationLabel(note.type)] || Bell;
-                  const destination = notificationDestination(data, role, note);
+                  const destination = connected
+                    ? connected.destination(note)
+                    : notificationDestination(data, role, note);
                   return (
                     <article key={note.id} className={'inbox-item' + (note.read ? '' : ' unread')}>
                       <Icon size={16} aria-hidden="true" />
                       <div>
                         <b>{note.title || 'Update'}</b>
                         <p>{note.message || note.text}</p>
-                        <small>{note.createdAt ? formatWhen(note.createdAt) : 'Date not recorded'}</small>
+                        <small>
+                          {note.createdAt ? formatWhen(note.createdAt) : 'Date not recorded'}
+                        </small>
                         {destination ? (
-                          <button type="button" className="text-link" onClick={() => openDestination(note)}>
+                          <button
+                            type="button"
+                            className="text-link"
+                            onClick={() => openDestination(note)}
+                          >
                             Open
                           </button>
                         ) : null}
@@ -220,7 +290,10 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
                 })}
               </section>
             ))}
-            {role !== 'admin' && active.latest.type === 'message' && active.latest.bookingId ? (
+            {!connected &&
+            role !== 'admin' &&
+            active.latest.type === 'message' &&
+            active.latest.bookingId ? (
               <JobConversation
                 active
                 bookingId={active.latest.bookingId}
@@ -245,7 +318,9 @@ export function NotificationsPage({ data, go, notify, role, update }: any) {
 function groupByDay(items: any[]) {
   const order = ['Today', 'Yesterday'];
   const groups = new Map<string, any[]>();
-  const chronological = items.slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const chronological = items
+    .slice()
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   for (const item of chronological) {
     const label = notificationDay(item.createdAt);
     groups.set(label, [...(groups.get(label) || []), item]);

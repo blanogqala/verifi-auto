@@ -4,6 +4,7 @@ export type DetailTab = {
   id: string;
   label: string;
   badge?: number;
+  icon?: ReactNode;
 };
 
 export function detailTabId(scope: string, tabId: string) {
@@ -20,9 +21,11 @@ export function DetailTabs({
   tabs,
   value,
   onChange,
+  className = 'detail-tabs',
 }: {
   id: string;
   label: string;
+  className?: string;
   tabs: DetailTab[];
   value: string;
   onChange: (id: string) => void;
@@ -34,14 +37,18 @@ export function DetailTabs({
     requestAnimationFrame(() => button?.focus());
   }
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const index = Math.max(0, tabs.findIndex((tab) => tab.id === value));
+    const index = Math.max(
+      0,
+      tabs.findIndex((tab) => tab.id === value),
+    );
     if (event.key === 'ArrowRight') move(event, tabs[(index + 1) % tabs.length].id);
-    else if (event.key === 'ArrowLeft') move(event, tabs[(index - 1 + tabs.length) % tabs.length].id);
+    else if (event.key === 'ArrowLeft')
+      move(event, tabs[(index - 1 + tabs.length) % tabs.length].id);
     else if (event.key === 'Home') move(event, tabs[0].id);
     else if (event.key === 'End') move(event, tabs[tabs.length - 1].id);
   }
   return (
-    <div className="detail-tabs" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+    <div className={className} role="tablist" aria-label={label} onKeyDown={onKeyDown}>
       {tabs.map((tab) => {
         const selected = tab.id === value;
         return (
@@ -50,12 +57,14 @@ export function DetailTabs({
             id={detailTabId(id, tab.id)}
             type="button"
             role="tab"
+            className={selected ? 'selected' : ''}
             aria-selected={selected}
             aria-controls={detailPanelId(id, tab.id)}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.id)}
           >
-            {tab.label}
+            {tab.icon}
+            <span>{tab.label}</span>
             {tab.badge ? (
               <span className="tab-badge" aria-label={`${tab.badge} unread`}>
                 {tab.badge}

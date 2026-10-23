@@ -1,3 +1,6 @@
+import { QuoteEditor } from '../components/jobs/QuoteEditor';
+import { QuoteSummary } from '../components/jobs/QuoteSummary';
+import { QuoteReview } from '../components/jobs/QuoteReview';
 import { BookingProgress } from '../components/jobs/BookingProgress';
 import { bookingCardData } from './LiveWorkspaceViews';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -9,241 +12,92 @@ import { RoadLoader } from '../components/ui/RoadLoader';
 import { api, displayStatus, money } from './api';
 import { useResource } from './useResource';
 
+function quotePresentation(quote: any) {
+  return {
+    ...quote,
+    quoteId: quote.id,
+    quoteVersion: quote.version,
+    quoteApproved: !!quote.approvedAt,
+    items: quote.lines.map((line: any) => ({
+      ...line,
+      name: line.description,
+      approved: line.selected,
+    })),
+  };
+}
 function QuoteForm({ bookingId, quote, run, done }: any) {
-  const [lines, setLines] = useState(
-    quote?.lines?.map((line: any) => ({
-      description: line.description,
-      category: line.category,
-      quantity: line.quantity,
-      price: String(line.unitPriceCents / 100),
-    })) || [{ description: '', category: 'labour', quantity: 1, price: '' }],
-  );
-  const [busy, setBusy] = useState(false);
   const [clientRequestId] = useState(() => crypto.randomUUID());
   return (
-    <form
-      onSubmit={async (event) => {
-        event.preventDefault();
-        if (busy) return;
-        setBusy(true);
-        const form = new FormData(event.currentTarget),
-          send = (event.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'send';
+    <QuoteEditor
+      job={quote ? quotePresentation(quote) : { id: bookingId }}
+      onSave={async ({ lines, notes, send }: any) => {
+        // Errors stay in the editor; successful saves refresh authenticated data.
+        await api(
+          `/bookings/${bookingId}/quotes${quote ? '/' + quote.id : ''}`,
+          quote ? 'PUT' : 'POST',
+          {
+            notes,
+            send,
+            clientRequestId: quote?.clientRequestId || clientRequestId,
+            ...(quote ? { version: quote.version } : {}),
+            lines: lines.map((line: any) => ({
+              description: line.name,
+              category: line.category || 'other',
+              quantity: line.quantity || 1,
+              unitPriceCents: line.unitPriceCents ?? Math.round(line.amount * 100),
+            })),
+          },
+        );
         await run(
           async () => {
-            const body = {
-              notes: String(form.get('notes')),
-              lines: lines.map((l: any) => ({
-                description: l.description,
-                category: l.category,
-                quantity: Number(l.quantity),
-                unitPriceCents: Math.round(Number(l.price) * 100),
-              })),
-              send,
-              clientRequestId: quote?.clientRequestId || clientRequestId,
-              ...(quote ? { version: quote.version } : {}),
-            };
-            await api(
-              `/bookings/${bookingId}/quotes${quote ? '/' + quote.id : ''}`,
-              quote ? 'PUT' : 'POST',
-              body,
-            );
             done();
           },
           send ? 'Quotation sent for approval.' : 'Draft saved.',
         );
-        setBusy(false);
       }}
-    >
-      {lines.map((line: any, index: number) => (
-        <div className="quote-editor-row" key={index}>
-          <label>
-            Description
-            <input
-              required
-              maxLength={300}
-              value={line.description}
-              onChange={(e) =>
-                setLines(
-                  lines.map((l: any, i: number) =>
-                    i === index ? { ...l, description: e.target.value } : l,
-                  ),
-                )
-              }
-            />
-          </label>
-          <label>
-            Type
-            <select
-              value={line.category}
-              onChange={(e) =>
-                setLines(
-                  lines.map((l: any, i: number) =>
-                    i === index ? { ...l, category: e.target.value } : l,
-                  ),
-                )
-              }
-            >
-              {['assessment', 'labour', 'parts', 'other'].map((kind) => (
-                <option key={kind}>{kind}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Quantity
-            <input
-              type="number"
-              min={1}
-              max={1000}
-              required
-              value={line.quantity}
-              onChange={(e) =>
-                setLines(
-                  lines.map((l: any, i: number) =>
-                    i === index ? { ...l, quantity: e.target.value } : l,
-                  ),
-                )
-              }
-            />
-          </label>
-          <label>
-            Unit price (R)
-            <input
-              inputMode="decimal"
-              type="number"
-              min="0.01"
-              step="0.01"
-              required
-              value={line.price}
-              onChange={(e) =>
-                setLines(
-                  lines.map((l: any, i: number) =>
-                    i === index ? { ...l, price: e.target.value } : l,
-                  ),
-                )
-              }
-            />
-          </label>
-          <button
-            type="button"
-            aria-label={'Remove line ' + (index + 1)}
-            disabled={lines.length === 1}
-            onClick={() => setLines(lines.filter((_: any, i: number) => i !== index))}
-          >
-            ×
-          </button>
-        </div>
-      ))}
-      <button
-        type="button"
-        className="secondary"
-        onClick={() =>
-          setLines([...lines, { description: '', category: 'labour', quantity: 1, price: '' }])
-        }
-      >
-        Add line
-      </button>
-      <label>
-        Proposed work
-        <textarea
-          name="notes"
-          defaultValue={quote?.notes || ''}
-          minLength={3}
-          maxLength={4000}
-          required
-        />
-      </label>
-      <div className="button-row">
-        <button className="secondary" disabled={busy} value="draft">
-          Save draft
-        </button>
-        <button className="primary" disabled={busy} value="send">
-          Send quotation
-        </button>
-      </div>
-    </form>
+    />
   );
 }
-function RepairChoices({ quote, bookingId, run, done }: any) {
-  const [selected, setSelected] = useState<string[]>(
-    quote.lines.filter((l: any) => l.selected).map((l: any) => l.id),
-  );
-  const [request, setRequest] = useState(quote.customerRequest || '');
+function RepairChoices({ quote, bookingId, run, done, job }: any) {
   const [busy, setBusy] = useState(false);
-  async function submit(action: string) {
-    setBusy(true);
-    await run(
-      async () => {
-        await api(`/bookings/${bookingId}/quotes/${quote.id}/actions`, 'POST', {
-          action,
-          version: quote.version,
-          ...(action === 'approve' ? { selectedLineIds: selected } : {}),
-          request,
-        });
-        done();
-      },
-      action === 'approve' ? 'Selected repairs approved.' : 'Changes requested.',
-    );
-    setBusy(false);
-  }
   return (
-    <div>
-      <fieldset className="share-records">
-        <legend>Choose your repairs</legend>
-        {quote.lines.map((line: any) => (
-          <label className="check-label" key={line.id}>
-            <input
-              type="checkbox"
-              checked={selected.includes(line.id)}
-              onChange={(e) =>
-                setSelected(
-                  e.target.checked
-                    ? [...selected, line.id]
-                    : selected.filter((id) => id !== line.id),
-                )
-              }
-            />
-            <span>
-              {line.description} <b>{money(line.quantity * line.unitPriceCents)}</b>
-            </span>
-          </label>
-        ))}
-      </fieldset>
-      <p>
-        Selected total{' '}
-        <strong>
-          {money(
-            quote.lines
-              .filter((l: any) => selected.includes(l.id))
-              .reduce((sum: number, l: any) => sum + l.quantity * l.unitPriceCents, 0),
-          )}
-        </strong>
-      </p>
-      <label>
-        Requests or comments
-        <textarea value={request} onChange={(e) => setRequest(e.target.value)} maxLength={2000} />
-      </label>
-      <p className="muted">
-        Additional requests need a price and fresh approval before work starts.
-      </p>
-      <div className="button-row">
-        <button
-          type="button"
-          className="primary"
-          disabled={busy || !selected.length}
-          onClick={() => submit('approve')}
-        >
-          Approve selected repairs
-        </button>
-        <button
-          type="button"
-          className="secondary"
-          disabled={busy || request.trim().length < 3}
-          onClick={() => submit('changes')}
-        >
-          Request revised quote
-        </button>
-      </div>
-    </div>
+    <QuoteReview
+      live
+      busy={busy}
+      job={{
+        vehicle: bookingCardData(job).vehicle,
+        provider: job.professional.name,
+        quoteApproved: !!quote.approvedAt,
+        customerRequest: quote.customerRequest,
+        items: quote.lines.map((line: any) => ({
+          id: line.id,
+          name: line.description,
+          quantity: line.quantity,
+          unitPriceCents: line.unitPriceCents,
+          approved: line.selected,
+        })),
+      }}
+      onAction={async (_: any, action: string, values: any) => {
+        if (busy) return;
+        setBusy(true);
+        try {
+          await run(
+            async () => {
+              await api(`/bookings/${bookingId}/quotes/${quote.id}/actions`, 'POST', {
+                action,
+                version: quote.version,
+                ...(action === 'approve' ? { selectedLineIds: values.selectedLineIds } : {}),
+                request: values.customerRequest || values.changeRequest || '',
+              });
+              done();
+            },
+            action === 'approve' ? 'Selected repairs approved.' : 'Changes requested.',
+          );
+        } finally {
+          setBusy(false);
+        }
+      }}
+    />
   );
 }
 function Conversation({ bookingId, revision, run, refresh, user }: any) {
@@ -569,32 +423,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
                 <span className="quotation-state">{displayStatus(quote.status)}</span> · Version{' '}
                 {quote.version}
               </p>
-              <div className="quote-table">
-                {quote.lines.map((line: any) => (
-                  <div className="quote-line" key={line.id}>
-                    <span>
-                      {line.description}
-                      <small>
-                        {line.quantity} × {money(line.unitPriceCents)}
-                        {!line.selected ? ' · Deferred' : ''}
-                      </small>
-                    </span>
-                    <b>{money(line.quantity * line.unitPriceCents)}</b>
-                  </div>
-                ))}
-                <div className="quote-line quote-total">
-                  <span>Selected total</span>
-                  <b>
-                    {money(
-                      quote.lines
-                        .filter((l: any) => l.selected)
-                        .reduce((sum: number, l: any) => sum + l.quantity * l.unitPriceCents, 0),
-                    )}
-                  </b>
-                </div>
-              </div>
-              <p>{quote.notes}</p>
-              {quote.customerRequest ? <p>Customer request: {quote.customerRequest}</p> : null}
+              <QuoteSummary job={quotePresentation(quote)} title="Proposed repairs" />
               {customer &&
               !quote.payment &&
               !quote.workStartedAt &&
@@ -608,8 +437,13 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
                     {quote.approvedAt ? 'Edit repair selection' : 'Review and approve'}
                   </button>
                   {reviewing === quote.id ? (
-                    <LiveDialog title="Choose your repairs" onClose={() => setReviewing('')}>
+                    <LiveDialog
+                      showTitle={false}
+                      title="Choose your repairs"
+                      onClose={() => setReviewing('')}
+                    >
                       <RepairChoices
+                        job={job}
                         key={quote.version}
                         bookingId={job.id}
                         quote={quote}
@@ -646,7 +480,11 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
               !quote.payment &&
               ['DRAFT', 'SENT', 'CHANGES_REQUESTED'].includes(quote.status) ? (
                 <div className="button-row">
-                  <button className="secondary" type="button" onClick={() => setEditingQuote(quote)}>
+                  <button
+                    className="secondary"
+                    type="button"
+                    onClick={() => setEditingQuote(quote)}
+                  >
                     Edit quotation
                   </button>
                   <button
@@ -687,7 +525,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
             </DetailCard>
           ))}
           {invoice ? (
-            <LiveDialog title="Repair invoice." heading={false} onClose={() => setInvoice(null)}>
+            <LiveDialog title="Repair invoice." showTitle={false} onClose={() => setInvoice(null)}>
               <span className="chip">PAYMENT PREVIEW</span>
               <h2>Repair invoice.</h2>
               <p>
@@ -719,28 +557,30 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
         </div>
       </DetailPanel>
       {checkout ? (
-        <LiveDialog title="Review payment." heading={false} onClose={() => setCheckout(null)}>
-          <span className="chip">PAYMENT PREVIEW</span>
-          <h2>Review payment.</h2>
-          <p>Quotation {checkout.number}</p>
-          {checkout.lines
-            .filter((line: any) => line.selected)
-            .map((line: any) => (
-              <div className="invoice-line" key={line.id}>
-                <span>{line.description}</span>
-                <b>{money(line.quantity * line.unitPriceCents)}</b>
-              </div>
-            ))}
-          <div className="invoice-line total">
-            <span>Total</span>
-            <b>
+        <LiveDialog
+          title={`Review payment · Quotation ${checkout.number}`}
+          onClose={() => setCheckout(null)}
+        >
+          <div className="quote-table">
+            {checkout.lines
+              .filter((l: any) => l.selected)
+              .map((l: any) => (
+                <div className="invoice-line" key={l.id}>
+                  <span>{l.description}</span>
+                  <b>{money(l.quantity * l.unitPriceCents)}</b>
+                </div>
+              ))}
+          </div>
+          <p>
+            Selected total{' '}
+            <strong>
               {money(
                 checkout.lines
                   .filter((line: any) => line.selected)
                   .reduce((sum: number, line: any) => sum + line.quantity * line.unitPriceCents, 0),
               )}
-            </b>
-          </div>
+            </strong>
+          </p>
           <div className="notice">
             Online payments are not available yet. No card details are requested and no money is
             transferred.
@@ -765,7 +605,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
         </LiveDialog>
       ) : null}
       {confirm === 'cancel' ? (
-        <LiveDialog title="Cancel this request?" heading={false} onClose={() => setConfirm('')}>
+        <LiveDialog title="Cancel this request?" showTitle={false} onClose={() => setConfirm('')}>
           <h2>Cancel this request?</h2>
           <p>
             {job.professional.name}
@@ -787,7 +627,7 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
         </LiveDialog>
       ) : null}
       {confirm === 'reject' ? (
-        <LiveDialog title="Reject this request?" heading={false} onClose={() => setConfirm('')}>
+        <LiveDialog title="Reject this request?" showTitle={false} onClose={() => setConfirm('')}>
           <h2>Reject this request?</h2>
           <form
             onSubmit={(event) => {
@@ -809,12 +649,14 @@ export function LiveBooking({ bookingId, user, revision, run, refresh, go }: any
         </LiveDialog>
       ) : null}
       {confirm === 'complete' ? (
-        <LiveDialog title="Mark work complete" heading={false} onClose={() => setConfirm('')}>
+        <LiveDialog title="Mark work complete" showTitle={false} onClose={() => setConfirm('')}>
           <h2>Mark this work complete.</h2>
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              const completionNotes = String(new FormData(event.currentTarget).get('completionNotes'));
+              const completionNotes = String(
+                new FormData(event.currentTarget).get('completionNotes'),
+              );
               setConfirm('');
               void action('complete', { completionNotes });
             }}

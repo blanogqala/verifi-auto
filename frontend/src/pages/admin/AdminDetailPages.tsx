@@ -100,6 +100,7 @@ export function ApplicationDetailPage({
   setChecks,
   reviewNote,
   setReviewNote,
+  connected,
 }: any) {
   const [section, setSection] = useState('Business');
   if (!record) return <Missing route={route} back="applications" />;
@@ -141,16 +142,33 @@ export function ApplicationDetailPage({
                 <div>
                   <b>{doc.kind || 'Document'}</b>
                   <small>{doc.name || 'Name not recorded'}</small>
-                  <small>Metadata only — file preview unavailable in this demo.</small>
+                  {connected && (
+                    <a
+                      className="secondary"
+                      href={connected.documentUrl(doc.id)}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      View document
+                    </a>
+                  )}
+                  {!connected && (
+                    <small>Metadata only — file preview unavailable in this demo.</small>
+                  )}
                 </div>
               </div>
             ))
           ) : (
-            <p>No document files are available for this sample application.</p>
+            <p>
+              {connected
+                ? 'No documents submitted.'
+                : 'No document files are available for this sample application.'}
+            </p>
           )}
           <p className="muted">
-            The current upload stores file metadata, not the file contents. Real document viewing
-            requires secure backend storage.
+            {connected
+              ? 'Documents are private and available only to authorised reviewers.'
+              : 'The current upload stores file metadata, not the file contents. Real document viewing requires secure backend storage.'}
           </p>
           <button className="secondary" onClick={() => setSection('Decision')}>
             Continue to decision
@@ -159,7 +177,11 @@ export function ApplicationDetailPage({
       )}
       {section === 'Decision' && (
         <DetailCard title="Verification decision" icon={<ClipboardCheck size={20} />}>
-          <p className="muted">Demo review only. These checks do not verify real credentials.</p>
+          <p className="muted">
+            {connected
+              ? 'Review the submitted evidence before recording your decision.'
+              : 'Demo review only. These checks do not verify real credentials.'}
+          </p>
           {[
             'Identity reviewed',
             'Qualifications / experience reviewed',
@@ -189,22 +211,31 @@ export function ApplicationDetailPage({
           <div className="button-row">
             <button
               className="primary"
-              disabled={checks.length < 3 || record.status === 'Approved'}
+              disabled={
+                checks.length < 3 ||
+                (connected ? record.status !== 'Pending review' : record.status === 'Approved')
+              }
               onClick={() => review(record, 'Approved')}
             >
               Approve application
             </button>
-            <button className="secondary" onClick={() => review(record, 'Changes requested')}>
-              Request changes
-            </button>
             <button
               className="secondary"
-              onClick={() =>
-                review(record, record.status === 'Approved' ? 'Suspended' : 'Rejected')
-              }
+              disabled={connected && record.status !== 'Pending review'}
+              onClick={() => review(record, 'Changes requested')}
             >
-              {record.status === 'Approved' ? 'Suspend credential' : 'Reject application'}
+              Request changes
             </button>
+            {(!connected || record.status === 'Approved') && (
+              <button
+                className="secondary"
+                onClick={() =>
+                  review(record, record.status === 'Approved' ? 'Suspended' : 'Rejected')
+                }
+              >
+                {record.status === 'Approved' ? 'Suspend credential' : 'Reject application'}
+              </button>
+            )}
           </div>
           {record.note && <p>Latest feedback: {record.note}</p>}
           {history.length > 0 && (
@@ -222,15 +253,19 @@ export function ApplicationDetailPage({
     </div>
   );
 }
-export function ProfessionalAdminDetailPage({ record, data, route }: any) {
+export function ProfessionalAdminDetailPage({ record, data, route, connected }: any) {
   const [section, setSection] = useState('Overview');
   if (!record) return <Missing route={route} back="professionals" />;
   const id = applicationProfessionalId(data, record);
-  const profile = record.own ? data.profile : providers.find((p) => p.id === id) || record;
-  const jobs = professionalJobs(data, record);
+  const profile = connected
+    ? record
+    : record.own
+      ? data.profile
+      : providers.find((p) => p.id === id) || record;
+  const jobs = connected ? connected.jobs : professionalJobs(data, record);
   const stats = accountMetrics(jobs);
-  const rating = ratingSummary(data, id);
-  const reviews = eligibleCustomerReviews(data, id);
+  const rating = connected ? connected.rating : ratingSummary(data, id);
+  const reviews = connected ? connected.reviews : eligibleCustomerReviews(data, id);
   return (
     <div className="admin-detail-page">
       <DetailBack label="Back to professionals" onClick={() => route('professionals')} />
@@ -265,7 +300,10 @@ export function ProfessionalAdminDetailPage({ record, data, route }: any) {
           <DetailCard title="Platform activity" icon={<Wallet size={20} />}>
             <DetailFields
               items={[
-                { label: 'Recorded customer payments', value: money(stats.paid) },
+                {
+                  label: 'Recorded customer payments',
+                  value: money(connected ? connected.paid : stats.paid),
+                },
                 {
                   label: 'Customer rating',
                   value: rating.count
@@ -275,7 +313,9 @@ export function ProfessionalAdminDetailPage({ record, data, route }: any) {
               ]}
             />
             <p className="muted">
-              Gross demo payments on linked jobs. This is not a bank payout or net earnings.
+              {connected
+                ? 'Confirmed gross payments on recent linked jobs. This is not a bank payout or net earnings.'
+                : 'Gross demo payments on linked jobs. This is not a bank payout or net earnings.'}
             </p>
           </DetailCard>
         </div>
@@ -303,10 +343,10 @@ export function ProfessionalAdminDetailPage({ record, data, route }: any) {
     </div>
   );
 }
-export function CustomerAdminDetailPage({ customer, data, route }: any) {
+export function CustomerAdminDetailPage({ customer, data, route, connected }: any) {
   const [section, setSection] = useState('Overview');
   if (!customer) return <Missing route={route} back="customers" />;
-  const jobs = bookingsForCustomer(data.jobs, customer.id);
+  const jobs = connected ? connected.jobs : bookingsForCustomer(data.jobs, customer.id);
   const stats = accountMetrics(jobs);
   return (
     <div className="admin-detail-page">
@@ -324,12 +364,15 @@ export function CustomerAdminDetailPage({ customer, data, route }: any) {
               { label: 'Email', value: customer.email || 'Not recorded' },
               { label: 'Telephone', value: customer.phone || 'Not recorded' },
               { label: 'Customer ID', value: customer.id },
-              { label: 'Recorded payments', value: money(stats.paid) },
+              { label: 'Recorded payments', value: money(connected ? connected.paid : stats.paid) },
             ]}
           />
           <p className="muted">
-            Read-only demo account. Payment totals include recorded payments only.
+            {connected
+              ? 'Payment totals include confirmed payments on recent linked bookings only.'
+              : 'Read-only demo account. Payment totals include recorded payments only.'}
           </p>
+          {connected?.accountAction}
         </DetailCard>
       ) : (
         <DetailCard title="Customer bookings">
@@ -366,7 +409,13 @@ export function AdminJobDetailPage({ job, data, route }: any) {
                 value: [job.date, job.time].filter(Boolean).join(' · ') || 'Not recorded',
               },
               { label: 'Vehicle ID', value: job.vehicleId || 'Not linked' },
-              { label: 'Payment', value: job.quoteApproved && allApprovedQuotesPaid(job) ? 'Approved quotes paid (demo)' : 'Not fully paid' },
+              {
+                label: 'Payment',
+                value:
+                  job.quoteApproved && allApprovedQuotesPaid(job)
+                    ? 'Approved quotes paid (demo)'
+                    : 'Not fully paid',
+              },
             ]}
           />
           <p>{job.description || 'No description supplied.'}</p>

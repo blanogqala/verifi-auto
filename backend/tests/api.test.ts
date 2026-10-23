@@ -486,7 +486,7 @@ test(
       assert.equal(publicProfile.body.reviewCount, 0);
       assert.equal(publicProfile.body.rating, null);
       assert.equal(publicProfile.body.user, undefined);
-      for (const path of ["/api/admin/professionals", "/api/admin/application-history", `/api/admin/users/${alice.user.id}`]) {
+      for (const path of [`/api/admin/professionals/${pro.id}`, "/api/admin/professionals", "/api/admin/application-history", `/api/admin/users/${alice.user.id}`]) {
         assert.equal((await send("get", path, undefined, alice)).status, 403);
         const result = await send("get", path, undefined, admin);
         assert.equal(result.status, 200);

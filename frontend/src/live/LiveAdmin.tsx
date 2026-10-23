@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import {
+  ApplicationDetailPage,
+  ProfessionalAdminDetailPage,
+  CustomerAdminDetailPage,
+} from '../pages/admin/AdminDetailPages';
+import { useEffect, useState } from 'react';
 import { Users, ShieldCheck, ClipboardCheck, Car, Wallet, Wrench } from 'lucide-react';
 import { DetailCard, DetailBack, DetailFields, DetailHeader } from '../components/ui/DetailChrome';
 import { DetailTabs, DetailPanel } from '../components/ui/DetailTabs';
@@ -34,9 +39,15 @@ export function LiveAdmin({ section, revision, run, go, refresh }: any) {
   const history = resourceId === 'history';
   const detail =
     !!resourceId && !history && ['applications', 'professionals', 'customers'].includes(base);
+  const [checks, setChecks] = useState<string[]>([]);
+  const [reviewNote, setReviewNote] = useState('');
   const [query, setQuery] = useState(''),
     [filter, setFilter] = useState('All'),
     [tab, setTab] = useState('overview');
+  useEffect(() => {
+    setChecks([]);
+    setReviewNote('');
+  }, [base, resourceId]);
   const { data, error } = useResource(
     detail
       ? (base === 'customers' ? '/admin/users/' : '/admin/professionals/') + resourceId
@@ -85,199 +96,102 @@ export function LiveAdmin({ section, revision, run, go, refresh }: any) {
   const linkedPayments = (payments || []).filter(
     (p: any) => p.provider !== 'TEST' && linked.some((j: any) => j.id === p.quote.bookingId),
   );
-  if (detail)
+  if (detail && base === 'applications')
     return (
-      <div className="admin-detail-page">
-        <DetailBack label={'Back to ' + base} onClick={() => route(base)} />
-        <DetailHeader
-          title={data.name}
-          summary={base === 'customers' ? data.email : `${data.type} · ${data.city}`}
-          aside={
-            <StatusBadge
-              value={
-                base === 'customers'
-                  ? data.disabledAt
-                    ? 'Disabled'
-                    : 'Active'
-                  : status(data.status)
-              }
-            />
-          }
-        />
-        <DetailTabs
-          id="admin-record"
-          label="Record sections"
-          value={tab}
-          onChange={setTab}
-          tabs={
-            base === 'customers'
-              ? [
-                  { id: 'overview', label: 'Overview' },
-                  { id: 'jobs', label: 'Bookings' },
-                ]
-              : [
-                  { id: 'overview', label: 'Overview' },
-                  { id: 'documents', label: 'Documents' },
-                  { id: 'jobs', label: 'Jobs & payments' },
-                  { id: 'decision', label: 'Verification' },
-                ]
-          }
-        />
-        <DetailPanel scope="admin-record" tabId="overview" value={tab}>
-          <div className="admin-record-metrics">
-            <MetricCard
-              label="Linked bookings"
-              value={linked.length}
-              note="Recent loaded bookings"
-              Icon={Car}
-            />
-            <MetricCard
-              label="Completed jobs"
-              value={linked.filter((j: any) => j.status === 'COMPLETED').length}
-              note="Recent completed work"
-              Icon={Wrench}
-            />
-            <MetricCard
-              label="Recorded payments"
-              value={
-                payments
-                  ? money(linkedPayments.reduce((n: number, p: any) => n + p.amountCents, 0))
-                  : '—'
-              }
-              note="Confirmed gross · recent records"
-              Icon={Wallet}
-            />
-          </div>
-          <DetailCard title={base === 'customers' ? 'Customer account' : 'Business profile'}>
-            <DetailFields
-              items={[
-                { label: 'Email', value: data.user?.email || data.email },
-                { label: 'Phone', value: data.phone || 'Not recorded' },
-                { label: 'Location', value: data.city || 'Not recorded' },
-              ]}
-            />
-            {data.about ? <p>{data.about}</p> : null}
-            {data.services ? (
-              <ul className="pro-service-tags">
-                {data.services.map((s: string) => (
-                  <li key={s}>{s}</li>
-                ))}
-              </ul>
-            ) : null}
-            {base === 'customers' ? (
-              <button
-                className="secondary"
-                onClick={() =>
-                  run(async () => {
-                    await api('/admin/users/' + data.id + '/status', 'POST', {
-                      disabled: !data.disabledAt,
-                    });
-                    refresh();
-                  }, 'Account status updated.')
-                }
-              >
-                {data.disabledAt ? 'Enable account' : 'Disable account'}
-              </button>
-            ) : null}
-          </DetailCard>
-        </DetailPanel>
-        <DetailPanel scope="admin-record" tabId="jobs" value={tab}>
-          <DetailCard title="Booking history">
-            <div className="admin-record-list">
-              {linked.map((j: any) => (
-                <button
-                  key={j.id}
-                  className="admin-record-link"
-                  onClick={() => route('jobs/' + j.id)}
-                >
-                  <span>
-                    <b>{bookingCardData(j).vehicle}</b>
-                    <small>
-                      {j.customer.name} · {j.professional.name}
-                    </small>
-                  </span>
-                  <StatusBadge value={bookingCardData(j).status} />
-                </button>
-              ))}
-              {!linked.length ? <p>No linked bookings yet.</p> : null}
-            </div>
-          </DetailCard>
-        </DetailPanel>
-        {base !== 'customers' ? (
-          <>
-            <DetailPanel scope="admin-record" tabId="documents" value={tab}>
-              <DetailCard title="Submitted evidence">
-                {data.user.documents.length ? (
-                  data.user.documents.map((d: any) => (
-                    <div className="document-row" key={d.id}>
-                      <div>
-                        <b>{displayStatus(d.kind)}</b>
-                        <small>{d.name}</small>
-                      </div>
-                      <a
-                        className="secondary"
-                        href={`${apiBase}/api/documents/${d.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        View document
-                      </a>
-                    </div>
-                  ))
-                ) : (
-                  <p>No documents submitted.</p>
-                )}
-              </DetailCard>
-            </DetailPanel>
-            <DetailPanel scope="admin-record" tabId="decision" value={tab}>
-              <DetailCard title="Verification decision">
-                <p>
-                  {data.reviewNote ||
-                    'Review the business information and submitted evidence before making a decision.'}
-                </p>
-                {['SUBMITTED', 'APPROVED'].includes(data.status) ? (
-                  <form
-                    className="settings-form"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const input = Object.fromEntries(new FormData(e.currentTarget));
-                      void run(async () => {
-                        await api(`/admin/professionals/${data.id}/review`, 'POST', {
-                          ...input,
-                          version: data.version,
-                        });
-                        refresh();
-                      }, 'Application decision saved.');
-                    }}
-                  >
-                    <label>
-                      Decision
-                      <select name="status">
-                        {data.status === 'APPROVED' ? (
-                          <option value="SUSPENDED">Suspend credential</option>
-                        ) : (
-                          <>
-                            <option value="APPROVED">Approve application</option>
-                            <option value="CHANGES_REQUESTED">Request changes</option>
-                          </>
-                        )}
-                      </select>
-                    </label>
-                    <label>
-                      Review notes
-                      <textarea name="note" required minLength={3} maxLength={2000} />
-                    </label>
-                    <button className="primary">Save decision</button>
-                  </form>
-                ) : (
-                  <p>This application is not currently awaiting a decision.</p>
-                )}
-              </DetailCard>
-            </DetailPanel>
-          </>
-        ) : null}
-      </div>
+      <ApplicationDetailPage
+        key={data.id}
+        record={{
+          ...application(data),
+          bio: data.about,
+          email: data.user?.email,
+          individualName: data.user?.name,
+          documents: (data.user?.documents || []).map((d: any) => ({
+            ...d,
+            kind: displayStatus(d.kind),
+          })),
+        }}
+        data={{ adminActivity: [] }}
+        route={route}
+        checks={checks}
+        setChecks={setChecks}
+        reviewNote={reviewNote}
+        setReviewNote={setReviewNote}
+        connected={{ documentUrl: (id: string) => `${apiBase}/api/documents/${id}` }}
+        review={(_: any, decision: string) =>
+          run(async () => {
+            if (reviewNote.trim().length < 3)
+              throw new Error('Add decision notes of at least 3 characters.');
+            await api(`/admin/professionals/${data.id}/review`, 'POST', {
+              status: (
+                {
+                  Approved: 'APPROVED',
+                  'Changes requested': 'CHANGES_REQUESTED',
+                  Suspended: 'SUSPENDED',
+                } as any
+              )[decision],
+              note: reviewNote,
+              version: data.version,
+            });
+            setChecks([]);
+            setReviewNote('');
+            refresh();
+          }, 'Application decision saved.')
+        }
+      />
     );
+  if (detail) {
+    const recentReviews = (data.reviews || []).map((r: any) => ({ ...r, text: r.body }));
+    const connected = {
+      jobs: linked.map(bookingCardData),
+      paid: linkedPayments.reduce((n: number, p: any) => n + p.amountCents, 0) / 100,
+      reviews: recentReviews,
+      rating: {
+        count: recentReviews.length,
+        average: recentReviews.length
+          ? (
+              recentReviews.reduce((n: number, r: any) => n + r.rating, 0) / recentReviews.length
+            ).toFixed(1)
+          : 0,
+      },
+      accountAction: (
+        <button
+          className="secondary"
+          onClick={() =>
+            run(async () => {
+              await api('/admin/users/' + data.id + '/status', 'POST', {
+                disabled: !data.disabledAt,
+              });
+              refresh();
+            }, 'Account status updated.')
+          }
+        >
+          {data.disabledAt ? 'Enable account' : 'Disable account'}
+        </button>
+      ),
+    };
+    return base === 'customers' ? (
+      <CustomerAdminDetailPage
+        key={data.id}
+        customer={data}
+        data={{}}
+        route={route}
+        connected={connected}
+      />
+    ) : (
+      <ProfessionalAdminDetailPage
+        key={data.id}
+        record={{
+          ...application(data),
+          professionalId: data.id,
+          email: data.user?.email,
+          bio: data.about,
+        }}
+        data={{}}
+        route={route}
+        connected={connected}
+      />
+    );
+  }
   if (base === 'applications')
     return (
       <>

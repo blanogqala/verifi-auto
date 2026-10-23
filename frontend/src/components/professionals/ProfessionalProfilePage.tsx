@@ -8,7 +8,10 @@ import { demoCustomerId } from '../../features/admin/customerRecords';
 import { customerRecords } from '../../features/admin/customerRecords';
 import { readProfilePhoto } from '../../features/account/profilePhoto';
 import { initialsFromName } from '../../features/account/customerIdentity';
-import { resolveProfessional, verificationCopy } from '../../features/professionals/professionalProfile';
+import {
+  resolveProfessional,
+  verificationCopy,
+} from '../../features/professionals/professionalProfile';
 import { formatDay } from '../../features/jobs/bookingProgress';
 import { backTarget, returnLabel } from '../../features/navigation/returnPath';
 import { chargeConfirmation } from '../../features/jobs/pricingModel';
@@ -47,13 +50,20 @@ export function ProfessionalProfilePage({
   go,
   update,
   notify,
+  connected,
 }: any) {
-  const resolved = resolveProfessional(professionalId, data);
+  const resolved = connected
+    ? { state: 'listed' as const, profile: connected.profile }
+    : resolveProfessional(professionalId, data);
   const Tag = embedded ? 'div' : 'main';
   const customerId = data?.settings?.id || demoCustomerId;
-  const reviews = resolved.state === 'listed' ? eligibleCustomerReviews(data, professionalId) : [];
+  const reviews = connected
+    ? connected.reviews
+    : resolved.state === 'listed'
+      ? eligibleCustomerReviews(data, professionalId)
+      : [];
   const eligible =
-    role === 'customer' && resolved.state === 'listed'
+    !connected && role === 'customer' && resolved.state === 'listed'
       ? eligibleReviewBookings(data, customerId, professionalId)
       : [];
   const [rating, setRating] = useState(5);
@@ -64,7 +74,8 @@ export function ProfessionalProfilePage({
   const [photoState, setPhotoState] = useState<'idle' | 'working'>('idle');
   const [error, setError] = useState('');
   const customers = customerRecords(data);
-  const here = (embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(professionalId || '');
+  const here =
+    (embedded ? 'dashboard/find/' : 'professional/') + encodeURIComponent(professionalId || '');
   const fallback = embedded ? 'dashboard/find' : 'find';
   const back = backTarget(here, fallback);
 
@@ -145,17 +156,23 @@ export function ProfessionalProfilePage({
     }
   }
 
-  const summary = ratingSummary(data, professionalId);
+  const summary = connected?.rating || ratingSummary(data, professionalId);
   const discovery = readDiscoverySession();
   const distance = distanceFor({ location: profile.location }, discovery.origin);
   const coverage = Number(profile.location?.serviceRadiusKm);
   const distanceLabel =
-    profile.location?.precision === 'service-area' && distance != null && Number.isFinite(coverage) && distance <= coverage
+    profile.location?.precision === 'service-area' &&
+    distance != null &&
+    Number.isFinite(coverage) &&
+    distance <= coverage
       ? 'Serves your area'
-      : distance != null && profile.location && profile.location.precision !== 'unknown' && profile.location.precision !== 'service-area'
+      : distance != null &&
+          profile.location &&
+          profile.location.precision !== 'unknown' &&
+          profile.location.precision !== 'service-area'
         ? approximateDistanceLabel(distance, profile.location.precision)
         : '';
-  const directions = mapsDirectionsUrl(profile.location);
+  const directions = connected ? connected.directionsUrl : mapsDirectionsUrl(profile.location);
 
   return (
     <Tag className={'section profile-page detail-page' + (embedded ? ' profile-embedded' : '')}>
@@ -163,7 +180,14 @@ export function ProfessionalProfilePage({
       <section className="pro-banner">
         <div className="pro-banner-art">
           {profile.photo ? (
-            <img src={profile.photo} alt="Illustrative workshop photograph. Not a picture of this fictional business." />
+            <img
+              src={profile.photo}
+              alt={
+                connected
+                  ? profile.name
+                  : 'Illustrative workshop photograph. Not a picture of this fictional business.'
+              }
+            />
           ) : (
             <span aria-hidden="true">{initialsFromName(profile.name)}</span>
           )}
@@ -173,41 +197,53 @@ export function ProfessionalProfilePage({
           <h1>{profile.name}</h1>
           {profile.individualName ? <p>{profile.individualName}</p> : null}
           <p>
-            <MapPin size={16} aria-hidden="true" /> {profile.place || profile.area || 'Location not recorded'} · {profile.type || 'Type not recorded'}
+            <MapPin size={16} aria-hidden="true" />{' '}
+            {profile.place || profile.area || 'Location not recorded'} ·{' '}
+            {profile.type || 'Type not recorded'}
           </p>
           {profile.location?.precision === 'service-area' ? (
-            <p>Service-area reference only. This is not a live location or a private base address.</p>
+            <p>
+              Service-area reference only. This is not a live location or a private base address.
+            </p>
           ) : null}
           {profile.location?.precision === 'area-centre' ? (
             <p>Listed from a demo area centre, not a geocoded street address.</p>
           ) : null}
           <p>
-            <ShieldCheck size={16} aria-hidden="true" /> {verificationCopy(profile)}
+            <ShieldCheck size={16} aria-hidden="true" />{' '}
+            {connected ? 'Credentials reviewed by Verifi Auto' : verificationCopy(profile)}
           </p>
           <RatingLine summary={summary} />
           {distanceLabel ? <p>{distanceLabel}</p> : null}
           <p>{chargeConfirmation}</p>
           <div className="button-row">
-          <button
-            className="primary"
-            type="button"
-            onClick={() =>
-              book({
-                id: profile.id,
-                name: profile.name,
-                area: profile.area,
-                type: profile.type,
-                special: profile.services.join(' · '),
-              })
-            }
-          >
-            Book assessment <ArrowRight size={18} />
-          </button>
-          {directions ? (
-            <a className="text-link directions-link" href={directions} target="_blank" rel="noopener noreferrer">
-              Directions <ArrowUpRight size={16} />
-            </a>
-          ) : null}
+            {book ? (
+              <button
+                className="primary"
+                type="button"
+                onClick={() =>
+                  book({
+                    id: profile.id,
+                    name: profile.name,
+                    area: profile.area,
+                    type: profile.type,
+                    special: profile.services.join(' · '),
+                  })
+                }
+              >
+                Book assessment <ArrowRight size={18} />
+              </button>
+            ) : null}
+            {directions ? (
+              <a
+                className="text-link directions-link"
+                href={directions}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Directions <ArrowUpRight size={16} />
+              </a>
+            ) : null}
           </div>
         </div>
       </section>
@@ -217,56 +253,75 @@ export function ProfessionalProfilePage({
             <section className="pro-information-section">
               <h2>About</h2>
               {profile.bio && profile.bio.length > 320 ? (
-                <div><p>{profile.bio.slice(0, 320)}…</p><details className="pro-about-more"><summary>Read full introduction</summary><p>{profile.bio}</p></details></div>
-              ) : <p>{profile.bio || 'This professional has not added an introduction yet.'}</p>}
+                <div>
+                  <p>{profile.bio.slice(0, 320)}…</p>
+                  <details className="pro-about-more">
+                    <summary>Read full introduction</summary>
+                    <p>{profile.bio}</p>
+                  </details>
+                </div>
+              ) : (
+                <p>{profile.bio || 'This professional has not added an introduction yet.'}</p>
+              )}
             </section>
             <section className="pro-information-section">
               <h2>Services</h2>
               {profile.services.length ? (
-                <ul className="pro-service-tags">{profile.services.map((service: string) => <li key={service}>{service}</li>)}</ul>
-              ) : <p>No services have been recorded.</p>}
+                <ul className="pro-service-tags">
+                  {profile.services.map((service: string) => (
+                    <li key={service}>{service}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No services have been recorded.</p>
+              )}
             </section>
             <section className="pro-information-section">
               <h2>Contact</h2>
-            {profile.phone || profile.email || profile.website ? (
-              <ul className="pro-contact">
-                {profile.phone ? (
-                  <li>
-                    <a href={'tel:' + profile.phone}>{profile.phone}</a>
-                  </li>
-                ) : null}
-                {profile.email ? (
-                  <li>
-                    <a href={'mailto:' + profile.email}>{profile.email}</a>
-                  </li>
-                ) : null}
-                {profile.website ? (
-                  <li>
-                    <a href={profile.website} target="_blank" rel="noopener noreferrer">
-                      Website
-                    </a>
-                  </li>
-                ) : null}
-              </ul>
-            ) : (
-              <p>No public phone, email, or website has been recorded.</p>
-            )}
+              {profile.phone || profile.email || profile.website ? (
+                <ul className="pro-contact">
+                  {profile.phone ? (
+                    <li>
+                      <a href={'tel:' + profile.phone}>{profile.phone}</a>
+                    </li>
+                  ) : null}
+                  {profile.email ? (
+                    <li>
+                      <a href={'mailto:' + profile.email}>{profile.email}</a>
+                    </li>
+                  ) : null}
+                  {profile.website ? (
+                    <li>
+                      <a href={profile.website} target="_blank" rel="noopener noreferrer">
+                        Website
+                      </a>
+                    </li>
+                  ) : null}
+                </ul>
+              ) : (
+                <p>No public phone, email, or website has been recorded.</p>
+              )}
             </section>
           </Card>
           <DetailCard title="Customer reviews">
             {reviews.length ? (
               reviews.map((review: any) => {
-                const mine = review.customerId === customerId;
+                const mine = !connected && review.customerId === customerId;
                 const name = mine
                   ? 'You'
-                  : customers.find((customer) => customer.id === review.customerId)?.name || 'Customer';
+                  : review.customerName ||
+                    customers.find((customer) => customer.id === review.customerId)?.name ||
+                    'Customer';
                 return (
                   <article key={review.id} className="review-card">
                     <p>
-                      <Star size={16} aria-hidden="true" /> <span className="visually-hidden">Rating</span>
+                      <Star size={16} aria-hidden="true" />{' '}
+                      <span className="visually-hidden">Rating</span>
                       {stars(review.rating)} · {name}
                     </p>
-                    <p className="muted">{review.createdAt ? formatDay(review.createdAt) : 'Date not recorded'}</p>
+                    <p className="muted">
+                      {review.createdAt ? formatDay(review.createdAt) : 'Date not recorded'}
+                    </p>
                     <ReviewCopy text={review.text} />
                     {review.photos?.length ? (
                       <div className="review-photos">
@@ -295,7 +350,9 @@ export function ProfessionalProfilePage({
                           type="button"
                           onClick={() => {
                             try {
-                              const saved = update((current: any) => deleteCustomerReview(current, review.id, customerId));
+                              const saved = update((current: any) =>
+                                deleteCustomerReview(current, review.id, customerId),
+                              );
                               notify(
                                 saved
                                   ? 'Demo review removed from this browser.'
@@ -316,13 +373,22 @@ export function ProfessionalProfilePage({
             ) : (
               <p>No reviews yet</p>
             )}
+            {connected && role === 'customer' ? (
+              <p className="muted">Manage your review from the completed booking.</p>
+            ) : null}
             {role === 'customer' && eligible.length ? (
               <form className="review-form" onSubmit={submitReview}>
                 <h3>{editing ? 'Edit your review' : 'Add a review'}</h3>
-                <p className="muted">Only a completed booking you own with this professional can be reviewed.</p>
+                <p className="muted">
+                  Only a completed booking you own with this professional can be reviewed.
+                </p>
                 <label>
                   Booking
-                  <select value={bookingId} onChange={(event) => setBookingId(event.target.value)} disabled={!!editing}>
+                  <select
+                    value={bookingId}
+                    onChange={(event) => setBookingId(event.target.value)}
+                    disabled={!!editing}
+                  >
                     {eligible.map((job: any) => (
                       <option key={job.id} value={job.id}>
                         {job.id}
@@ -332,7 +398,10 @@ export function ProfessionalProfilePage({
                 </label>
                 <label>
                   Rating
-                  <select value={rating} onChange={(event) => setRating(Number(event.target.value))}>
+                  <select
+                    value={rating}
+                    onChange={(event) => setRating(Number(event.target.value))}
+                  >
                     {[5, 4, 3, 2, 1].map((value) => (
                       <option key={value} value={value}>
                         {value}
@@ -342,7 +411,12 @@ export function ProfessionalProfilePage({
                 </label>
                 <label>
                   Review
-                  <textarea value={text} onChange={(event) => setText(event.target.value)} maxLength={1000} required />
+                  <textarea
+                    value={text}
+                    onChange={(event) => setText(event.target.value)}
+                    maxLength={1000}
+                    required
+                  />
                 </label>
                 <label>
                   Photos
@@ -369,7 +443,6 @@ export function ProfessionalProfilePage({
             ) : null}
           </DetailCard>
         </div>
-
       </div>
     </Tag>
   );

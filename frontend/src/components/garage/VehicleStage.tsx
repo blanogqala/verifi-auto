@@ -34,8 +34,16 @@ function FallbackArt({ onRetry }: { onRetry?: () => void }) {
   );
 }
 
-export function VehicleStage({ vehicle, compact = false }: { vehicle: any; compact?: boolean }) {
-  const resolution = resolveVehicleAsset(vehicle);
+export function VehicleStage({
+  vehicle,
+  compact = false,
+  resolved,
+}: {
+  vehicle: any;
+  compact?: boolean;
+  resolved?: any;
+}) {
+  const resolution = resolved || resolveVehicleAsset(vehicle);
   const [failed, setFailed] = useState(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const asset = resolution.asset;
@@ -85,7 +93,13 @@ export function VehicleStage({ vehicle, compact = false }: { vehicle: any; compa
       <div className="vehicle-stage-meta">
         {resolution.label ? <p className="model-caption">{resolution.label}</p> : null}
         {asset ? (
-          <a className="model-credits" href={asset.source} target="_blank" rel="noreferrer" aria-label={asset.attribution}>
+          <a
+            className="model-credits"
+            href={asset.source}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={asset.attribution}
+          >
             Credits
           </a>
         ) : null}

@@ -205,15 +205,15 @@
 }
 
 /* Connected actions sit inside the same design primitives as the demo. */
-.live-workspace .detail-card-body form:not(.message-compose),
-.live-workspace .detail-card-body form label {
+.live-workspace .detail-card-body > form:not(.message-compose),
+.live-workspace .detail-card-body > form label {
   display: grid;
   gap: 0.65rem;
 }
-.live-workspace .detail-card-body form {
+.live-workspace .detail-card-body > form {
   margin-top: 1rem;
 }
-.live-workspace .detail-card-body form > button {
+.live-workspace .detail-card-body > form > button {
   justify-self: start;
 }
 .live-workspace .detail-card-body input:not([type='checkbox']),
@@ -225,17 +225,6 @@
 .live-workspace .button-row {
   gap: 0.75rem;
   flex-wrap: wrap;
-}
-.live-workspace .quote-line {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--line);
-}
-.live-workspace .quote-line small {
-  display: block;
-  color: var(--muted);
 }
 .live-inbox-back {
   display: none;

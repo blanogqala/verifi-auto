@@ -6,7 +6,16 @@ import { commitUpdate } from '../../features/demo/commitUpdate';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
-export function VerificationPage({ data, name, note, notify, profile, route, update }: any) {
+export function VerificationPage({
+  data,
+  name,
+  note,
+  notify,
+  profile,
+  route,
+  update,
+  connected,
+}: any) {
   return (
     <Card as="section" className="dash-panel application-panel">
       <div className="panel-title">
@@ -14,8 +23,9 @@ export function VerificationPage({ data, name, note, notify, profile, route, upd
         <Status value={data.application.status} />
       </div>
       <p className="muted">
-        Your profile stays out of the live directory until review and approval. This is a simulated
-        application process.
+        {connected
+          ? 'Your profile stays out of the directory until your application is reviewed and approved.'
+          : 'Your profile stays out of the live directory until review and approval. This is a simulated application process.'}
       </p>
       <div className="application-steps">
         {[
@@ -45,13 +55,17 @@ export function VerificationPage({ data, name, note, notify, profile, route, upd
         [
           data.documents.some((d: any) => d.kind === 'Identity evidence'),
           'Identity evidence',
-          'Select a non-sensitive sample identity file.',
+          connected
+            ? 'Upload your identity evidence securely.'
+            : 'Select a non-sensitive sample identity file.',
           'profile/documents',
         ],
         [
           data.documents.some((d: any) => d.kind === 'Qualifications / experience'),
           'Qualifications or experience',
-          'Add sample evidence of professional capability.',
+          connected
+            ? 'Upload evidence of professional capability.'
+            : 'Add sample evidence of professional capability.',
           'profile/documents',
         ],
       ].map(([done, t, desc, target]: any) => (
@@ -80,8 +94,12 @@ export function VerificationPage({ data, name, note, notify, profile, route, upd
         <>
           <button
             className="primary"
-            disabled={!canSubmit(data)}
+            disabled={connected ? !connected.canSubmit : !canSubmit(data)}
             onClick={() => {
+              if (connected) {
+                void connected.submit();
+                return;
+              }
               commitUpdate(
                 update,
                 (d: any) =>
@@ -102,22 +120,28 @@ export function VerificationPage({ data, name, note, notify, profile, route, upd
               );
             }}
           >
-            Submit for demo review <ArrowRight size={17} />
+            {connected ? 'Submit for review' : 'Submit for demo review'} <ArrowRight size={17} />
           </button>
-          {!canSubmit(data) && (
+          {(connected ? !connected.canSubmit : !canSubmit(data)) && (
             <p className="muted">Complete all three checklist items to submit.</p>
           )}
         </>
       ) : data.application.status === 'Approved' ? (
         <div className="success-note">
           <ShieldCheck />
-          Your sample application is approved. Credential preview: VA-DEMO-001.
+          {connected
+            ? 'Your application is approved and your business can appear in the directory.'
+            : 'Your sample application is approved. Credential preview: VA-DEMO-001.'}
         </div>
       ) : (
         <div className="notice">
           {data.application.status === 'Pending review'
-            ? 'Your application is awaiting review. Switch to the admin preview and open Applications to continue the demo.'
-            : 'Your sample credential is suspended. Contact the review team through the support process before resubmitting.'}
+            ? connected
+              ? 'Your application is awaiting review. We will notify you when a decision is recorded.'
+              : 'Your application is awaiting review. Switch to the admin preview and open Applications to continue the demo.'
+            : connected
+              ? 'Your credential is suspended. Contact the review team before resubmitting.'
+              : 'Your sample credential is suspended. Contact the review team through the support process before resubmitting.'}
         </div>
       )}
     </Card>

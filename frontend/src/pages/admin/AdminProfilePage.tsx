@@ -1,14 +1,16 @@
 import type { KeyboardEvent } from 'react';
 import { Check, LogOut, Settings, UserRound } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
-import {
-  adminProfileSectionLabel,
-  type AdminProfileSection,
-} from '../../config/navigation';
+import { adminProfileSectionLabel, type AdminProfileSection } from '../../config/navigation';
 import { commitUpdate } from '../../features/demo/commitUpdate';
 
 const tabs: { id: AdminProfileSection; label: string; target: string; Icon: typeof UserRound }[] = [
-  { id: 'account', label: adminProfileSectionLabel.account, target: 'profile/account', Icon: UserRound },
+  {
+    id: 'account',
+    label: adminProfileSectionLabel.account,
+    target: 'profile/account',
+    Icon: UserRound,
+  },
   {
     id: 'platform',
     label: adminProfileSectionLabel.platform,
@@ -18,7 +20,7 @@ const tabs: { id: AdminProfileSection; label: string; target: string; Icon: type
 ];
 
 /** Admin identity and pilot settings. Stored apart from customer and mechanic accounts. */
-export function AdminProfilePage({ data, logout, notify, route, section, update }: any) {
+export function AdminProfilePage({ data, logout, notify, route, section, update, connected }: any) {
   const account = data.adminAccount || {};
 
   function select(next: AdminProfileSection) {
@@ -68,63 +70,67 @@ export function AdminProfilePage({ data, logout, notify, route, section, update 
         })}
       </div>
       {section === 'platform' ? (
-        <Card
-          as="form"
-          className="dash-panel settings-form profile-tab-panel"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const form = new FormData(event.currentTarget as HTMLFormElement);
-            commitUpdate(
-              update,
-              (current: any) => ({
-                ...current,
-                platform: {
-                  pilot: form.get('pilot'),
-                  applicationsOpen: form.get('applicationsOpen') === 'on',
-                },
-              }),
-              notify,
-              'Demo settings saved in this browser.',
-            );
-          }}
-        >
-          <h2>Pilot configuration</h2>
-          <p className="muted">
-            Use sample details. Settings do not create a real account or send notifications.
-          </p>
-          <label>
-            Pilot city
-            <select name="pilot" defaultValue={data.platform.pilot}>
-              <option>Undecided</option>
-              <option>East London</option>
-              <option>Johannesburg</option>
-            </select>
-          </label>
-          <label className="check-label">
-            <input
-              name="applicationsOpen"
-              type="checkbox"
-              defaultChecked={data.platform.applicationsOpen}
-            />
-            Mark applications open in the demo configuration
-          </label>
-          <div className="notice">
-            This setting is illustrative and does not open public applications.
-          </div>
-          <button className="primary" type="submit">
-            Save settings <Check size={17} />
-          </button>
-          <div className="settings-divider">
-            <h3>Explore another workspace</h3>
+        connected ? (
+          connected.platform
+        ) : (
+          <Card
+            as="form"
+            className="dash-panel settings-form profile-tab-panel"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget as HTMLFormElement);
+              commitUpdate(
+                update,
+                (current: any) => ({
+                  ...current,
+                  platform: {
+                    pilot: form.get('pilot'),
+                    applicationsOpen: form.get('applicationsOpen') === 'on',
+                  },
+                }),
+                notify,
+                'Demo settings saved in this browser.',
+              );
+            }}
+          >
+            <h2>Pilot configuration</h2>
             <p className="muted">
-              Sign out to switch between customer, mechanic, and admin previews. Your sample data
-              stays in this browser.
+              Use sample details. Settings do not create a real account or send notifications.
             </p>
-            <button className="secondary" type="button" onClick={logout}>
-              Sign out / switch preview <LogOut size={16} />
+            <label>
+              Pilot city
+              <select name="pilot" defaultValue={data.platform.pilot}>
+                <option>Undecided</option>
+                <option>East London</option>
+                <option>Johannesburg</option>
+              </select>
+            </label>
+            <label className="check-label">
+              <input
+                name="applicationsOpen"
+                type="checkbox"
+                defaultChecked={data.platform.applicationsOpen}
+              />
+              Mark applications open in the demo configuration
+            </label>
+            <div className="notice">
+              This setting is illustrative and does not open public applications.
+            </div>
+            <button className="primary" type="submit">
+              Save settings <Check size={17} />
             </button>
-          </div>
-        </Card>
+            <div className="settings-divider">
+              <h3>Explore another workspace</h3>
+              <p className="muted">
+                Sign out to switch between customer, mechanic, and admin previews. Your sample data
+                stays in this browser.
+              </p>
+              <button className="secondary" type="button" onClick={logout}>
+                Sign out / switch preview <LogOut size={16} />
+              </button>
+            </div>
+          </Card>
+        )
       ) : (
         <Card
           as="form"
@@ -132,6 +138,10 @@ export function AdminProfilePage({ data, logout, notify, route, section, update 
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget as HTMLFormElement);
+            if (connected) {
+              void connected.save({ name: String(form.get('name') || '').trim() });
+              return;
+            }
             commitUpdate(
               update,
               (current: any) => ({
@@ -148,8 +158,9 @@ export function AdminProfilePage({ data, logout, notify, route, section, update 
         >
           <h2>Profile</h2>
           <p className="muted">
-            This admin profile stays in this browser. It is separate from customer and mechanic
-            accounts.
+            {connected
+              ? 'Manage your administrator identity and account details.'
+              : 'This admin profile stays in this browser. It is separate from customer and mechanic accounts.'}
           </p>
           <div className="form-row">
             <label>
@@ -158,7 +169,13 @@ export function AdminProfilePage({ data, logout, notify, route, section, update 
             </label>
             <label>
               Email address
-              <input name="email" type="email" required defaultValue={account.email || ''} />
+              <input
+                name="email"
+                type="email"
+                readOnly={!!connected}
+                required
+                defaultValue={account.email || ''}
+              />
             </label>
           </div>
           <button className="primary" type="submit">

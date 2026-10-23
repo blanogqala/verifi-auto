@@ -2209,3 +2209,60 @@ const adminFinanceHtml = renderToString(<LivePayments role="admin" payments={[]}
 assert.ok(adminFinanceHtml.includes('Filter payments'));
 assert.ok(adminFinanceHtml.includes('Finance'));
 console.log('Connected directory, mechanic payment and admin finance presentation checks passed.');
+
+// Backend forms must retain the original shared presentation instead of parallel layouts.
+import { VehicleForm } from '../src/live/LiveVehicles';
+
+import { QuoteReview } from '../src/components/jobs/QuoteReview';
+const connectedVehicleForm = renderToString(<VehicleForm run={() => {}} onSave={() => {}} />);
+assert.ok(connectedVehicleForm.includes('paint-colour-preview'));
+for (const label of [
+  'Body style',
+  'Variant',
+  'Who recorded the licence date',
+  'Next service mileage',
+  'Save vehicle',
+])
+  assert.ok(connectedVehicleForm.includes(label), label);
+assert.ok(!connectedVehicleForm.includes('DEMO 002'));
+const serverQuoteReview = renderToString(
+  <QuoteReview
+    live
+    job={{
+      vehicle: 'VW Polo',
+      provider: 'Workshop',
+      items: [
+        { id: 'part', name: 'Brake pads', quantity: 2, unitPriceCents: 50000, approved: true },
+      ],
+    }}
+    onAction={() => {}}
+  />,
+);
+assert.ok(serverQuoteReview.includes('quote-review-line selected'));
+assert.ok(/R1\s000/.test(serverQuoteReview));
+assert.ok(!serverQuoteReview.includes('Demo checkout'));
+console.log('Shared connected vehicle fields and server-priced repair review passed.');
+
+// These adapters must use the original profile/record surfaces without demo account data.
+import { MerchantProfilePage } from '../src/pages/mechanic/MerchantProfilePage';
+import { ProfessionalAdminDetailPage, CustomerAdminDetailPage } from '../src/pages/admin/AdminDetailPages';
+const profileShell = renderToString(<MerchantProfilePage data={{ profile: {}, documents: [] }} profile={{ name: 'Real Workshop', type: 'Workshop' }} section="business" route={() => {}} connected={{ business: <p>Connected business form</p>, documents: <p>Private documents</p>, banking: <p>Banking unavailable</p>, verification: <p>Verification</p>, savePhoto: async () => {} }} />);
+assert.equal((profileShell.match(/role="tab"/g) || []).length, 4);
+assert.ok(profileShell.includes('profile-tablist folder-tabs'));
+assert.ok(profileShell.includes('merchant-summary-copy'));
+assert.ok(profileShell.includes('Connected business form'));
+assert.ok(!profileShell.includes('photo stays in this browser'));
+const connectedAdminRecord = { jobs: [], paid: 0, rating: { count: 0, average: 0 }, reviews: [] };
+const professionalRecordHtml = renderToString(<ProfessionalAdminDetailPage record={{ id: 'real-pro', professionalId: 'real-pro', name: 'Real Workshop', services: [], status: 'Approved' }} data={{}} route={() => {}} connected={connectedAdminRecord} />);
+assert.ok(professionalRecordHtml.includes('admin-detail-grid'));
+assert.ok(professionalRecordHtml.includes('No reviews yet'));
+assert.ok(!professionalRecordHtml.includes('Gross demo payments'));
+const customerRecordHtml = renderToString(<CustomerAdminDetailPage customer={{ id: 'real-customer', name: 'Real Customer' }} data={{}} route={() => {}} connected={{ ...connectedAdminRecord, accountAction: <button>Disable account</button> }} />);
+assert.ok(customerRecordHtml.includes('Disable account'));
+assert.ok(!customerRecordHtml.includes('Read-only demo account'));
+console.log('Connected mechanic profile and admin records retain shared demo surfaces without demo account data.');
+
+import { VerificationPage } from '../src/pages/mechanic/VerificationPage';
+const approvedVerificationHtml = renderToString(<VerificationPage data={{ application: {status: 'Approved'}, documents: [], profile: {services: []} }} connected={{canSubmit: false}} />);
+assert.ok(!approvedVerificationHtml.includes('VA-DEMO-001'));
+assert.ok(approvedVerificationHtml.includes('Your application is approved'));

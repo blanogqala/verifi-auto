@@ -3,7 +3,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { VehicleStage } from '../../components/garage/VehicleStage';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
-import { selectVehicleId, vehicleCardImage, vehicleCardLabel } from '../../features/garage/garageSelection';
+import {
+  selectVehicleId,
+  vehicleCardImage,
+  vehicleCardLabel,
+} from '../../features/garage/garageSelection';
 import { activeVehicles, unresolvedHistory } from '../../features/demo/links';
 import { followDetail } from '../../features/navigation/returnPath';
 
@@ -26,10 +30,12 @@ function storedGarageId() {
   }
 }
 
-export function GaragePage({ data, go, setDialog }: any) {
+export function GaragePage({ data, go, setDialog, connected }: any) {
   const vehicles = activeVehicles(data.vehicles || []);
   const [selectedId, setSelectedId] = useState(storedGarageId() || vehicles[0]?.id || '');
-  const resolvedId = vehicles.some((vehicle) => vehicle.id === selectedId) ? selectedId : vehicles[0]?.id || '';
+  const resolvedId = vehicles.some((vehicle) => vehicle.id === selectedId)
+    ? selectedId
+    : vehicles[0]?.id || '';
   const selected = vehicles.find((vehicle) => vehicle.id === resolvedId);
   const unresolved = unresolvedHistory(data);
   const single = vehicles.length < 2;
@@ -56,7 +62,7 @@ export function GaragePage({ data, go, setDialog }: any) {
       ) : (
         <>
           <section className="showroom" aria-label="Garage showroom">
-            <VehicleStage vehicle={selected} />
+            {connected ? connected.renderStage(selected) : <VehicleStage vehicle={selected} />}
             <div className="showroom-nav">
               <button
                 type="button"
@@ -70,7 +76,13 @@ export function GaragePage({ data, go, setDialog }: any) {
               <button
                 type="button"
                 className="primary"
-                onClick={() => followDetail(go, 'dashboard/garage', 'dashboard/garage/' + encodeURIComponent(selected.id))}
+                onClick={() =>
+                  followDetail(
+                    go,
+                    'dashboard/garage',
+                    'dashboard/garage/' + encodeURIComponent(selected.id),
+                  )
+                }
               >
                 View details
               </button>
@@ -88,7 +100,9 @@ export function GaragePage({ data, go, setDialog }: any) {
           <div className="garage-cards" aria-label="Your vehicles">
             {vehicles.map((vehicle) => {
               const selectedCard = vehicle.id === selected.id;
-              const image = vehicleCardImage(resolveVehicleAsset(vehicle));
+              const image = connected
+                ? vehicle.modelAsset?.previewUrl || ''
+                : vehicleCardImage(resolveVehicleAsset(vehicle));
               const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ');
               return (
                 <button
@@ -111,8 +125,8 @@ export function GaragePage({ data, go, setDialog }: any) {
         <Card as="section" className="dash-panel">
           <h2>History not linked to a vehicle</h2>
           <p className="muted">
-            These records stay unlinked. A shared or unknown vehicle name is not assigned automatically when a
-            vehicle is renamed, archived, or removed.
+            These records stay unlinked. A shared or unknown vehicle name is not assigned
+            automatically when a vehicle is renamed, archived, or removed.
           </p>
           {unresolved.map((item: any) => (
             <article key={item.historyKind + '-' + item.id} className="document-row">
@@ -124,7 +138,11 @@ export function GaragePage({ data, go, setDialog }: any) {
                   {item.provider ? ` · ${item.provider}` : ''}
                 </small>
               </div>
-              <button className="secondary" type="button" onClick={() => setDialog({ kind: 'resolve-history', item })}>
+              <button
+                className="secondary"
+                type="button"
+                onClick={() => setDialog({ kind: 'resolve-history', item })}
+              >
                 Choose a vehicle
               </button>
             </article>

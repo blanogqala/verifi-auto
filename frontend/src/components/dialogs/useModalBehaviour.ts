@@ -76,3 +76,15 @@ export function useModalBehaviour(onClose: () => void) {
   }, []);
   return ref;
 }
+
+/** Shared lock for native dialogs, including nested booking/vehicle dialogs. */
+export function useModalScrollLock() {
+  useEffect(() => {
+    locks += 1;
+    document.documentElement.classList.add('scroll-lock');
+    return () => {
+      locks = Math.max(0, locks - 1);
+      if (!locks) document.documentElement.classList.remove('scroll-lock');
+    };
+  }, []);
+}

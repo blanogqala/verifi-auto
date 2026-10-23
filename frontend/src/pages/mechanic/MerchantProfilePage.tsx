@@ -42,10 +42,14 @@ export function MerchantProfilePage({
   update,
   upload,
   uploadError,
+  connected,
 }: any) {
   const accountSource = data.mechanicAccount || data.merchantAccount || {};
   const savedBank = data.mechanicBanking || {};
-  const [bank, setBank] = useState(() => ({ ...emptyBank, accountType: savedBank.accountType || 'Cheque' }));
+  const [bank, setBank] = useState(() => ({
+    ...emptyBank,
+    accountType: savedBank.accountType || 'Cheque',
+  }));
   const [bankError, setBankError] = useState('');
   const [editingBank, setEditingBank] = useState(!savedBank.configured);
   const [photoError, setPhotoError] = useState('');
@@ -90,10 +94,13 @@ export function MerchantProfilePage({
     }
     try {
       const photo = await readProfilePhoto(file);
-      setProfile({ ...profile, photo });
+      if (connected) await connected.savePhoto(photo);
+      else setProfile({ ...profile, photo });
       setPhotoError('');
     } catch (reason: any) {
-      setPhotoError(reason?.message || 'This image could not be read. Try a different JPG, PNG, or WebP.');
+      setPhotoError(
+        reason?.message || 'This image could not be read. Try a different JPG, PNG, or WebP.',
+      );
     }
   }
 
@@ -124,7 +131,8 @@ export function MerchantProfilePage({
               type="button"
               className="text-link"
               onClick={() => {
-                setProfile({ ...profile, photo: '' });
+                if (connected) void connected.savePhoto('');
+                else setProfile({ ...profile, photo: '' });
                 setPhotoError('');
               }}
             >
@@ -143,8 +151,9 @@ export function MerchantProfilePage({
           <p>{profile?.type || 'Professional'}</p>
           <Status value={verification} />
           <p className="muted">
-            The photo stays in this browser after you save the business profile. It is resized for
-            this preview and is not uploaded to a server.
+            {connected
+              ? 'Your profile photo helps customers recognise you and your business.'
+              : 'The photo stays in this browser after you save the business profile. It is resized for this preview and is not uploaded to a server.'}
           </p>
         </div>
       </Card>
@@ -190,16 +199,20 @@ export function MerchantProfilePage({
         aria-labelledby="profile-tab-business"
         hidden={section !== 'business'}
       >
-        <BusinessProfilePage
-          filter={filter}
-          initialEmail={typeof accountSource.email === 'string' ? accountSource.email : ''}
-          name={name}
-          notify={notify}
-          profile={profile}
-          route={route}
-          setProfile={setProfile}
-          update={update}
-        />
+        {connected ? (
+          connected.business
+        ) : (
+          <BusinessProfilePage
+            filter={filter}
+            initialEmail={typeof accountSource.email === 'string' ? accountSource.email : ''}
+            name={name}
+            notify={notify}
+            profile={profile}
+            route={route}
+            setProfile={setProfile}
+            update={update}
+          />
+        )}
       </div>
       <div
         role="tabpanel"
@@ -208,17 +221,21 @@ export function MerchantProfilePage({
         aria-labelledby="profile-tab-documents"
         hidden={section !== 'documents'}
       >
-        <DocumentsPage
-          data={data}
-          filter={filter}
-          name={name}
-          notify={notify}
-          role={role}
-          route={route}
-          update={update}
-          upload={upload}
-          uploadError={uploadError}
-        />
+        {connected ? (
+          connected.documents
+        ) : (
+          <DocumentsPage
+            data={data}
+            filter={filter}
+            name={name}
+            notify={notify}
+            role={role}
+            route={route}
+            update={update}
+            upload={upload}
+            uploadError={uploadError}
+          />
+        )}
       </div>
       <div
         role="tabpanel"
@@ -227,139 +244,147 @@ export function MerchantProfilePage({
         aria-labelledby="profile-tab-banking"
         hidden={section !== 'banking'}
       >
-        <Card as="section" className="dash-panel settings-form">
-          <h2>Banking details</h2>
-          <p className="muted">
-            Use sample details only. Saving this form does not verify an account, set up payouts,
-            or send money. This preview stores a masked account number and a demo setup status in
-            this browser. It does not keep the full account number.
-          </p>
-          {savedBank.configured && !editingBank ? (
-            <>
-              <dl className="banking-summary">
-                <div>
-                  <dt>Bank name</dt>
-                  <dd>{savedBank.bankName}</dd>
+        {connected ? (
+          connected.banking
+        ) : (
+          <Card as="section" className="dash-panel settings-form">
+            <h2>Banking details</h2>
+            <p className="muted">
+              Use sample details only. Saving this form does not verify an account, set up payouts,
+              or send money. This preview stores a masked account number and a demo setup status in
+              this browser. It does not keep the full account number.
+            </p>
+            {savedBank.configured && !editingBank ? (
+              <>
+                <dl className="banking-summary">
+                  <div>
+                    <dt>Bank name</dt>
+                    <dd>{savedBank.bankName}</dd>
+                  </div>
+                  <div>
+                    <dt>Account holder</dt>
+                    <dd>{savedBank.accountHolder}</dd>
+                  </div>
+                  <div>
+                    <dt>Account number</dt>
+                    <dd>{savedBank.maskedAccount}</dd>
+                  </div>
+                  <div>
+                    <dt>Account type</dt>
+                    <dd>{savedBank.accountType}</dd>
+                  </div>
+                  <div>
+                    <dt>Branch code</dt>
+                    <dd>{savedBank.branchCode}</dd>
+                  </div>
+                </dl>
+                <p className="notice">Demo setup saved. No bank account has been verified.</p>
+                <button className="secondary" type="button" onClick={() => setEditingBank(true)}>
+                  Edit banking details
+                </button>
+              </>
+            ) : (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const result = bankingRecord(bank);
+                  if (result.error || !result.record) {
+                    setBankError(result.error || 'Check the sample banking details.');
+                    return;
+                  }
+                  const saved = commitUpdate(
+                    update,
+                    (current: any) => ({ ...current, mechanicBanking: result.record }),
+                    notify,
+                    'Sample banking details saved in this browser. No payout was set up.',
+                  );
+                  if (!saved) return;
+                  setBankError('');
+                  setBank({ ...emptyBank, accountType: result.record.accountType });
+                  setEditingBank(false);
+                }}
+              >
+                <div className="form-row">
+                  <label>
+                    Bank name
+                    <input
+                      name="bankName"
+                      required
+                      value={bank.bankName}
+                      autoComplete="off"
+                      onChange={(event) => setBank({ ...bank, bankName: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Account holder
+                    <input
+                      name="accountHolder"
+                      required
+                      value={bank.accountHolder}
+                      autoComplete="off"
+                      onChange={(event) => setBank({ ...bank, accountHolder: event.target.value })}
+                    />
+                  </label>
                 </div>
-                <div>
-                  <dt>Account holder</dt>
-                  <dd>{savedBank.accountHolder}</dd>
+                <div className="form-row">
+                  <label>
+                    Account number
+                    <input
+                      name="accountNumber"
+                      required
+                      inputMode="numeric"
+                      autoComplete="off"
+                      value={bank.accountNumber}
+                      onChange={(event) => setBank({ ...bank, accountNumber: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Account type
+                    <select
+                      name="accountType"
+                      value={bank.accountType}
+                      onChange={(event) => setBank({ ...bank, accountType: event.target.value })}
+                    >
+                      <option>Cheque</option>
+                      <option>Savings</option>
+                      <option>Transmission</option>
+                    </select>
+                  </label>
                 </div>
-                <div>
-                  <dt>Account number</dt>
-                  <dd>{savedBank.maskedAccount}</dd>
-                </div>
-                <div>
-                  <dt>Account type</dt>
-                  <dd>{savedBank.accountType}</dd>
-                </div>
-                <div>
-                  <dt>Branch code</dt>
-                  <dd>{savedBank.branchCode}</dd>
-                </div>
-              </dl>
-              <p className="notice">Demo setup saved. No bank account has been verified.</p>
-              <button className="secondary" type="button" onClick={() => setEditingBank(true)}>
-                Edit banking details
-              </button>
-            </>
-          ) : (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const result = bankingRecord(bank);
-                if (result.error || !result.record) {
-                  setBankError(result.error || 'Check the sample banking details.');
-                  return;
-                }
-                const saved = commitUpdate(
-                  update,
-                  (current: any) => ({ ...current, mechanicBanking: result.record }),
-                  notify,
-                  'Sample banking details saved in this browser. No payout was set up.',
-                );
-                if (!saved) return;
-                setBankError('');
-                setBank({ ...emptyBank, accountType: result.record.accountType });
-                setEditingBank(false);
-              }}
-            >
-              <div className="form-row">
                 <label>
-                  Bank name
+                  Branch code
                   <input
-                    name="bankName"
-                    required
-                    value={bank.bankName}
-                    autoComplete="off"
-                    onChange={(event) => setBank({ ...bank, bankName: event.target.value })}
-                  />
-                </label>
-                <label>
-                  Account holder
-                  <input
-                    name="accountHolder"
-                    required
-                    value={bank.accountHolder}
-                    autoComplete="off"
-                    onChange={(event) => setBank({ ...bank, accountHolder: event.target.value })}
-                  />
-                </label>
-              </div>
-              <div className="form-row">
-                <label>
-                  Account number
-                  <input
-                    name="accountNumber"
+                    name="branchCode"
                     required
                     inputMode="numeric"
                     autoComplete="off"
-                    value={bank.accountNumber}
-                    onChange={(event) => setBank({ ...bank, accountNumber: event.target.value })}
+                    value={bank.branchCode}
+                    onChange={(event) => setBank({ ...bank, branchCode: event.target.value })}
                   />
                 </label>
-                <label>
-                  Account type
-                  <select
-                    name="accountType"
-                    value={bank.accountType}
-                    onChange={(event) => setBank({ ...bank, accountType: event.target.value })}
-                  >
-                    <option>Cheque</option>
-                    <option>Savings</option>
-                    <option>Transmission</option>
-                  </select>
-                </label>
-              </div>
-              <label>
-                Branch code
-                <input
-                  name="branchCode"
-                  required
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={bank.branchCode}
-                  onChange={(event) => setBank({ ...bank, branchCode: event.target.value })}
-                />
-              </label>
-              {bankError ? (
-                <p className="form-error" role="alert">
-                  {bankError}
-                </p>
-              ) : null}
-              <div className="button-row">
-                <button className="primary" type="submit">
-                  Save sample banking details <Check size={17} />
-                </button>
-                {savedBank.configured ? (
-                  <button className="secondary" type="button" onClick={() => setEditingBank(false)}>
-                    Cancel
-                  </button>
+                {bankError ? (
+                  <p className="form-error" role="alert">
+                    {bankError}
+                  </p>
                 ) : null}
-              </div>
-            </form>
-          )}
-        </Card>
+                <div className="button-row">
+                  <button className="primary" type="submit">
+                    Save sample banking details <Check size={17} />
+                  </button>
+                  {savedBank.configured ? (
+                    <button
+                      className="secondary"
+                      type="button"
+                      onClick={() => setEditingBank(false)}
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+              </form>
+            )}
+          </Card>
+        )}
       </div>
       <div
         role="tabpanel"
@@ -368,15 +393,19 @@ export function MerchantProfilePage({
         aria-labelledby="profile-tab-verification"
         hidden={section !== 'verification'}
       >
-        <VerificationPage
-          data={data}
-          name={name}
-          note={note}
-          notify={notify}
-          profile={profile}
-          route={route}
-          update={update}
-        />
+        {connected ? (
+          connected.verification
+        ) : (
+          <VerificationPage
+            data={data}
+            name={name}
+            note={note}
+            notify={notify}
+            profile={profile}
+            route={route}
+            update={update}
+          />
+        )}
       </div>
     </div>
   );
