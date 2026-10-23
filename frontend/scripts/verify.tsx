@@ -2350,7 +2350,7 @@ console.log('Connected mechanic profile and admin records retain shared demo sur
 import { VerificationPage } from '../src/pages/mechanic/VerificationPage';
 const approvedVerificationHtml = renderToString(<VerificationPage data={{ application: {status: 'Approved'}, documents: [], profile: {services: []} }} connected={{canSubmit: false}} />);
 assert.ok(!approvedVerificationHtml.includes('VA-DEMO-001'));
-assert.ok(approvedVerificationHtml.includes('Your application is approved'));
+assert.ok(approvedVerificationHtml.includes('Your business has been approved'));
 
 let demoReviewClosed = false;
 const demoReviewMessages: string[] = [];
