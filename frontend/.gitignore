@@ -6,4 +6,5 @@ dist/
 !.env.demo
 !.env.e2e
 *.log
+e2e-output.txt
 .DS_Store

@@ -2,8 +2,9 @@
  * Browser checks against the approved demo and a throwaway API.
  * The API process sets its own database URL before loading the app, so backend/.env is not used.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createConnection } from 'node:net';
+import { appendFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -19,31 +20,84 @@ const password = 'StrongExample9!';
 const customerEmail = 'customer@example.test';
 const otherEmail = 'other@example.test';
 
-function start(command, args, cwd, ready) {
+const logPath = join(frontend, 'e2e-output.txt');
+writeFileSync(logPath, '');
+function record(text) {
+  process.stdout.write(text);
+  try {
+    appendFileSync(logPath, text);
+  } catch {
+    // The live log is the source of truth if the artifact file cannot be written.
+  }
+}
+
+function launch(name, command, args, cwd) {
+  record(`\n[e2e] starting ${name}\n`);
   const child = spawn(command, args, {
     cwd,
     shell: true,
+    detached: process.platform !== 'win32',
     env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  let output = '';
-  const wait = new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(output || `${command} did not become ready`)), 120000);
-    const onData = (chunk) => {
-      output += chunk.toString();
-      if (output.includes(ready)) {
-        clearTimeout(timer);
-        resolve(undefined);
-      }
-    };
-    child.stdout.on('data', onData);
-    child.stderr.on('data', onData);
-    child.on('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`${command} exited ${code}\n${output}`));
+  const chunks = [];
+  const onData = (chunk) => {
+    const text = chunk.toString();
+    chunks.push(text);
+    if (chunks.join('').length > 20000) chunks.shift();
+    record(text);
+  };
+  child.stdout?.on('data', onData);
+  child.stderr?.on('data', onData);
+  child.on('error', (error) => record(`[e2e] ${name} failed to start: ${error.message}\n`));
+  return { name, child, log: () => chunks.join('').slice(-12000) };
+}
+
+function stopTree(child) {
+  if (!child?.pid) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+      shell: true,
+      windowsHide: true,
+      stdio: 'ignore',
     });
-  });
-  return { child, wait };
+    return;
+  }
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    try {
+      child.kill('SIGKILL');
+    } catch {
+      // Already gone.
+    }
+  }
+}
+
+async function waitForHttp(service, url, timeoutMs, accept) {
+  const started = Date.now();
+  let last = 'no response';
+  while (Date.now() - started < timeoutMs) {
+    if (service.child?.exitCode != null || service.child?.signalCode) {
+      throw new Error(
+        `${service.name} exited before it accepted HTTP requests (${url}) with code ${service.child.exitCode}.\n${service.log()}`,
+      );
+    }
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (accept(response.status)) {
+        record(`[e2e] ${service.name} is ready (${url})\n`);
+        return;
+      }
+      last = `HTTP ${response.status}`;
+    } catch (error) {
+      last = error?.name === 'TimeoutError' ? 'request timed out' : error?.message || String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(
+    `${service.name} did not become ready within ${timeoutMs}ms (${url}). Last result: ${last}.\n${service.log()}`,
+  );
 }
 
 async function portOpen(port) {
@@ -254,46 +308,97 @@ async function connected(browser) {
   console.log('Connected browser checks passed.');
 }
 
+const services = [];
+let browser;
 let stage = 'starting servers';
-const watchdog = setTimeout(() => {
-  console.error('Browser checks timed out during ' + stage);
+const readyTimeoutMs = 90_000;
+const suiteTimeoutMs = 12 * 60 * 1000;
+
+function stopServices() {
+  for (const service of services) stopTree(service.child);
+}
+
+async function stopBrowser() {
+  if (!browser) return;
+  const proc = typeof browser.process === 'function' ? browser.process() : null;
+  await Promise.race([
+    browser.close().catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, 10_000)),
+  ]);
+  if (proc && proc.exitCode == null && !proc.killed) {
+    try {
+      proc.kill('SIGKILL');
+    } catch {
+      // Chromium already left.
+    }
+  }
+  browser = undefined;
+}
+
+const hardStop = setTimeout(() => {
+  record(`[e2e] timed out during ${stage}. Stopping spawned processes.\n`);
+  stopServices();
+  const proc = browser && typeof browser.process === 'function' ? browser.process() : null;
+  if (proc && proc.exitCode == null) {
+    try {
+      proc.kill('SIGKILL');
+    } catch {
+      // Chromium already left.
+    }
+  }
   process.exit(1);
-}, 300000);
-const demoAlready = await portOpen(5174);
-const demoServer = demoAlready
-  ? null
-  : start('npm', ['run', 'dev', '--', '--mode', 'demo', '--port', '5174', '--strictPort', '--host', '127.0.0.1'], frontend, '127.0.0.1:5174');
-const api = start('node', ['--import', 'tsx', 'scripts/disposable-api.ts'], backend, 'DISPOSABLE_API_READY');
-const vite = start(
-  'npm',
-  ['run', 'dev', '--', '--mode', 'e2e', '--port', '5199', '--strictPort', '--host', '127.0.0.1'],
-  frontend,
-  '127.0.0.1:5199',
-);
-const children = [api, vite, demoServer].filter(Boolean);
-try {
-  await Promise.all(children.map((item) => item.wait));
+}, suiteTimeoutMs);
+
+async function run() {
+  const demoAlready = await portOpen(5174);
+  const demoService = demoAlready
+    ? { name: 'demo frontend', child: { exitCode: null }, log: () => 'Reused a server that was already listening.\n' }
+    : launch(
+        'demo frontend',
+        'npm',
+        ['run', 'dev', '--', '--mode', 'demo', '--port', '5174', '--strictPort', '--host', '127.0.0.1'],
+        frontend,
+      );
+  if (!demoAlready) services.push(demoService);
+  else record('[e2e] demo frontend is already listening on 5174\n');
+  const api = launch('disposable API', 'node', ['--import', 'tsx', 'scripts/disposable-api.ts'], backend);
+  const connectedApp = launch(
+    'connected frontend',
+    'npm',
+    ['run', 'dev', '--', '--mode', 'e2e', '--port', '5199', '--strictPort', '--host', '127.0.0.1'],
+    frontend,
+  );
+  services.push(api, connectedApp);
+  await waitForHttp(demoService, 'http://127.0.0.1:5174/', readyTimeoutMs, (status) => status < 500);
+  await waitForHttp(api, 'http://127.0.0.1:3099/health', readyTimeoutMs, (status) => status === 200);
+  await waitForHttp(connectedApp, 'http://127.0.0.1:5199/', readyTimeoutMs, (status) => status < 500);
+
   stage = 'launching Chromium';
-  const browser = await chromium.launch({
-    timeout: 60000,
+  record('[e2e] launching Chromium\n');
+  browser = await chromium.launch({
+    timeout: 60_000,
     ...(process.env.PLAYWRIGHT_CHANNEL
       ? { channel: process.env.PLAYWRIGHT_CHANNEL }
       : { args: ['--disable-dev-shm-usage', '--no-sandbox'] }),
   });
-  try {
-    stage = 'demo checks';
-    await demo(browser);
-    stage = 'connected checks';
-    await connected(browser);
-    clearTimeout(watchdog);
-  } finally {
-    await browser.close();
-  }
-} finally {
-  clearTimeout(watchdog);
-  for (const item of children) {
-    if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(item.child.pid), '/t', '/f'], { shell: true });
-    } else item.child.kill('SIGTERM');
-  }
+  stage = 'demo browser checks';
+  await demo(browser);
+  stage = 'connected browser checks';
+  await connected(browser);
+  record('[e2e] all browser checks passed\n');
 }
+
+let exitCode = 1;
+try {
+  await run();
+  exitCode = 0;
+} catch (error) {
+  record(`[e2e] failed during ${stage}: ${error?.stack || error}\n`);
+  exitCode = 1;
+} finally {
+  clearTimeout(hardStop);
+  stage = 'stopping browser and servers';
+  await stopBrowser();
+  stopServices();
+}
+process.exit(exitCode);

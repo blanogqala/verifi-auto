@@ -25,6 +25,10 @@ jobs:
       - run: npm run build
   browser:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,21 +50,13 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:15439/postgres
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
-      - id: browser-tests
+      - name: Run Playwright
         working-directory: frontend
-        run: |
-          set +e
-          npm run e2e > e2e-output.txt 2>&1
-          code=$?
-          tail -n 120 e2e-output.txt
-          {
-            echo "## Browser test output"
-            echo '```'
-            tail -n 120 e2e-output.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$code" -ne 0 ]; then
-            message=$(tail -n 30 e2e-output.txt | tr '\n' ' ' | cut -c1-900)
-            echo "::error::$message"
-          fi
-          exit "$code"
+        run: npm run e2e
+      - name: Upload browser test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-log
+          path: frontend/e2e-output.txt
+          if-no-files-found: warn
