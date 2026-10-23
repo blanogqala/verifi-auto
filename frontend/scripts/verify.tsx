@@ -507,7 +507,7 @@ assert.ok(mechanicDocuments.includes('Supporting evidence'));
 assert.ok(mechanicDocuments.includes('filenames and sizes'));
 const mechanicVerification = screen('mechanic', 'application');
 assert.ok(mechanicVerification.includes('id="profile-tab-verification"'));
-assert.ok(mechanicVerification.includes('Your verification journey'));
+assert.ok(mechanicVerification.includes('Verification status'));
 assert.ok(mechanicVerification.includes('data-profile-target="profile/business"'));
 assert.ok(mechanicVerification.includes('data-profile-target="profile/documents"'));
 assert.ok(mechanicVerification.includes('Submit for demo review'));
@@ -1994,7 +1994,7 @@ for (const role of ['customer', 'mechanic'] as const) {
 }
 assert.equal(canVisit('admin', 'dashboard/customers/%2F'), false);
 assert.equal(canVisit('admin', 'dashboard/jobs/a/b'), false);
-assert.ok(screen('admin', 'applications/app-02').includes('Business profile'));
+assert.ok(screen('admin', 'applications/app-02').includes('Business details'));
 assert.ok(screen('admin', 'applications/app-02').includes('Urban Auto Care'));
 assert.ok(!screen('admin', 'applications/app-02').includes('role="dialog"'));
 assert.ok(screen('admin', 'professionals/app-03').includes('Platform activity'));
