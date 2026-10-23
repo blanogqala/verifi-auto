@@ -200,7 +200,7 @@ professionalRoutes.post("/me/submit", async (req, res) => {
     );
     const updated = await tx.professional.update({
       where: { id: pro.id },
-      data: { status: "SUBMITTED", version: { increment: 1 } },
+      data: { status: "SUBMITTED", reviewNote: "", version: { increment: 1 } },
     });
     const admins = await tx.user.findMany({
       where: { role: "ADMIN", disabledAt: null },
