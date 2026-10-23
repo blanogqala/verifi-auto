@@ -99,9 +99,9 @@ export function ApplicationDetailPage({ record, data, route, review, reviewNote,
   const documents = record.own ? data.documents || [] : record.documents || [];
   const history = (data.adminActivity || []).filter((entry: any) => entry.target === record.id);
   const inReview = record.status === 'Pending review';
-  const approvedKind = (kind: string) => documents.some(
-    (doc: any) => doc.kind === kind && doc.reviewStatus === 'APPROVED',
-  );
+  const approvedKind = (kind: string) => [...documents]
+    .sort((left: any, right: any) => String(right.createdAt || '').localeCompare(String(left.createdAt || '')))
+    .find((doc: any) => doc.kind === kind)?.reviewStatus === 'APPROVED';
   const evidenceApproved = approvedKind('Identity evidence') &&
     approvedKind('Qualifications / experience');
 
@@ -142,7 +142,7 @@ export function ApplicationDetailPage({ record, data, route, review, reviewNote,
           { label: record.status === 'Incomplete' ? 'Registered' : 'Submitted', value: record.date || 'Not recorded' },
           ...(connected ? [{ label: 'Email verification', value: record.emailVerified ? 'Verified' : 'Not verified' }] : []),
           { label: 'Business address', value: business.address || 'Not recorded' },
-          { label: 'Service areas', value: (business.serviceAreas || [business.city]).filter(Boolean).join(' · ') || 'Not recorded' },
+          { label: 'Service areas', value: (business.serviceAreas?.length ? business.serviceAreas : [business.city]).filter(Boolean).join(' · ') || 'Not recorded' },
           { label: 'Services offered', value: (business.services || []).join(' · ') || 'Not recorded' },
         ]} />
         <p>{business.bio || 'No business description supplied.'}</p>
