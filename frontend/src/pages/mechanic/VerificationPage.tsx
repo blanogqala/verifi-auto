@@ -1,148 +1,89 @@
 import { Card } from '../../components/ui/Card';
-
 import { ArrowRight, ShieldCheck, Check } from 'lucide-react';
 import { canSubmit } from '../../demo';
 import { commitUpdate } from '../../features/demo/commitUpdate';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 
-/** Presentational view. State and actions are supplied by the owning layout. */
-export function VerificationPage({
-  data,
-  name,
-  note,
-  notify,
-  profile,
-  route,
-  update,
-  connected,
-}: any) {
+/** Mechanic-facing plain-language checklist; never claims that an upload is approved. */
+export function VerificationPage({ data, note, notify, route, update, connected }: any) {
+  const status = data.application?.status || 'Draft';
+  const documents: any[] = data.documents || [];
+  const doc = (kind: string) => documents.find((item: any) => item.kind === kind);
+  const identity = doc('Identity evidence');
+  const qualification = doc('Qualifications / experience');
+  const profileReady = Boolean(
+    data.profile?.name?.trim() && data.profile?.city &&
+    data.profile?.phone?.trim() && data.profile?.bio?.trim() && data.profile?.services?.length,
+  );
+  const ready = connected ? Boolean(connected.canSubmit) : canSubmit(data);
+  const submitted = status === 'Pending review';
+  const approved = status === 'Approved';
+  const changes = status === 'Changes requested';
+  const label = status === 'Draft' ? 'Incomplete' : status;
+  function reviewLabel(document: any) {
+    if (!document) return 'Missing — upload your document';
+    if (!connected) return 'Sample evidence added';
+    return document.reviewStatus === 'APPROVED' ? 'Approved by Verifi Auto'
+      : document.reviewStatus === 'CHANGES_REQUESTED' ? 'Changes requested — replace this document'
+      : 'Uploaded — awaiting review';
+  }
   return (
     <Card as="section" className="dash-panel application-panel">
       <div className="panel-title">
-        <h2>Your verification journey</h2>
-        <Status value={connected && data.application.status === 'Draft' ? 'Incomplete' : data.application.status} />
+        <h2>Verification status</h2>
+        <Status value={label} />
       </div>
       <p className="muted">
-        {connected
-          ? 'Your profile stays out of the directory until your application is reviewed and approved.'
-          : 'Your profile stays out of the live directory until review and approval. This is a simulated application process.'}
+        {approved
+          ? 'Your business has been approved and can appear in the professional directory.'
+          : submitted
+            ? 'Your application has been submitted. The Verifi Auto team is reviewing your business and documents.'
+            : changes
+              ? 'Some information needs correcting. Read the feedback, update your details or documents, then submit again.'
+              : 'Complete your business details and documents, then submit your application for administrator review.'}
       </p>
-      <div className="application-steps">
+      <div className="application-checklist">
         {[
-          ['1', 'Profile'],
-          ['2', 'Evidence'],
-          ['3', 'Review'],
-          ['4', 'Decision'],
-        ].map(([n, t]) => (
-          <div key={n}>
-            <span>{n}</span>
-            <b>{t}</b>
-          </div>
+          { done: profileReady, title: 'Business profile', info: profileReady ? 'Business details provided' : 'Add your contact details, service areas and services', target: 'profile/business' },
+          { done: Boolean(identity), title: 'Identity evidence', info: reviewLabel(identity), target: 'profile/documents' },
+          { done: Boolean(qualification), title: 'Qualifications or experience', info: reviewLabel(qualification), target: 'profile/documents' },
+        ].map((item) => (
+          <button type="button" className="checklist-row" key={item.title}
+            onClick={() => route(item.target)}>
+            <span className={item.done ? 'check-circle complete' : 'check-circle'}>
+              {item.done ? <Check size={17} /> : <span />}
+            </span>
+            <div><b>{item.title}</b><small>{item.info}</small></div>
+            <ArrowRight size={17} />
+          </button>
         ))}
       </div>
-      {[
-        [
-          !!(
-            data.profile.phone &&
-            data.profile.bio &&
-            data.profile.name &&
-            data.profile.services.length
-          ),
-          'Business profile',
-          'Add contact details, service area, expertise, and services.',
-          'profile/business',
-        ],
-        [
-          data.documents.some((d: any) => d.kind === 'Identity evidence'),
-          'Identity evidence',
-          connected
-            ? 'Upload your identity evidence securely.'
-            : 'Select a non-sensitive sample identity file.',
-          'profile/documents',
-        ],
-        [
-          data.documents.some((d: any) => d.kind === 'Qualifications / experience'),
-          'Qualifications or experience',
-          connected
-            ? 'Upload evidence of professional capability.'
-            : 'Add sample evidence of professional capability.',
-          'profile/documents',
-        ],
-      ].map(([done, t, desc, target]: any) => (
-        <button
-          className="checklist-row"
-          key={t}
-          data-profile-target={target}
-          onClick={() => route(target)}
-        >
-          <span className={done ? 'check-circle complete' : 'check-circle'}>
-            {done ? <Check size={17} /> : <span />}
-          </span>
-          <div>
-            <b>{t}</b>
-            <small>{desc}</small>
-          </div>
-          <ArrowRight size={17} />
-        </button>
-      ))}
-      {data.application.note && (
-        <div className="notice">
-          <b>Reviewer feedback:</b> {data.application.note}
+      {data.application?.note && (
+        <div className="notice" role="status">
+          <b>Administrator feedback:</b> {data.application.note}
         </div>
       )}
-      {['Draft', 'Changes requested', 'Rejected'].includes(data.application.status) ? (
+      {['Draft', 'Changes requested', 'Rejected'].includes(status) ? (
         <>
-          <button
-            className="primary"
-            disabled={connected ? !connected.canSubmit : !canSubmit(data)}
+          <button className="primary" type="button" disabled={!ready}
             onClick={() => {
-              if (connected) {
-                void connected.submit();
-                return;
-              }
-              commitUpdate(
-                update,
-                (d: any) =>
-                  note(
-                    {
-                      ...d,
-                      application: {
-                        ...d.application,
-                        status: 'Pending review',
-                        submittedAt: new Date().toISOString().split('T')[0],
-                        note: '',
-                      },
-                    },
-                    'Your sample application has been submitted for review.',
-                  ),
-                notify,
-                'Submitted. Switch to the admin preview to review this application.',
-              );
-            }}
-          >
-            {connected ? 'Submit for review' : 'Submit for demo review'} <ArrowRight size={17} />
+              if (connected) { void connected.submit(); return; }
+              commitUpdate(update, (current: any) => note({
+                ...current,
+                application: { ...current.application, status: 'Pending review', submittedAt: new Date().toISOString().slice(0, 10), note: '' },
+              }, 'Your sample application has been submitted for review.'),
+                notify, 'Submitted for demo review.');
+            }}>
+            {changes ? 'Resubmit for review' : 'Submit for review'} <ArrowRight size={17} />
           </button>
-          {(connected ? !connected.canSubmit : !canSubmit(data)) && (
-            <p className="muted">Complete all three checklist items to submit.</p>
-          )}
+          {!ready && <p className="muted">Finish your business profile, identity evidence and qualifications to submit.</p>}
         </>
-      ) : data.application.status === 'Approved' ? (
-        <div className="success-note">
-          <ShieldCheck />
-          {connected
-            ? 'Your application is approved and your business can appear in the directory.'
-            : 'Your sample application is approved. Credential preview: VA-DEMO-001.'}
-        </div>
+      ) : approved ? (
+        <div className="success-note"><ShieldCheck /> Verified professional account.</div>
+      ) : submitted ? (
+        <div className="notice">No action is required unless an administrator requests a change.</div>
       ) : (
-        <div className="notice">
-          {data.application.status === 'Pending review'
-            ? connected
-              ? 'Your application is awaiting review. We will notify you when a decision is recorded.'
-              : 'Your application is awaiting review. Switch to the admin preview and open Applications to continue the demo.'
-            : connected
-              ? 'Your credential is suspended. Contact the review team before resubmitting.'
-              : 'Your sample credential is suspended. Contact the review team through the support process before resubmitting.'}
-        </div>
+        <div className="notice">Contact Verifi Auto support about this account's verification status.</div>
       )}
     </Card>
   );
