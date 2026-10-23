@@ -36,7 +36,7 @@ function openDoc(job: any, kind: 'invoice' | 'receipt') {
   openDemoDocument(demoDocumentHtml(job, kind), `${kind}-${bookingReference(job)}-Q${job.quoteNumber || 1}.html`);
 }
 
-export function PaymentsPage({ go, jobs, setDialog }: any) {
+export function PaymentsPage({ go, jobs, setDialog, live = false }: any) {
   const [tab, setTab] = useState('outstanding');
   const awaiting = awaitingCustomerPayments(jobs);
   const recorded = recordedCustomerPayments(jobs);
@@ -52,9 +52,9 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
           Icon={Wallet}
         />
         <Metric
-          label="Demo payments"
+          label={live ? 'Recorded payments' : 'Demo payments'}
           value={recorded.length}
-          note="No real money transferred"
+          note={live ? 'Online card payments are unavailable' : 'No real money transferred'}
           Icon={CheckCircle2}
         />
         <Metric
@@ -80,7 +80,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
             <h2>Awaiting payment</h2>
             {awaiting.length ? (
               awaiting.map((job: any) => (
-                <PaymentRow key={job.id} job={job} go={go} setDialog={setDialog} />
+                <PaymentRow key={job.id} job={job} go={go} live={live} setDialog={setDialog} />
               ))
             ) : (
               <Empty
@@ -99,7 +99,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
                   <section key={day}>
                     <h3>{day}</h3>
                     {rows.map((job: any) => (
-                      <PaymentRow key={job.id} job={job} go={go} setDialog={setDialog} />
+                      <PaymentRow key={job.id} job={job} go={go} live={live} setDialog={setDialog} />
                     ))}
                   </section>
                 ))}
@@ -107,13 +107,20 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
                   <section>
                     <h3>Date not recorded</h3>
                     {history.undated.map((job: any) => (
-                      <PaymentRow key={job.id} job={job} go={go} setDialog={setDialog} />
+                      <PaymentRow key={job.id} job={job} go={go} live={live} setDialog={setDialog} />
                     ))}
                   </section>
                 ) : null}
               </>
             ) : (
-              <Empty title="No demo payments yet." text="Paid invoices stay here as a record. They cannot be edited." />
+              <Empty
+                title={live ? 'No recorded payments yet.' : 'No demo payments yet.'}
+                text={
+                  live
+                    ? 'Paid invoices appear here after a payment provider records them. Online card payments are unavailable.'
+                    : 'Paid invoices stay here as a record. They cannot be edited.'
+                }
+              />
             )}
           </Card>
         </DetailPanel>
@@ -122,7 +129,7 @@ export function PaymentsPage({ go, jobs, setDialog }: any) {
   );
 }
 
-function PaymentRow({ job, go, setDialog }: any) {
+function PaymentRow({ job, go, setDialog, live = false }: any) {
   const paid = job.paid === true;
   return (
     <div className="payment-row">
@@ -135,18 +142,18 @@ function PaymentRow({ job, go, setDialog }: any) {
         <span>{paid ? job.paidAt || 'Date not recorded' : 'Outstanding'}</span>
       </div>
       <strong>{job.items?.length ? money(quoteTotal(job)) : 'Not recorded'}</strong>
-      <Status value={paid ? 'Demo paid' : 'Awaiting payment'} />
+      <Status value={paid ? (live ? 'Payment recorded' : 'Demo paid') : 'Awaiting payment'} />
       <button className="text-link" type="button" onClick={() => go('dashboard/bookings/' + encodeURIComponent(job.bookingId || job.id))}>
         View booking
       </button>
-      {paid ? <button className="secondary" type="button" onClick={() => openDoc(job, 'invoice')}>
+      {paid && !live ? <button className="secondary" type="button" onClick={() => openDoc(job, 'invoice')}>
         Demo invoice
       </button> : null}
-      {paid ? (
+      {paid && !live ? (
         <button className="secondary" type="button" onClick={() => openDoc(job, 'receipt')}>
           Demo receipt
         </button>
-      ) : (
+      ) : paid ? null : (
         <button className="primary" type="button" onClick={() => setDialog({ kind: 'pay', job })}>
           Review & pay
         </button>

@@ -1,0 +1,404 @@
+/**
+ * Browser checks against the approved demo and a throwaway API.
+ * The API process sets its own database URL before loading the app, so backend/.env is not used.
+ */
+import { spawn, spawnSync } from 'node:child_process';
+import { createConnection } from 'node:net';
+import { appendFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { createRequire } from 'node:module';
+import { chromium } from 'playwright';
+
+const root = dirname(fileURLToPath(import.meta.url));
+const frontend = dirname(root);
+const backend = join(frontend, '..', 'backend');
+const pg = createRequire(join(backend, 'package.json'))('pg');
+const demoUrl = process.env.DEMO_URL || 'http://127.0.0.1:5174';
+const appUrl = 'http://127.0.0.1:5199';
+const password = 'StrongExample9!';
+const customerEmail = 'customer@example.test';
+const otherEmail = 'other@example.test';
+
+const logPath = join(frontend, 'e2e-output.txt');
+writeFileSync(logPath, '');
+function record(text) {
+  process.stdout.write(text);
+  try {
+    appendFileSync(logPath, text);
+  } catch {
+    // The live log is the source of truth if the artifact file cannot be written.
+  }
+}
+
+function launch(name, command, args, cwd) {
+  record(`\n[e2e] starting ${name}\n`);
+  const child = spawn(command, args, {
+    cwd,
+    shell: true,
+    detached: process.platform !== 'win32',
+    env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const chunks = [];
+  const onData = (chunk) => {
+    const text = chunk.toString();
+    chunks.push(text);
+    if (chunks.join('').length > 20000) chunks.shift();
+    record(text);
+  };
+  child.stdout?.on('data', onData);
+  child.stderr?.on('data', onData);
+  child.on('error', (error) => record(`[e2e] ${name} failed to start: ${error.message}\n`));
+  return { name, child, log: () => chunks.join('').slice(-12000) };
+}
+
+function stopTree(child) {
+  if (!child?.pid) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], {
+      shell: true,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    return;
+  }
+  try {
+    process.kill(-child.pid, 'SIGKILL');
+  } catch {
+    try {
+      child.kill('SIGKILL');
+    } catch {
+      // Already gone.
+    }
+  }
+}
+
+async function waitForHttp(service, url, timeoutMs, accept) {
+  const started = Date.now();
+  let last = 'no response';
+  while (Date.now() - started < timeoutMs) {
+    if (service.child?.exitCode != null || service.child?.signalCode) {
+      throw new Error(
+        `${service.name} exited before it accepted HTTP requests (${url}) with code ${service.child.exitCode}.\n${service.log()}`,
+      );
+    }
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
+      if (accept(response.status)) {
+        record(`[e2e] ${service.name} is ready (${url})\n`);
+        return;
+      }
+      last = `HTTP ${response.status}`;
+    } catch (error) {
+      last = error?.name === 'TimeoutError' ? 'request timed out' : error?.message || String(error);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+  throw new Error(
+    `${service.name} did not become ready within ${timeoutMs}ms (${url}). Last result: ${last}.\n${service.log()}`,
+  );
+}
+
+async function portOpen(port) {
+  return new Promise((resolve) => {
+    const socket = createConnection({ port, host: '127.0.0.1' });
+    socket.once('connect', () => {
+      socket.end();
+      resolve(true);
+    });
+    socket.once('error', () => resolve(false));
+  });
+}
+
+async function verifyLink(email) {
+  const client = new pg.Client({
+    connectionString: 'postgresql://postgres:postgres@127.0.0.1:15440/postgres',
+    connectionTimeoutMillis: 8000,
+    query_timeout: 8000,
+  });
+  await client.connect();
+  try {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const result = await client.query(
+        'SELECT body FROM "MailOutbox" WHERE "to" = $1 ORDER BY "createdAt" DESC LIMIT 1',
+        [email],
+      );
+      const body = result.rows[0]?.body || '';
+      const match = body.match(/#verify\?token=([^\s]+)/);
+      if (match) return decodeURIComponent(match[1]);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    throw new Error(`No verification email for ${email}`);
+  } finally {
+    await client.end();
+  }
+}
+
+async function signIn(page, email) {
+  await page.goto(appUrl + '/#login');
+  await page.getByLabel('Email address').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign out' }).waitFor();
+}
+
+async function registerAndVerify(page, name, email) {
+  await page.goto(appUrl + '/#register');
+  await page.getByRole('button', { name: 'Customer' }).click();
+  await page.getByLabel('Full name').fill(name);
+  await page.getByLabel('Email address').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await page.getByText('Check your email to verify').waitFor();
+  const token = await verifyLink(email);
+  await page.goto(`${appUrl}/#verify?token=${encodeURIComponent(token)}`);
+  await page.getByText('Email verified').waitFor();
+  await signIn(page, email);
+}
+
+async function demo(browser) {
+  console.log('Starting demo browser checks');
+  const page = await browser.newPage();
+  page.setDefaultTimeout(60000);
+  page.setDefaultNavigationTimeout(60000);
+  await page.goto(demoUrl + '/#home');
+  await page.getByRole('heading', { name: 'Confidence in every kilometre.' }).waitFor();
+  await page.goto(demoUrl + '/#find');
+  await page.getByRole('heading', { name: 'Find a professional' }).waitFor();
+  for (const role of [
+    ['Customer', 'Enter customer preview', 'My Garage'],
+    ['Mechanic', 'Enter mechanic preview', 'Appointments'],
+    ['Platform admin', 'Enter platform admin preview', 'Applications'],
+  ]) {
+    await page.goto(demoUrl + '/#login');
+    await page.getByRole('button', { name: role[0], exact: true }).click();
+    await page.getByRole('button', { name: role[1] }).click();
+    await page.getByRole('button', { name: 'Sign out' }).waitFor();
+    await page.getByRole('link', { name: role[2] }).or(page.getByRole('button', { name: role[2] })).first().waitFor();
+    await page.getByRole('button', { name: 'Sign out' }).click();
+  }
+  await page.goto(demoUrl + '/#login');
+  await page.getByRole('button', { name: 'Customer', exact: true }).click();
+  await page.getByRole('button', { name: 'Enter customer preview' }).click();
+  await page.goto(demoUrl + '/#dashboard/garage');
+  await page.getByRole('heading', { name: /Garage|Volkswagen|vehicle/i }).first().waitFor();
+  await page.goto(demoUrl + '/#find');
+  await page.getByRole('button', { name: 'Book assessment' }).first().click();
+  await page.getByRole('heading', { name: /Book an assessment|Precision|On the Move|Sample/i }).first().waitFor();
+  await page.close();
+  console.log('Demo browser checks passed.');
+}
+
+async function connected(browser) {
+  console.log('Starting connected browser checks');
+  const page = await browser.newPage();
+  page.setDefaultTimeout(60000);
+  page.setDefaultNavigationTimeout(60000);
+  await registerAndVerify(page, 'Casey Customer', customerEmail);
+  await page.goto(appUrl + '/#find');
+  await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
+  await page.getByRole('button', { name: 'Book assessment' }).click();
+  await page.getByRole('button', { name: 'Add vehicle' }).click();
+  await page.getByLabel('Make').fill('Toyota');
+  await page.getByLabel('Model').fill('Corolla');
+  await page.getByLabel('Year').fill('2018');
+  await page.getByLabel('Registration').fill('CA123456');
+  await page.getByRole('button', { name: 'Save vehicle' }).click();
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  await page.getByLabel('Preferred date').fill(tomorrow);
+  await page.getByLabel('What needs attention?').fill('Brake noise from the front wheels');
+  await page.getByRole('button', { name: 'Send request' }).click();
+  await page.getByRole('heading', { name: 'Request sent' }).waitFor();
+  await page.getByRole('button', { name: 'View my bookings' }).click();
+  await page.getByRole('button', { name: /View booking/ }).first().click();
+  await page.getByText('Brake noise from the front wheels').waitFor();
+  const bookingUrl = page.url();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  await signIn(page, 'mechanic@example.test');
+  await page.goto(appUrl + '/#dashboard/appointments/pending');
+  await page.getByRole('button', { name: /Open appointment/ }).click();
+  await page.getByRole('button', { name: 'Accept appointment' }).click();
+  await page.getByRole('button', { name: 'Prepare quotation' }).waitFor();
+  await page.getByRole('tab', { name: 'Quotes & payments' }).click();
+  await page.getByLabel('Line 1 type').selectOption('parts');
+  await page.locator('.quote-editor').getByLabel('Description').fill('Front brake pads');
+  await page.getByLabel('Line 1 quantity').fill('1');
+  await page.getByLabel('Line 1 price').fill('850');
+  await page.locator('.quote-editor').getByLabel('Notes').fill('Replace the front brake pads.');
+  await page.getByRole('button', { name: 'Send quotation' }).click();
+  await page.getByText('Quotation sent for approval.').waitFor();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  await signIn(page, customerEmail);
+  await page.goto(bookingUrl);
+  await page.getByRole('tab', { name: 'Quotes & payments' }).click();
+  await page.getByRole('button', { name: 'Review and approve' }).click();
+  await page.getByRole('button', { name: 'Approve selected repairs' }).click();
+  await page.getByText('Approved').first().waitFor();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  await signIn(page, 'mechanic@example.test');
+  await page.goto(appUrl + '/#dashboard/jobs');
+  await page.getByRole('button', { name: /Open job/ }).click();
+  await page.getByRole('button', { name: 'Start work' }).click();
+  await page.getByLabel('Completed work').waitFor();
+  await page.getByLabel('Completed work').fill('Replaced the front brake pads.');
+  await page.getByLabel('Mileage (km)').fill('68000');
+  await page.getByRole('button', { name: 'Mark work finished' }).click();
+  await page.getByText('Awaiting payment').waitFor();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  await signIn(page, customerEmail);
+  await page.goto(appUrl + '/#dashboard/payments');
+  await page.getByRole('button', { name: 'Review & pay' }).click();
+  await page.getByRole('button', { name: 'Online card payments are unavailable' }).waitFor();
+  await page.reload();
+  await page.goto(bookingUrl);
+  await page.getByText('Brake noise from the front wheels').waitFor();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  const other = await browser.newPage();
+  other.setDefaultTimeout(60000);
+  other.setDefaultNavigationTimeout(60000);
+  await registerAndVerify(other, 'Other Customer', otherEmail);
+  await other.goto(bookingUrl);
+  await other.getByRole('heading', { name: 'Booking not found' }).waitFor();
+  await other.close();
+
+  await signIn(page, 'mechanic@example.test');
+  await page.goto(appUrl + '/#dashboard/profile/business');
+  const businessName = page.getByLabel('Business or trading name');
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('label')].some((label) => {
+      const input = label.querySelector('input');
+      return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Approved Workshop';
+    }),
+  );
+  await businessName.fill('Updated Workshop');
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  await page.getByText('Business profile saved').waitFor();
+  await page.reload();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('label')].some((label) => {
+      const input = label.querySelector('input');
+      return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Updated Workshop';
+    }),
+  );
+  await page.getByRole('tab', { name: 'Banking details' }).click();
+  await page.getByText('Payout onboarding is not connected yet').waitFor();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  await signIn(page, 'admin@example.test');
+  await page.goto(appUrl + '/#dashboard/applications');
+  await page.getByRole('button', { name: 'View application' }).click();
+  await page.getByRole('button', { name: 'Decision' }).click();
+  await page.getByLabel('Identity reviewed').check();
+  await page.getByLabel('Qualifications / experience reviewed').check();
+  await page.getByLabel('Business and service details reviewed').check();
+  await page.getByLabel('Decision notes').fill('Approved for the disposable test.');
+  await page.getByRole('button', { name: 'Approve application' }).click();
+  await page.getByText('Application updated.').waitFor();
+  await page.goto(appUrl + '/#dashboard/applications');
+  await page.getByText('No applications are waiting for review.').waitFor();
+  await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
+  await page.getByRole('heading', { name: 'Professional not found' }).waitFor();
+  await page.close();
+  console.log('Connected browser checks passed.');
+}
+
+const services = [];
+let browser;
+let stage = 'starting servers';
+const readyTimeoutMs = 90_000;
+const suiteTimeoutMs = 12 * 60 * 1000;
+
+function stopServices() {
+  for (const service of services) stopTree(service.child);
+}
+
+async function stopBrowser() {
+  if (!browser) return;
+  const proc = typeof browser.process === 'function' ? browser.process() : null;
+  await Promise.race([
+    browser.close().catch(() => {}),
+    new Promise((resolve) => setTimeout(resolve, 10_000)),
+  ]);
+  if (proc && proc.exitCode == null && !proc.killed) {
+    try {
+      proc.kill('SIGKILL');
+    } catch {
+      // Chromium already left.
+    }
+  }
+  browser = undefined;
+}
+
+const hardStop = setTimeout(() => {
+  record(`[e2e] timed out during ${stage}. Stopping spawned processes.\n`);
+  stopServices();
+  const proc = browser && typeof browser.process === 'function' ? browser.process() : null;
+  if (proc && proc.exitCode == null) {
+    try {
+      proc.kill('SIGKILL');
+    } catch {
+      // Chromium already left.
+    }
+  }
+  process.exit(1);
+}, suiteTimeoutMs);
+
+async function run() {
+  const demoAlready = await portOpen(5174);
+  const demoService = demoAlready
+    ? { name: 'demo frontend', child: { exitCode: null }, log: () => 'Reused a server that was already listening.\n' }
+    : launch(
+        'demo frontend',
+        'npm',
+        ['run', 'dev', '--', '--mode', 'demo', '--port', '5174', '--strictPort', '--host', '127.0.0.1'],
+        frontend,
+      );
+  if (!demoAlready) services.push(demoService);
+  else record('[e2e] demo frontend is already listening on 5174\n');
+  const api = launch('disposable API', 'node', ['--import', 'tsx', 'scripts/disposable-api.ts'], backend);
+  const connectedApp = launch(
+    'connected frontend',
+    'npm',
+    ['run', 'dev', '--', '--mode', 'e2e', '--port', '5199', '--strictPort', '--host', '127.0.0.1'],
+    frontend,
+  );
+  services.push(api, connectedApp);
+  await waitForHttp(demoService, 'http://127.0.0.1:5174/', readyTimeoutMs, (status) => status < 500);
+  await waitForHttp(api, 'http://127.0.0.1:3099/health', readyTimeoutMs, (status) => status === 200);
+  await waitForHttp(connectedApp, 'http://127.0.0.1:5199/', readyTimeoutMs, (status) => status < 500);
+
+  stage = 'launching Chromium';
+  record('[e2e] launching Chromium\n');
+  browser = await chromium.launch({
+    timeout: 60_000,
+    ...(process.env.PLAYWRIGHT_CHANNEL
+      ? { channel: process.env.PLAYWRIGHT_CHANNEL }
+      : { args: ['--disable-dev-shm-usage', '--no-sandbox'] }),
+  });
+  stage = 'demo browser checks';
+  await demo(browser);
+  stage = 'connected browser checks';
+  await connected(browser);
+  record('[e2e] all browser checks passed\n');
+}
+
+let exitCode = 1;
+try {
+  await run();
+  exitCode = 0;
+} catch (error) {
+  record(`[e2e] failed during ${stage}: ${error?.stack || error}\n`);
+  exitCode = 1;
+} finally {
+  clearTimeout(hardStop);
+  stage = 'stopping browser and servers';
+  await stopBrowser();
+  stopServices();
+}
+process.exit(exitCode);

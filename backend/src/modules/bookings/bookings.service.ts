@@ -22,6 +22,13 @@ export const bookingInclude = {
     include: { lines: true, payment: true },
     orderBy: { number: "asc" as const },
   },
+  messages: {
+    orderBy: { createdAt: "asc" as const },
+    take: 100,
+    include: { author: { select: { id: true, name: true, role: true } } },
+  },
+  grant: true,
+  review: true,
   record: true,
 } satisfies Prisma.BookingInclude;
 export const scope = (actor: Actor): Prisma.BookingWhereInput =>

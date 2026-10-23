@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
+
 /** Abort stale navigation requests; live events refetch the active resource. */
 export function useResource<T = any>(path: string | null, revision: number) {
   const [state, setState] = useState<{

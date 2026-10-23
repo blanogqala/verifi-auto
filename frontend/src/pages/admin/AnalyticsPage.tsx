@@ -8,7 +8,7 @@ const tabs: { id: AnalyticsSection; label: string; target: string }[] = [
   { id: 'security', label: 'Security & activity', target: 'reports/security' },
 ];
 
-export function AnalyticsPage({ apps, data, route, section, setDialog }: any) {
+export function AnalyticsPage({ apps, data, route, section, setDialog, live = false }: any) {
   // Retain old notification destinations without showing Support as an analytics tab.
   if (section === 'support')
     return (
@@ -36,7 +36,7 @@ export function AnalyticsPage({ apps, data, route, section, setDialog }: any) {
         ))}
       </nav>
       {section === 'security' ? (
-        <SecurityActivityPage data={data} />
+        <SecurityActivityPage data={data} live={live} />
       ) : (
         <AdminAnalyticsOverviewPage
           apps={apps}

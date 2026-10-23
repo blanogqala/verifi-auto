@@ -2,7 +2,7 @@
 
 ## Entry and navigation
 
-`src/main.tsx` loads the styles and mounts `App`. `src/App.tsx` owns top-level demo-role state, theme selection, public search filters, the selected professional, and hash navigation. The booking target survives the sign-in transition.
+`src/main.tsx` loads the styles and always mounts `App`. It does not choose a second application. `VITE_API_URL` selects the data source: an empty value keeps the browser demo, and a URL uses `src/data-access/` against the existing API. `src/App.tsx` owns theme selection, public search filters, the selected professional, and hash navigation. In demo mode the role switcher stays in session storage. In connected mode the role comes only from `GET /api/auth/session`. The booking target survives the sign-in transition.
 
 The app uses hash routes (`/#home`, `/#find`, `/#login`, `/#register`, `/#forgot`, `/#dashboard/overview`, and role-specific dashboard tabs), so it can run on an ordinary static server without route rewrite rules. It does not use Next.js or React Router.
 
@@ -30,14 +30,15 @@ The app uses hash routes (`/#home`, `/#find`, `/#login`, `/#register`, `/#forgot
 | `routes/access.ts` | Allowed UI tabs by selected demo role. |
 | `config/navigation.ts` | Role labels and sidebar navigation. |
 | `config/assets.ts` | Local image URLs. |
-| `demo.ts` | Compatibility export surface for the modules above; no server code. |
+| `demo.ts` | Compatibility export surface for the modules above. |
+| `data-access/` | API client, DTO mappers, and the diff that calls existing routes. Missing server capabilities return an explicit unavailable result. |
 
 ## Backend migration
 
-Keep presentational pages and shared UI intact where possible. Replace browser-local actions with an API/data layer, load the user role from the authenticated session, and perform ownership and workflow enforcement on the server. Replace filename-only evidence with private upload records. A service record and payment status must come from verified server data.
+Demo mode and connected mode render the same pages, layouts, and dialogs. Connected mutations call the existing API. The server remains authoritative for role, ownership, money, and job state. Online card payments stay unavailable until a payment provider is connected; the approved payment dialog explains that and does not call checkout.
 
-The current preview shares sample jobs across demo roles so one person can explore the whole workflow. The live system will require per-customer and per-professional record scoping.
+The browser demo still shares sample jobs across roles so one person can explore the workflow. Connected records are loaded per signed-in account.
 
 ## Known prototype limits
 
-No production auth, payment processing, uploads, automatic notifications, or persistent multi-user database. No browser end-to-end tests have been run. Prototype controllers and extracted page contracts still use `any` in places; strengthen those types as server contracts are defined. The latest export passes TypeScript checking, production bundling, and the included workflow/render checks.
+Connected mode uses the existing API for accounts, the directory, garage, bookings, quotations, messages, notifications, documents, and administration. These approved controls stay visible and state that the server does not provide them yet: online card payment and payout onboarding, editing a booking after it is sent, disputes and support cases, rejecting an application, changing a verified email, platform-setting writes, and attaching an unmatched history row. Prototype page contracts still use `any` in places. `npm run e2e` in `frontend` runs Playwright against the demo and a disposable database; it does not use `backend/.env`.

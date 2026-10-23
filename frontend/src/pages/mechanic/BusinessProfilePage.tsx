@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card } from '../../components/ui/Card';
 import { commitUpdate } from '../../features/demo/commitUpdate';
 import { demoAreas, demoAreaById } from '../../data/demoAreas';
@@ -19,7 +19,11 @@ export function BusinessProfilePage({
   connected,
 }: any) {
   const [email, setEmail] = useState(initialEmail);
+  const emailEdited = useRef(false);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!emailEdited.current) setEmail(initialEmail);
+  }, [initialEmail]);
   return (
     <Card
       as="form"
@@ -135,7 +139,10 @@ export function BusinessProfilePage({
           required
           autoComplete="off"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            emailEdited.current = true;
+            setEmail(e.target.value);
+          }}
         />
       </label>
       {connected ? (

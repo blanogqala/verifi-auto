@@ -42,7 +42,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
         <DetailBack label="Back to My bookings" onClick={() => go('dashboard/bookings')} />
         <Card as="section" className="dash-panel">
           <h1>Booking not found</h1>
-          <p>This booking is not part of the customer preview in this browser.</p>
+          <p>This booking is not available on this account.</p>
         </Card>
       </div>
     );

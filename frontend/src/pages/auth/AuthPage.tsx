@@ -1,5 +1,5 @@
 import { Card } from '../../components/ui/Card';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -10,11 +10,27 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Role, roleLabel } from '../../demo';
-export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
+export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected = false }: any) {
   const [choice, setChoice] = useState<Role>(
     pending ? 'customer' : mode === 'register' ? 'mechanic' : role || 'customer',
   );
   const [reset, setReset] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  useEffect(() => {
+    if (!connected || mode !== 'verify') return;
+    const token = new URLSearchParams(location.hash.split('?')[1] || '').get('token');
+    if (!token) {
+      setVerifyError('This verification link is incomplete. Open the full link from your email.');
+      return;
+    }
+    let active = true;
+    Promise.resolve(onLogin('customer', false, { intent: 'verify', token })).catch((error: any) => {
+      if (active) setVerifyError(error?.message || 'We could not verify your email. Please try again.');
+    });
+    return () => {
+      active = false;
+    };
+  }, [connected, mode]);
   return (
     <main className="auth-page">
       <div className="auth-backdrop" aria-hidden="true">
@@ -76,9 +92,11 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
           <h2>
             {mode === 'register'
               ? 'Start your journey.'
-              : mode === 'forgot'
+              : mode === 'forgot' || mode === 'reset'
                 ? 'Let’s get you back in.'
-                : 'Welcome back.'}
+                : mode === 'verify'
+                  ? 'Verify your email.'
+                  : 'Welcome back.'}
           </h2>
           <p>
             {pending
@@ -86,12 +104,20 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
               : mode === 'register'
                 ? 'Choose how you’ll use Verifi Auto.'
                 : mode === 'forgot'
-                  ? 'Enter your email to preview account recovery.'
-                  : 'Choose a workspace to explore the experience.'}
+                  ? connected
+                    ? 'Enter your email and we will send a reset link if an account exists.'
+                    : 'Enter your email to preview account recovery.'
+                  : mode === 'reset'
+                    ? 'Choose a new password for your account.'
+                    : mode === 'verify'
+                      ? 'We are confirming the link from your email.'
+                      : connected
+                        ? 'Sign in with your Verifi Auto account.'
+                        : 'Choose a workspace to explore the experience.'}
           </p>
-          {mode !== 'forgot' && (
+          {mode !== 'forgot' && mode !== 'reset' && mode !== 'verify' && !(connected && mode === 'login') && (
             <div className="role-picker">
-              {(['customer', 'mechanic', ...(mode === 'login' ? ['admin'] : [])] as Role[]).map(
+              {(['customer', 'mechanic', ...(mode === 'login' && !connected ? ['admin'] : [])] as Role[]).map(
                 (r) => (
                   <button
                     key={r}
@@ -109,12 +135,24 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
           )}
           {mode === 'register' && choice === 'admin' ? (
             <p>Admin accounts are invitation-only.</p>
+          ) : mode === 'verify' ? (
+            <div className={verifyError ? 'notice' : 'success-note'} role="status">
+              {verifyError || 'Checking your verification link.'}
+            </div>
           ) : (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 if (mode === 'forgot') {
+                  const details = Object.fromEntries(new FormData(e.currentTarget));
+                  if (connected) onLogin('customer', false, { ...details, intent: 'forgot' });
                   setReset(true);
+                  return;
+                }
+                if (mode === 'reset') {
+                  const details = Object.fromEntries(new FormData(e.currentTarget));
+                  const token = new URLSearchParams(location.hash.split('?')[1] || '').get('token');
+                  onLogin('customer', false, { ...details, intent: 'reset', token });
                   return;
                 }
                 onLogin(
@@ -130,8 +168,8 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
                   <input
                     name="name"
                     required
-                    placeholder="Use a sample name"
-                    defaultValue="Alex Morgan"
+                    placeholder={connected ? 'Your name' : 'Use a sample name'}
+                    defaultValue={connected ? '' : 'Alex Morgan'}
                     autoComplete="off"
                   />
                 </label>
@@ -143,11 +181,13 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
                   type="email"
                   required
                   defaultValue={
-                    choice === 'admin'
-                      ? 'admin@example.com'
-                      : choice === 'mechanic'
-                        ? 'mechanic@example.com'
-                        : 'alex@example.com'
+                    connected
+                      ? ''
+                      : choice === 'admin'
+                        ? 'admin@example.com'
+                        : choice === 'mechanic'
+                          ? 'mechanic@example.com'
+                          : 'alex@example.com'
                   }
                   key={choice}
                   autoComplete="off"
@@ -157,10 +197,17 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
                 <>
                   <label>
                     Password
-                    <input type="password" value="demoonly" readOnly aria-describedby="auth-note" />
+                    <input
+                      type="password"
+                      name="password"
+                      required
+                      minLength={connected ? 8 : undefined}
+                      {...(connected ? {} : { value: 'demoonly', readOnly: true })}
+                      aria-describedby="auth-note"
+                    />
                   </label>
                   <div className="auth-sub">
-                    <span>Demo password prefilled</span>
+                    <span>{connected ? 'At least 8 characters' : 'Demo password prefilled'}</span>
                     {mode === 'login' && (
                       <button type="button" className="text-link" onClick={() => go('forgot')}>
                         Forgot password?
@@ -170,21 +217,34 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending }: any) {
                 </>
               )}
               <div className="notice" id="auth-note">
-                {choice === 'admin' && mode !== 'forgot'
-                  ? 'Admin preview only. In the live platform, admin access will be invitation-only and checked by the server.'
-                  : 'Preview accounts only. No real authentication, account creation, or email delivery is connected. Don’t enter a real password.'}
+                {connected
+                  ? 'Your role is confirmed by the server. Admin access is invitation-only.'
+                  : choice === 'admin' && mode !== 'forgot'
+                    ? 'Admin preview only. In the live platform, admin access will be invitation-only and checked by the server.'
+                    : 'Preview accounts only. No real authentication, account creation, or email delivery is connected. Don’t enter a real password.'}
               </div>
               {reset ? (
                 <div className="success-note" role="status">
-                  <CheckCircle2 size={18} /> Recovery screen demonstrated. No email was sent.
+                  <CheckCircle2 size={18} />{' '}
+                  {connected
+                    ? 'If an account exists for that email, a reset link is on its way.'
+                    : 'Recovery screen demonstrated. No email was sent.'}
                 </div>
               ) : (
                 <button className="primary full" type="submit">
                   {mode === 'forgot'
-                    ? 'Preview recovery request'
-                    : mode === 'register'
-                      ? 'Create demo ' + roleLabel[choice].toLowerCase() + ' account'
-                      : 'Enter ' + roleLabel[choice].toLowerCase() + ' preview'}
+                    ? connected
+                      ? 'Send reset link'
+                      : 'Preview recovery request'
+                    : mode === 'reset'
+                      ? 'Save new password'
+                      : mode === 'register'
+                        ? connected
+                          ? 'Create account'
+                          : 'Create demo ' + roleLabel[choice].toLowerCase() + ' account'
+                        : connected
+                          ? 'Sign in'
+                          : 'Enter ' + roleLabel[choice].toLowerCase() + ' preview'}
                   <ArrowRight size={18} />
                 </button>
               )}

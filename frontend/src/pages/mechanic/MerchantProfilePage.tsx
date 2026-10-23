@@ -199,20 +199,17 @@ export function MerchantProfilePage({
         aria-labelledby="profile-tab-business"
         hidden={section !== 'business'}
       >
-        {connected ? (
-          connected.business
-        ) : (
-          <BusinessProfilePage
-            filter={filter}
-            initialEmail={typeof accountSource.email === 'string' ? accountSource.email : ''}
-            name={name}
-            notify={notify}
-            profile={profile}
-            route={route}
-            setProfile={setProfile}
-            update={update}
-          />
-        )}
+        <BusinessProfilePage
+          connected={connected}
+          filter={filter}
+          initialEmail={typeof accountSource.email === 'string' ? accountSource.email : ''}
+          name={name}
+          notify={notify}
+          profile={profile}
+          route={route}
+          setProfile={setProfile}
+          update={update}
+        />
       </div>
       <div
         role="tabpanel"
@@ -221,21 +218,18 @@ export function MerchantProfilePage({
         aria-labelledby="profile-tab-documents"
         hidden={section !== 'documents'}
       >
-        {connected ? (
-          connected.documents
-        ) : (
-          <DocumentsPage
-            data={data}
-            filter={filter}
-            name={name}
-            notify={notify}
-            role={role}
-            route={route}
-            update={update}
-            upload={upload}
-            uploadError={uploadError}
-          />
-        )}
+        <DocumentsPage
+          connected={connected}
+          data={data}
+          filter={filter}
+          name={name}
+          notify={notify}
+          role={role}
+          route={route}
+          update={update}
+          upload={upload}
+          uploadError={uploadError}
+        />
       </div>
       <div
         role="tabpanel"
@@ -245,7 +239,16 @@ export function MerchantProfilePage({
         hidden={section !== 'banking'}
       >
         {connected ? (
-          connected.banking
+          <Card as="section" className="dash-panel settings-form">
+            <h2>Banking details</h2>
+            <p className="muted">
+              Payout onboarding is not connected yet. Bank details cannot be saved, and no payout
+              account is created.
+            </p>
+            <div className="notice" role="status">
+              Online payouts are unavailable until a payment provider is connected.
+            </div>
+          </Card>
         ) : (
           <Card as="section" className="dash-panel settings-form">
             <h2>Banking details</h2>
@@ -393,19 +396,16 @@ export function MerchantProfilePage({
         aria-labelledby="profile-tab-verification"
         hidden={section !== 'verification'}
       >
-        {connected ? (
-          connected.verification
-        ) : (
-          <VerificationPage
-            data={data}
-            name={name}
-            note={note}
-            notify={notify}
-            profile={profile}
-            route={route}
-            update={update}
-          />
-        )}
+        <VerificationPage
+          connected={connected}
+          data={data}
+          name={name}
+          note={note}
+          notify={notify}
+          profile={profile}
+          route={route}
+          update={update}
+        />
       </div>
     </div>
   );

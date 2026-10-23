@@ -1,6 +1,12 @@
-import { directoryCard } from '../src/live/LiveDirectory';
+import { liveDirectoryHits, mapDirectoryProfessional } from '../src/data-access/directory';
+import { finishApplicationReview } from '../src/features/admin/reviewResult';
 import { SettingsPage } from '../src/pages/shared/SettingsPage';
-import { CustomerOverviewView, LiveBookingList, LivePayments } from '../src/live/LiveWorkspaceViews';
+import { OverviewPage } from '../src/pages/shared/OverviewPage';
+import { JobsPage } from '../src/pages/shared/JobsPage';
+import { PaymentsPage } from '../src/pages/customer/PaymentsPage';
+import { MechanicPaymentsPage } from '../src/pages/mechanic/MechanicPaymentsPage';
+import { FinancePage } from '../src/pages/admin/FinancePage';
+import { VehicleFields } from '../src/components/garage/VehicleFields';
 import { bookingQuotations, newQuotation } from '../src/features/jobs/bookingQuotes';
 import { BookingQuotations } from '../src/components/jobs/BookingQuotations';
 import { QuoteSummary } from '../src/components/jobs/QuoteSummary';
@@ -1232,7 +1238,8 @@ const appSource = readFileSync('src/App.tsx', 'utf8');
 assert.ok(appSource.includes('setStep(1)'));
 assert.ok(appSource.includes('!showWorkspace && !showAuth'));
 assert.ok(appSource.includes("!page.startsWith('dashboard/') && !showAuth"));
-assert.ok(appSource.includes('<Auth key={page}'));
+assert.ok(appSource.includes('<Auth'));
+assert.ok(appSource.includes("key={page.split('?')[0]}"));
 assert.ok(appSource.includes('setPending(p)'));
 const payable = {
   ...initialData.jobs[0],
@@ -2162,16 +2169,39 @@ assert.equal(bookingQuotations(draftBooking)[1].quoteDraft.notes, 'Unsent privat
 assert.ok(!renderToString(<BookingQuotations job={draftBooking} setDialog={() => {}} />).includes('Private draft diagnosis'));
 console.log('Multiple quotation approval, payment, ownership, completion and rendering checks passed.');
 
-const emptyLiveOverview = renderToString(<CustomerOverviewView name="New Customer" summary={{activeBookings:0, quotesToReview:0, vehicles:0, serviceRecords:0, recentBookings:[]}} go={() => {}}/>);
+const emptyLiveOverview = renderToString(
+  <OverviewPage
+    apps={[]}
+    cardJobs={() => null}
+    data={{ vehicles: [], records: [], reports: [] }}
+    jobs={[]}
+    live
+    name="New Customer"
+    role="customer"
+    route={() => {}}
+  />,
+);
 assert.equal((emptyLiveOverview.match(/class="ui-card metric"/g) || []).length, 4);
-for (const text of ['Welcome back, New.', 'Good care starts with clarity.', 'Active bookings', 'Quotes to review', 'Service records', 'Recent appointments', 'No bookings yet', 'Make your next move.']) assert.ok(emptyLiveOverview.includes(text), text);
+for (const text of ['Good care starts with clarity.', 'Active bookings', 'Quotes to review', 'Service records', 'Recent appointments', 'Make your next move.'])
+  assert.ok(emptyLiveOverview.includes(text), text);
 assert.equal((emptyLiveOverview.match(/<strong>0<\/strong>/g) || []).length, 4);
 assert.ok(!emptyLiveOverview.includes('sample data'));
-const emptyLiveBookings = renderToString(<LiveBookingList bookings={[]} role="customer" base="bookings" section="bookings" go={() => {}}/>);
+const emptyLiveBookings = renderToString(
+  <JobsPage
+    cardJobs={() => null}
+    emptyTitle="No bookings match."
+    filter="All"
+    jobs={[]}
+    query=""
+    setFilter={() => {}}
+    setQuery={() => {}}
+  />,
+);
 assert.ok(emptyLiveBookings.includes('Filter job status'));
-assert.ok(emptyLiveBookings.includes('No bookings yet.'));
-const emptyLivePayments = renderToString(<LivePayments payments={[]} bookings={[]} role="customer" go={() => {}}/>);
-for (const text of ['Awaiting payment', 'Recorded payments', 'Outstanding', 'History', 'No payments due yet.', 'No payments yet.']) assert.ok(emptyLivePayments.includes(text), text);
+assert.ok(emptyLiveBookings.includes('No bookings match.'));
+const emptyLivePayments = renderToString(<PaymentsPage live go={() => {}} jobs={[]} setDialog={() => {}} />);
+for (const text of ['Awaiting payment', 'Recorded payments', 'Outstanding', 'History', 'No payments due yet.', 'No recorded payments yet.'])
+  assert.ok(emptyLivePayments.includes(text), text);
 console.log('Connected customer overview, booking and payment empty-state rendering passed.');
 
 const connectedProfile = renderToString(<SettingsPage data={{settings:{name:'Real Customer',email:'real@example.test',phone:'0821234567'}}} connected={{save:async()=>{},changePassword:async()=>{}}}/>);
@@ -2191,30 +2221,50 @@ assert.equal(calendarDateOrNull(''), null);
 assert.equal(calendarDateInput('2026-12-31T23:00:00.000Z'), '2026-12-31');
 
 // Connected screens must keep the shared presentation without fictional credentials or fees.
-const liveProfessional = directoryCard({id:'server-pro',name:'Real workshop',type:'Workshop',city:'Cape Town',services:['Brakes'],latitude:-33.9,longitude:18.4,rating:4.5,reviewCount:2,photo:''}, null);
+const mappedProfessional = mapDirectoryProfessional({id:'server-pro',name:'Real workshop',type:'Workshop',city:'Cape Town',services:['Brakes'],latitude:-33.9,longitude:18.4,rating:4.5,reviewCount:2,photo:''});
+const [liveProfessional] = liveDirectoryHits([mappedProfessional], { ...defaultDiscovery, origin: null });
 assert.equal(liveProfessional.distanceLabel, '');
 assert.equal(liveProfessional.sample, false);
 const liveDirectoryHtml = renderToString(<ProfessionalsPage live embedded results={[liveProfessional]} discovery={{...defaultDiscovery}} service="All services" type="Either" go={()=>{}} book={()=>{}}/>);
 for (const value of ['directory-simple-filters','provider-card','Professional type','View profile','Book assessment','4.5/5']) assert.ok(liveDirectoryHtml.includes(value),value);
 assert.ok(!liveDirectoryHtml.includes('SAMPLE PROFILE'));
 assert.ok(!liveDirectoryHtml.includes('Sample professionals for this demo'));
-const nearest = directoryCard({...liveProfessional, latitude:-33.9, longitude:18.4, rating:4.5, reviewCount:2}, {latitude:-33.9, longitude:18.4});
+const [nearest] = liveDirectoryHits([mappedProfessional], {
+  ...defaultDiscovery,
+  origin: { latitude: -33.9, longitude: 18.4, label: 'Test point', kind: 'browser', areaId: '' },
+});
 assert.equal(nearest.sortKm, 0);
 assert.ok(nearest.distanceLabel.includes('0.0 km'));
-const mechanicPaymentsHtml = renderToString(<LivePayments role="mechanic" payments={[]} bookings={[]} go={()=>{}}/>);
+const mechanicPaymentsHtml = renderToString(
+  <MechanicPaymentsPage connected={{ awaiting: [], recorded: [] }} jobs={[]} setDialog={() => {}} />,
+);
 assert.ok(mechanicPaymentsHtml.includes('Awaiting customer payment'));
 assert.ok(mechanicPaymentsHtml.includes('Payment records'));
 assert.ok(!mechanicPaymentsHtml.includes('No demo payments yet'));
-const adminFinanceHtml = renderToString(<LivePayments role="admin" payments={[]} bookings={[]} go={()=>{}}/>);
+const adminFinanceHtml = renderToString(
+  <FinancePage
+    connected={{ awaiting: [], recorded: [] }}
+    customers={[]}
+    filter="All"
+    jobs={[]}
+    query=""
+    setDialog={() => {}}
+    setFilter={() => {}}
+    setQuery={() => {}}
+  />,
+);
 assert.ok(adminFinanceHtml.includes('Filter payments'));
-assert.ok(adminFinanceHtml.includes('Finance'));
+assert.ok(adminFinanceHtml.includes('No payments yet'));
 console.log('Connected directory, mechanic payment and admin finance presentation checks passed.');
 
 // Backend forms must retain the original shared presentation instead of parallel layouts.
-import { VehicleForm } from '../src/live/LiveVehicles';
-
 import { QuoteReview } from '../src/components/jobs/QuoteReview';
-const connectedVehicleForm = renderToString(<VehicleForm run={() => {}} onSave={() => {}} />);
+const connectedVehicleForm = renderToString(
+  <>
+    <VehicleFields />
+    <button type="submit">Save vehicle</button>
+  </>,
+);
 assert.ok(connectedVehicleForm.includes('paint-colour-preview'));
 for (const label of [
   'Body style',
@@ -2246,11 +2296,46 @@ console.log('Shared connected vehicle fields and server-priced repair review pas
 // These adapters must use the original profile/record surfaces without demo account data.
 import { MerchantProfilePage } from '../src/pages/mechanic/MerchantProfilePage';
 import { ProfessionalAdminDetailPage, CustomerAdminDetailPage } from '../src/pages/admin/AdminDetailPages';
-const profileShell = renderToString(<MerchantProfilePage data={{ profile: {}, documents: [] }} profile={{ name: 'Real Workshop', type: 'Workshop' }} section="business" route={() => {}} connected={{ business: <p>Connected business form</p>, documents: <p>Private documents</p>, banking: <p>Banking unavailable</p>, verification: <p>Verification</p>, savePhoto: async () => {} }} />);
+const profileShell = renderToString(
+  <MerchantProfilePage
+    data={{
+      profile: {
+        name: 'Real Workshop',
+        type: 'Workshop',
+        services: ['Brakes'],
+        phone: '0712345678',
+        bio: 'Brake work',
+        city: 'Cape Town',
+      },
+      documents: [],
+      application: { status: 'Draft' },
+      mechanicAccount: { email: 'mech@example.test' },
+    }}
+    profile={{
+      name: 'Real Workshop',
+      type: 'Workshop',
+      services: ['Brakes'],
+      phone: '0712345678',
+      bio: 'Brake work',
+      city: 'Cape Town',
+    }}
+    section="business"
+    route={() => {}}
+    connected={{
+      save: async () => {},
+      savePhoto: async () => {},
+      remove: async () => {},
+      submit: async () => {},
+      canSubmit: false,
+    }}
+  />,
+);
 assert.equal((profileShell.match(/role="tab"/g) || []).length, 4);
 assert.ok(profileShell.includes('profile-tablist folder-tabs'));
 assert.ok(profileShell.includes('merchant-summary-copy'));
-assert.ok(profileShell.includes('Connected business form'));
+assert.ok(profileShell.includes('Save profile'));
+assert.ok(profileShell.includes('Payout onboarding is not connected yet'));
+assert.ok(!profileShell.includes('Save sample banking details'));
 assert.ok(!profileShell.includes('photo stays in this browser'));
 const connectedAdminRecord = { jobs: [], paid: 0, rating: { count: 0, average: 0 }, reviews: [] };
 const professionalRecordHtml = renderToString(<ProfessionalAdminDetailPage record={{ id: 'real-pro', professionalId: 'real-pro', name: 'Real Workshop', services: [], status: 'Approved' }} data={{}} route={() => {}} connected={connectedAdminRecord} />);
@@ -2266,3 +2351,57 @@ import { VerificationPage } from '../src/pages/mechanic/VerificationPage';
 const approvedVerificationHtml = renderToString(<VerificationPage data={{ application: {status: 'Approved'}, documents: [], profile: {services: []} }} connected={{canSubmit: false}} />);
 assert.ok(!approvedVerificationHtml.includes('VA-DEMO-001'));
 assert.ok(approvedVerificationHtml.includes('Your application is approved'));
+
+let demoReviewClosed = false;
+const demoReviewMessages: string[] = [];
+finishApplicationReview(true, {
+  live: false,
+  status: 'Approved',
+  notify: (message) => demoReviewMessages.push(message),
+  close: () => {
+    demoReviewClosed = true;
+  },
+});
+assert.equal(demoReviewClosed, true);
+assert.deepEqual(demoReviewMessages, ['Demo application approved']);
+
+const failedReviewMessages: string[] = [];
+let failedReviewClosed = false;
+const failedReview = commitUpdate(
+  () => Promise.reject(new Error('Application changed. Review it again.')),
+  (data) => data,
+  (message) => failedReviewMessages.push(message),
+  'Demo application approved',
+);
+finishApplicationReview(failedReview, {
+  live: true,
+  status: 'Approved',
+  notify: (message) => failedReviewMessages.push(message),
+  close: () => {
+    failedReviewClosed = true;
+  },
+});
+const approvedReviewMessages: string[] = [];
+let approvedReviewClosed = false;
+const approvedReview = commitUpdate(
+  () => Promise.resolve(true),
+  (data) => data,
+  (message) => approvedReviewMessages.push(message),
+  '',
+);
+finishApplicationReview(approvedReview, {
+  live: true,
+  status: 'Approved',
+  notify: (message) => approvedReviewMessages.push(message),
+  close: () => {
+    approvedReviewClosed = true;
+  },
+});
+setTimeout(() => {
+  assert.equal(failedReviewClosed, false);
+  assert.ok(failedReviewMessages.includes('Application changed. Review it again.'));
+  assert.ok(!failedReviewMessages.some((message) => message.includes('Demo application')));
+  assert.equal(approvedReviewClosed, true);
+  assert.deepEqual(approvedReviewMessages, ['Application updated.']);
+  console.log('Application review waits for the server before closing.');
+}, 0);

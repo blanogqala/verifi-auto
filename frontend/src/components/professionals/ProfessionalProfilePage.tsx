@@ -52,13 +52,15 @@ export function ProfessionalProfilePage({
   notify,
   connected,
 }: any) {
-  const resolved = connected
-    ? { state: 'listed' as const, profile: connected.profile }
-    : resolveProfessional(professionalId, data);
+  const resolved = !connected
+    ? resolveProfessional(professionalId, data)
+    : connected.profile
+      ? { state: 'listed' as const, profile: connected.profile }
+      : { state: 'missing' as const };
   const Tag = embedded ? 'div' : 'main';
   const customerId = data?.settings?.id || demoCustomerId;
   const reviews = connected
-    ? connected.reviews
+    ? connected.reviews || []
     : resolved.state === 'listed'
       ? eligibleCustomerReviews(data, professionalId)
       : [];
