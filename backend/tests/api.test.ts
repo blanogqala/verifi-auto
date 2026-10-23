@@ -194,6 +194,18 @@ test(
         },
       });
       const admin = await login("admin@example.test");
+      // A mechanic is registered before submitting their evidence.
+      const drafts = await send("get", "/api/admin/applications?take=100", undefined, admin);
+      assert.equal(drafts.status, 200);
+      const draft = drafts.body.find((row: any) => row.userId === mechanic.user.id);
+      assert.equal(draft?.status, "DRAFT");
+      assert.equal(draft?.user?.email, "mechanic@example.test");
+      assert.ok(draft?.user?.verifiedAt);
+      assert.deepEqual(draft?.user?.documents, []);
+      assert.ok(!JSON.stringify(drafts.body).includes("passwordHash"));
+      assert.ok(!JSON.stringify(drafts.body).includes("bytes"));
+      assert.equal((await send("get", "/api/admin/applications", undefined, alice)).status, 403);
+      assert.deepEqual((await send("get", "/api/admin/professionals", undefined, admin)).body, []);
       const sessionResponse = await send(
         "get",
         "/api/auth/session",
@@ -447,6 +459,14 @@ test(
         200,
       );
       pro = await db.professional.findUniqueOrThrow({ where: { id: pro.id } });
+      const submitted = await send("get", "/api/admin/applications", undefined, admin);
+      const submittedRow = submitted.body.find((row: any) => row.id === pro.id);
+      assert.equal(submittedRow?.status, "SUBMITTED");
+      assert.deepEqual(
+        submittedRow.user.documents.map((document: any) => document.kind).sort(),
+        ["IDENTITY", "QUALIFICATION"],
+      );
+      assert.ok(!JSON.stringify(submittedRow).includes("bytes"));
       assert.equal(
         (
           await send(
@@ -477,6 +497,8 @@ test(
         ).status,
         200,
       );
+      const afterApproval = await send("get", "/api/admin/applications", undefined, admin);
+      assert.ok(!afterApproval.body.some((row: any) => row.id === pro.id));
       const listing = await send("get", "/api/professionals");
       assert.equal(listing.body.length, 1);
       assert.ok(!JSON.stringify(listing.body).includes("passwordHash"));
