@@ -58,7 +58,11 @@ async function portOpen(port) {
 }
 
 async function verifyLink(email) {
-  const client = new pg.Client({ connectionString: 'postgresql://postgres:postgres@127.0.0.1:15440/postgres' });
+  const client = new pg.Client({
+    connectionString: 'postgresql://postgres:postgres@127.0.0.1:15440/postgres',
+    connectionTimeoutMillis: 8000,
+    query_timeout: 8000,
+  });
   await client.connect();
   try {
     for (let attempt = 0; attempt < 20; attempt += 1) {
@@ -100,6 +104,7 @@ async function registerAndVerify(page, name, email) {
 }
 
 async function demo(browser) {
+  console.log('Starting demo browser checks');
   const page = await browser.newPage();
   page.setDefaultTimeout(60000);
   page.setDefaultNavigationTimeout(60000);
@@ -132,6 +137,7 @@ async function demo(browser) {
 }
 
 async function connected(browser) {
+  console.log('Starting connected browser checks');
   const page = await browser.newPage();
   page.setDefaultTimeout(60000);
   page.setDefaultNavigationTimeout(60000);
@@ -248,6 +254,11 @@ async function connected(browser) {
   console.log('Connected browser checks passed.');
 }
 
+let stage = 'starting servers';
+const watchdog = setTimeout(() => {
+  console.error('Browser checks timed out during ' + stage);
+  process.exit(1);
+}, 300000);
 const demoAlready = await portOpen(5174);
 const demoServer = demoAlready
   ? null
@@ -262,18 +273,24 @@ const vite = start(
 const children = [api, vite, demoServer].filter(Boolean);
 try {
   await Promise.all(children.map((item) => item.wait));
-  const browser = await chromium.launch(
-    process.env.PLAYWRIGHT_CHANNEL
+  stage = 'launching Chromium';
+  const browser = await chromium.launch({
+    timeout: 60000,
+    ...(process.env.PLAYWRIGHT_CHANNEL
       ? { channel: process.env.PLAYWRIGHT_CHANNEL }
-      : { args: ['--disable-dev-shm-usage'] },
-  );
+      : { args: ['--disable-dev-shm-usage', '--no-sandbox'] }),
+  });
   try {
+    stage = 'demo checks';
     await demo(browser);
+    stage = 'connected checks';
     await connected(browser);
+    clearTimeout(watchdog);
   } finally {
     await browser.close();
   }
 } finally {
+  clearTimeout(watchdog);
   for (const item of children) {
     if (process.platform === 'win32') {
       spawn('taskkill', ['/pid', String(item.child.pid), '/t', '/f'], { shell: true });
