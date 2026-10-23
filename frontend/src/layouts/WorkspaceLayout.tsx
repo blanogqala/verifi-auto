@@ -60,6 +60,8 @@ import {
   showcaseProfessionalId,
 } from '../data/mechanicShowcase';
 import { followDetail, readBookingFilters, writeBookingFilters } from '../features/navigation/returnPath';
+import { api } from '../data-access/api';
+import { VehicleStage } from '../components/garage/VehicleStage';
 import {
   Role,
   adminProfileSection,
@@ -91,7 +93,13 @@ import {
   detailPanel,
   appointmentTarget,
   appendNotification,
+  quoteTotal,
 } from '../demo';
+import {
+  awaitingCustomerPayments,
+  paymentRecordTotal,
+  recordedCustomerPayments,
+} from '../features/admin/paymentRecords';
 
 export type DirectoryProps = {
   book: (professional: any) => void;
@@ -102,6 +110,7 @@ export type DirectoryProps = {
   setService: (value: string) => void;
   setType: (value: string) => void;
   type: string;
+  profileFor?: (id: string) => any;
 };
 
 const emptyDirectory: DirectoryProps = {
@@ -121,11 +130,14 @@ export type WorkspaceProps = {
   go: (page: string) => void;
   logout: () => void;
   data: any;
-  update: (fn: (value: any) => any) => boolean | void;
+  update: (fn: (value: any) => any) => boolean | void | Promise<boolean | void>;
   notify: (message: string) => void;
   theme?: string;
   setTheme?: (theme: string) => void;
   directory?: DirectoryProps;
+  live?: boolean;
+  verified?: boolean;
+  refresh?: () => void;
 };
 
 export function Workspace({
@@ -139,6 +151,9 @@ export function Workspace({
   theme = 'dark',
   setTheme = () => {},
   directory = emptyDirectory,
+  live = false,
+  verified = true,
+  refresh = () => {},
 }: WorkspaceProps) {
   const [side, setSide] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -236,6 +251,8 @@ export function Workspace({
   const adminSection = role === 'admin' ? adminProfileSection(tab) : null;
   const analyticsView = role === 'admin' ? analyticsSection(tab) : null;
   const appointmentView = role === 'mechanic' ? appointmentSection(tab) : null;
+  const locked =
+    live && !verified && tab !== 'notifications' && !tab.startsWith('profile');
   const sectionLabel = merchantSection
     ? merchantProfileSectionLabel[merchantSection]
     : adminSection
@@ -297,6 +314,10 @@ export function Workspace({
     return { role: 'admin' as const, id: 'admin' };
   }
   function jobAction(job: any, action: string, extra: any = {}) {
+    if (live && action === 'pay') {
+      notify('Online card payments are not available until a payment provider is connected.');
+      return false;
+    }
     let status = '';
     let duplicate = false;
     const saved = commitUpdate(
@@ -310,12 +331,19 @@ export function Workspace({
       notify,
       '',
     );
-    if (!saved) return false;
-    setDialog(null);
-    if (!duplicate) notify('Demo job updated: ' + status);
-    if (action === 'confirm') route('jobs/' + encodeURIComponent(job.id));
-    if (action === 'reject') route('appointments/rejected/' + encodeURIComponent(job.id));
-    return true;
+    const finish = (ok: boolean) => {
+      if (!ok) return false;
+      setDialog(null);
+      if (!duplicate) notify(live ? 'Saved.' : 'Demo job updated: ' + status);
+      if (action === 'confirm') route('jobs/' + encodeURIComponent(job.id));
+      if (action === 'reject') route('appointments/rejected/' + encodeURIComponent(job.id));
+      return true;
+    };
+    if (saved && typeof (saved as Promise<boolean>).then === 'function') {
+      void (saved as Promise<boolean>).then(finish);
+      return true;
+    }
+    return finish(saved !== false);
   }
   function review(app: any, status: string) {
     if (status === 'Approved' && checks.length < 3) {
@@ -378,6 +406,19 @@ export function Workspace({
     const file = e.target.files?.[0];
     if (!file) return;
     const kind = (document.getElementById('document-kind') as HTMLSelectElement).value;
+    if (live) {
+      const body = new FormData();
+      body.set('file', file);
+      body.set('kind', kind || 'IDENTITY');
+      e.target.value = '';
+      void api('/documents', 'POST', body)
+        .then(() => {
+          refresh();
+          notify('Document uploaded privately.');
+        })
+        .catch((error: any) => setUploadError(error.message));
+      return;
+    }
     const allowed = ['application/pdf', 'image/jpeg', 'image/png'];
     if (!allowed.includes(file.type) || file.size > 10 * 1024 * 1024) {
       setUploadError('Choose a PDF, JPG, or PNG smaller than 10 MB.');
@@ -471,6 +512,7 @@ export function Workspace({
       />
       <main className="workspace-main">
         <WorkspaceTopbar
+          live={live}
           accountName={accountName}
           accountPhoto={accountPhoto}
           goHome={goHome}
@@ -487,14 +529,31 @@ export function Workspace({
           unread={unread}
         />
         <div className="workspace-body">
-          {role === 'mechanic' && previewing ? (
+          {live && !verified && !tab.startsWith('profile') && tab !== 'notifications' ? (
+            <Card as="section" className="dash-panel">
+              <h2>Verify your email</h2>
+              <p>Open the link we sent you before using bookings, your garage, or administration.</p>
+              <button
+                className="primary"
+                type="button"
+                onClick={() =>
+                  void api('/auth/resend-verification', 'POST', {})
+                    .then(() => notify('Verification email sent.'))
+                    .catch((error: any) => notify(error.message))
+                }
+              >
+                Resend verification email
+              </button>
+            </Card>
+          ) : null}
+          {!live && role === 'mechanic' && previewing ? (
             <div className="preview-bar">
               <p>Precision Motorworks demo preview. Your previous session is kept until you leave.</p>
               <button className="secondary" type="button" onClick={() => leaveMechanicPreview()}>
                 Return to saved session
               </button>
             </div>
-          ) : role === 'mechanic' && activeMechanicProfessionalId(data) !== showcaseProfessionalId ? (
+          ) : !live && role === 'mechanic' && activeMechanicProfessionalId(data) !== showcaseProfessionalId ? (
             <div className="preview-bar">
               <p>This saved workshop is not the Precision Motorworks sample, so those bookings stay hidden.</p>
               <button className="secondary" type="button" onClick={() => enterMechanicPreview()}>
@@ -528,10 +587,49 @@ export function Workspace({
           ) : null}
           {adminDetailKind === 'applications' && <ApplicationDetailPage key={adminDetailId} record={apps.find((a: any) => a.id === adminDetailId)} data={data} route={route} review={review} checks={checks} setChecks={setChecks} reviewNote={reviewNote} setReviewNote={setReviewNote} />}
           {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} />}
-          {adminDetailKind === 'customers' && <CustomerAdminDetailPage key={adminDetailId} customer={customers.find((c: any) => c.id === adminDetailId)} data={data} route={route} />}
+          {adminDetailKind === 'customers' && (
+            <CustomerAdminDetailPage
+              key={adminDetailId}
+              customer={customers.find((c: any) => c.id === adminDetailId)}
+              data={data}
+              route={route}
+              connected={
+                live
+                  ? {
+                      jobs: bookingsForCustomer(data.jobs, adminDetailId),
+                      paid: paymentRecordTotal(
+                        recordedCustomerPayments(bookingsForCustomer(data.jobs, adminDetailId)),
+                      ),
+                      accountAction: (
+                        <button
+                          className="secondary"
+                          type="button"
+                          onClick={() => {
+                            const customer = customers.find((item: any) => item.id === adminDetailId);
+                            if (!customer) return;
+                            void api(`/admin/users/${customer.id}/status`, 'POST', {
+                              disabled: !customer.disabledAt,
+                            })
+                              .then(() => {
+                                refresh();
+                                notify(customer.disabledAt ? 'Account enabled.' : 'Account disabled.');
+                              })
+                              .catch((reason: any) => notify(reason.message));
+                          }}
+                        >
+                          {customers.find((item: any) => item.id === adminDetailId)?.disabledAt
+                            ? 'Enable account'
+                            : 'Disable account'}
+                        </button>
+                      ),
+                    }
+                  : undefined
+              }
+            />
+          )}
           {adminDetailKind === 'jobs' && <AdminJobDetailPage key={adminDetailId} job={jobs.find((j: any) => j.id === adminDetailId)} data={data} route={route} />}
           {adminDetailKind === 'disputes' && <AdminDisputePage key={adminDetailId} id={adminDetailId} data={data} route={route} update={update} notify={notify} />}
-          {tab === 'overview' && (
+          {!locked && tab === 'overview' && (
             <OverviewPage
               apps={apps}
               cardJobs={cardJobs}
@@ -545,7 +643,7 @@ export function Workspace({
               route={route}
             />
           )}
-          {appointmentView && (
+          {!locked && appointmentView && (
             <AppointmentsPage
               customerName={(job: any) => customerNameForJob(job, customers)}
               jobs={scopedJobs}
@@ -555,7 +653,7 @@ export function Workspace({
               vehicles={data.vehicles || []}
             />
           )}
-          {tab === 'bookings' && role === 'customer' && (
+          {!locked && tab === 'bookings' && role === 'customer' && (
             <JobsPage
               cardJobs={cardJobs}
               hint={(job: any) => customerNameForJob(job, customers)}
@@ -581,7 +679,7 @@ export function Workspace({
               ]}
             />
           )}
-          {bookingId && role === 'customer' && (
+          {!locked && bookingId && role === 'customer' && (
             <BookingDetailPage
               bookingId={bookingId}
               data={data}
@@ -595,7 +693,7 @@ export function Workspace({
               update={update}
             />
           )}
-          {appointmentDetail && role === 'mechanic' && (
+          {!locked && appointmentDetail && role === 'mechanic' && (
             <AppointmentDetailPage
               key={appointmentDetail.id}
               data={data}
@@ -608,7 +706,7 @@ export function Workspace({
               update={update}
             />
           )}
-          {tab === 'jobs' && role === 'mechanic' && (
+          {!locked && tab === 'jobs' && role === 'mechanic' && (
             <JobsPage
               cardJobs={cardJobs}
               hint={(job: any) => customerNameForJob(job, customers)}
@@ -632,8 +730,8 @@ export function Workspace({
               ]}
             />
           )}
-          {role === 'admin' && (tab === 'jobs' || tab === 'jobs/disputes') && <AdminJobsPage data={data} cardJobs={cardJobs} route={route} section={tab === 'jobs/disputes' ? 'disputes' : 'jobs'} />}
-          {mechanicJobId && role === 'mechanic' && (
+          {!locked && role === 'admin' && (tab === 'jobs' || tab === 'jobs/disputes') && <AdminJobsPage data={data} cardJobs={cardJobs} route={route} section={tab === 'jobs/disputes' ? 'disputes' : 'jobs'} live={live} />}
+          {!locked && mechanicJobId && role === 'mechanic' && (
             <JobDetailPage
               key={mechanicJobId}
               data={data}
@@ -646,7 +744,7 @@ export function Workspace({
               update={update}
             />
           )}
-          {tab === 'quotes' && (
+          {!locked && tab === 'quotes' && (
             <QuotesPage
               filter={filter}
               jobs={scopedJobs}
@@ -657,10 +755,41 @@ export function Workspace({
               setDialog={setDialog}
             />
           )}
-          {tab === 'garage' && role === 'customer' && (
-            <GaragePage data={data} go={go} notify={notify} setDialog={setDialog} update={update} />
+          {!locked && tab === 'garage' && role === 'customer' && (
+            <GaragePage
+              data={data}
+              go={go}
+              notify={notify}
+              setDialog={setDialog}
+              update={update}
+              connected={
+                live
+                  ? {
+                      renderStage: (vehicle: any) => (
+                        <VehicleStage
+                          vehicle={vehicle}
+                          resolved={{
+                            status: vehicle.modelAsset ? 'exact' : 'unavailable',
+                            label: vehicle.modelAsset
+                              ? 'Verified vehicle model'
+                              : 'Vehicle illustration · An exact 3D model is not available yet.',
+                            asset: vehicle.modelAsset
+                              ? {
+                                  ...vehicle.modelAsset,
+                                  src: vehicle.modelAsset.modelUrl,
+                                  source: vehicle.modelAsset.sourceUrl || '',
+                                  attribution: vehicle.modelAsset.attribution,
+                                }
+                              : null,
+                          }}
+                        />
+                      ),
+                    }
+                  : undefined
+              }
+            />
           )}
-          {vehicleDetailId && role === 'customer' && (
+          {!locked && vehicleDetailId && role === 'customer' && (
             <VehiclePage
               data={data}
               go={go}
@@ -668,15 +797,39 @@ export function Workspace({
               setDialog={setDialog}
               update={update}
               vehicleId={vehicleDetailId}
+              live={live}
             />
           )}
-          {tab === 'payments' && role === 'customer' && (
-            <PaymentsPage go={go} jobs={scopedJobs} setDialog={setDialog} />
+          {!locked && tab === 'payments' && role === 'customer' && (
+            <PaymentsPage go={go} jobs={scopedJobs} live={live} setDialog={setDialog} />
           )}
-          {tab === 'payments' && role === 'mechanic' && (
-            <MechanicPaymentsPage jobs={scopedJobs} setDialog={setDialog} />
+          {!locked && tab === 'payments' && role === 'mechanic' && (
+            <MechanicPaymentsPage
+              jobs={scopedJobs}
+              setDialog={
+                live
+                  ? (value: any) =>
+                      route('jobs/' + encodeURIComponent(value.job.bookingId || value.job.id))
+                  : setDialog
+              }
+              connected={
+                live
+                  ? {
+                      awaiting: awaitingCustomerPayments(scopedJobs).map((job: any) => ({
+                        ...job,
+                        amountCents: Math.round(quoteTotal(job) * 100),
+                      })),
+                      recorded: recordedCustomerPayments(scopedJobs).map((job: any) => ({
+                        ...job,
+                        amountCents: Math.round(quoteTotal(job) * 100),
+                        test: Boolean(job.testPayment),
+                      })),
+                    }
+                  : undefined
+              }
+            />
           )}
-          {tab === 'find' && role === 'customer' && (
+          {!locked && tab === 'find' && role === 'customer' && (
             <ProfessionalsPage
               embedded
               book={directory.book}
@@ -690,7 +843,7 @@ export function Workspace({
               type={directory.type}
             />
           )}
-          {professionalId && role === 'customer' && (
+          {!locked && professionalId && role === 'customer' && (
             <ProfessionalProfilePage
               book={directory.book}
               data={data}
@@ -700,9 +853,19 @@ export function Workspace({
               professionalId={professionalId}
               role={role}
               update={update}
+              connected={
+                live && directory.profileFor?.(professionalId)
+                  ? {
+                      profile: directory.profileFor(professionalId),
+                      reviews: directory.profileFor(professionalId).reviews || [],
+                      directionsUrl: directory.profileFor(professionalId).directionsUrl,
+                      rating: directory.profileFor(professionalId).rating,
+                    }
+                  : undefined
+              }
             />
           )}
-          {merchantSection && (
+          {!locked && merchantSection && (
             <MerchantProfilePage
               data={data}
               filter={filter}
@@ -720,8 +883,9 @@ export function Workspace({
               uploadError={uploadError}
             />
           )}
-          {(tab === 'applications' || tab === 'applications/history') && (
+          {!locked && (tab === 'applications' || tab === 'applications/history') && (
             <ApplicationsPage
+              live={live}
               apps={
                 tab === 'applications/history'
                   ? apps.filter(isReviewHistory)
@@ -734,8 +898,9 @@ export function Workspace({
               setQuery={setQuery}
             />
           )}
-          {tab === 'professionals' && role === 'admin' && (
+          {!locked && tab === 'professionals' && role === 'admin' && (
             <ProfessionalsAdminPage
+              live={live}
               data={data}
               apps={apps.filter(isManagedProfessional)}
               filter={filter}
@@ -745,8 +910,9 @@ export function Workspace({
               setQuery={setQuery}
             />
           )}
-          {tab === 'customers' && role === 'admin' && (
+          {!locked && tab === 'customers' && role === 'admin' && (
             <CustomersPage
+              live={live}
               customers={customers}
               jobs={jobs}
               query={query}
@@ -754,8 +920,9 @@ export function Workspace({
               setQuery={setQuery}
             />
           )}
-          {analyticsView && (
+          {!locked && analyticsView && (
             <AnalyticsPage
+              live={live}
               apps={apps}
               customers={customers}
               data={data}
@@ -765,13 +932,33 @@ export function Workspace({
               setDialog={setDialog}
             />
           )}
-          {tab === 'finance' && role === 'admin' && (
+          {!locked && tab === 'finance' && role === 'admin' && (
             <FinancePage
+              connected={
+                live
+                  ? {
+                      awaiting: awaitingCustomerPayments(jobs).map((job: any) => ({
+                        ...job,
+                        amountCents: Math.round(quoteTotal(job) * 100),
+                      })),
+                      recorded: recordedCustomerPayments(jobs).map((job: any) => ({
+                        ...job,
+                        amountCents: Math.round(quoteTotal(job) * 100),
+                        test: Boolean(job.testPayment),
+                      })),
+                    }
+                  : undefined
+              }
               customers={customers}
               filter={filter}
               jobs={jobs}
               query={query}
-              setDialog={setDialog}
+              setDialog={
+                live
+                  ? (value: any) =>
+                      route('jobs/' + encodeURIComponent(value.job.bookingId || value.job.id))
+                  : setDialog
+              }
               setFilter={setFilter}
               setQuery={setQuery}
             />
@@ -797,12 +984,28 @@ export function Workspace({
               notify={notify}
               role={role}
               update={update}
+              connected={
+                live
+                  ? {
+                      save: async (values: any) => {
+                        await api('/auth/profile', 'PATCH', values);
+                        refresh();
+                        notify('Profile saved.');
+                      },
+                      changePassword: async (values: any) => {
+                        await api('/auth/password', 'POST', values);
+                        notify('Password changed. Sign in again.');
+                        logout();
+                      },
+                    }
+                  : undefined
+              }
             />
           )}
         </div>
         <div className="workspace-grow" />
         <footer className="workspace-footer">
-          <ShieldCheck size={14} aria-hidden="true" /> Demo · No live payments
+          <ShieldCheck size={14} aria-hidden="true" /> {live ? 'No live card payments' : 'Demo · No live payments'}
         </footer>
       </main>
       {dialog && (
@@ -813,6 +1016,7 @@ export function Workspace({
           editItems={editItems}
           filter={filter}
           jobAction={jobAction}
+          live={live}
           name={name}
           note={note}
           notify={notify}

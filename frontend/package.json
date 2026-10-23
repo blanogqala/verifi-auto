@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/verify.mjs",
+    "e2e": "node scripts/e2e.mjs",
     "format": "prettier --write src scripts *.ts *.json index.html"
   },
   "dependencies": {
@@ -27,6 +28,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.186.0",
     "esbuild": "^0.25.0",
+    "playwright": "^1.64.1",
     "prettier": "^3.0.0"
   },
   "engines": {

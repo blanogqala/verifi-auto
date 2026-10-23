@@ -7,7 +7,7 @@ export type Coordinates = {
 
 export type LocationPrecision = 'public-premises' | 'area-centre' | 'service-area' | 'unknown';
 
-export type LocationSource = 'demo-curated' | 'demo-area-selection' | 'browser' | 'unrecorded';
+export type LocationSource = 'demo-curated' | 'demo-area-selection' | 'browser' | 'published' | 'unrecorded';
 
 export type ProfessionalLocation = {
   publicAddress: string;

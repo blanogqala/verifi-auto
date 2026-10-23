@@ -54,3 +54,10 @@ export type LiveUser = {
 export const displayStatus = (value: string) => value.toLowerCase().replaceAll('_', ' ');
 export const money = (cents: number) =>
   new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(cents / 100);
+
+export function roleOf(user: LiveUser | null) {
+  if (!user) return null;
+  if (user.role === 'MECHANIC') return 'mechanic' as const;
+  if (user.role === 'ADMIN') return 'admin' as const;
+  return 'customer' as const;
+}

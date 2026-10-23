@@ -5,7 +5,7 @@ import { QuoteReview } from '../jobs/QuoteReview';
 import { ArrowRight, Check, X, FileText, CheckCircle2, Wallet, Plus, Trash2 } from 'lucide-react';
 import { activeMechanicProfessionalId, quoteTotal } from '../../demo';
 import { pricingNote } from '../../features/jobs/pricingModel';
-import { commitUpdate } from '../../features/demo/commitUpdate';
+import { afterSave, commitUpdate } from '../../features/demo/commitUpdate';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
 import {
   removeOrArchiveVehicle,
@@ -26,6 +26,7 @@ export function WorkspaceDialog({
   editItems,
   filter,
   jobAction,
+  live = false,
   name,
   note,
   notify,
@@ -69,9 +70,11 @@ export function WorkspaceDialog({
             };
             try {
               const saved = commitUpdate(update, (d: any) => saveVehicle(d, vehicle), notify, '');
-              if (!saved) return;
-              setDialog(null);
-              notify('Sample vehicle saved.');
+              afterSave(saved, (ok) => {
+                if (!ok) return;
+                setDialog(null);
+                notify(live ? 'Vehicle saved.' : 'Sample vehicle saved.');
+              });
             } catch (reason: any) {
               notify(reason.message);
             }
@@ -385,6 +388,11 @@ export function WorkspaceDialog({
             </div>
           ) : null}
           {dialog.kind === 'pay' && role === 'customer' ? (
+            live ? (
+              <button className="primary full" type="button" disabled>
+                Online card payments are unavailable
+              </button>
+            ) : (
             <button
               className="primary full"
               onClick={() =>
@@ -396,6 +404,7 @@ export function WorkspaceDialog({
             >
               Simulate payment <Wallet size={17} />
             </button>
+            )
           ) : dialog.kind === 'receipt' ? (
             <div className="success-note">
               <CheckCircle2 size={20} />
@@ -442,13 +451,17 @@ export function WorkspaceDialog({
                 notify,
                 '',
               );
-              if (!saved) return;
-              setDialog(null);
-              notify(
-                dialog.linked
-                  ? 'Vehicle archived. Bookings, invoices, and service history stay in this browser.'
-                  : 'Vehicle removed from this browser.',
-              );
+              afterSave(saved, (ok) => {
+                if (!ok) return;
+                setDialog(null);
+                notify(
+                  live
+                    ? 'Vehicle archived. Bookings and service records stay on your account.'
+                    : dialog.linked
+                      ? 'Vehicle archived. Bookings, invoices, and service history stay in this browser.'
+                      : 'Vehicle removed from this browser.',
+                );
+              });
             }}
           >
             {dialog.linked ? 'Archive vehicle' : 'Remove vehicle'}
@@ -475,9 +488,11 @@ export function WorkspaceDialog({
                 notify,
                 '',
               );
-              if (!saved) return;
-              setDialog(null);
-              notify('Demo request updated in this browser.');
+              afterSave(saved, (ok) => {
+                if (!ok) return;
+                setDialog(null);
+                notify(live ? 'Booking updated.' : 'Demo request updated in this browser.');
+              });
             } catch (reason: any) {
               notify(reason.message);
             }
@@ -665,7 +680,9 @@ export function WorkspaceDialog({
               notify,
               'History linked to the selected registration.',
             );
-            if (saved) setDialog(null);
+            afterSave(saved, (ok) => {
+              if (ok) setDialog(null);
+            });
           }}
         >
           <h2>Link this history</h2>
@@ -715,7 +732,9 @@ export function WorkspaceDialog({
               notify,
               'Sample report resolved.',
             );
-            if (saved) setDialog(null);
+            afterSave(saved, (ok) => {
+              if (ok) setDialog(null);
+            });
           }}
         >
           <span className="reference">{dialog.report.id}</span>

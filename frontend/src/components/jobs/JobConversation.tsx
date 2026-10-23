@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Send } from 'lucide-react';
-import { commitUpdate } from '../../features/demo/commitUpdate';
+import { afterSave, commitUpdate } from '../../features/demo/commitUpdate';
 import { formatWhen } from '../../features/jobs/bookingProgress';
 import {
   conversationLocked,
@@ -106,14 +106,16 @@ export function JobConversation({
       notify,
       '',
     );
-    sending.current = false;
-    if (!saved) {
-      setError('Could not send this message. Your text is still here.');
-      return;
-    }
-    pendingId.current = '';
-    setDraft('');
-    stick.current = true;
+    afterSave(saved, (ok) => {
+      sending.current = false;
+      if (!ok) {
+        setError('Could not send this message. Your text is still here.');
+        return;
+      }
+      pendingId.current = '';
+      setDraft('');
+      stick.current = true;
+    });
   }
 
   return (

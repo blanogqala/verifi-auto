@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
-import { commitUpdate } from '../../features/demo/commitUpdate';
+import { afterSave, commitUpdate } from '../../features/demo/commitUpdate';
 import { applyJobTransition, saveQuoteDraft } from '../../features/demo/demoActions';
 import {
   blankQuoteRow,
@@ -93,16 +93,18 @@ export function QuoteEditor({ job, actor, update, notify, onSent, onSave }: any)
       notify,
       kind === 'draft' ? 'Quotation draft saved.' : '',
     );
-    setBusy('');
-    if (!saved) {
-      setError('Could not save this quotation. Your draft is still in the editor.');
-      return false;
-    }
-    if (kind === 'send') {
-      submitId.current = '';
-      notify('Quotation sent for approval.');
-      onSent?.();
-    }
+    afterSave(saved, (ok) => {
+      setBusy('');
+      if (!ok) {
+        setError('Could not save this quotation. Your draft is still in the editor.');
+        return;
+      }
+      if (kind === 'send') {
+        submitId.current = '';
+        notify('Quotation sent for approval.');
+        onSent?.();
+      }
+    });
     return true;
   }
 

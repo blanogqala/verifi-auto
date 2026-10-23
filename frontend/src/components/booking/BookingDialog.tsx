@@ -4,7 +4,9 @@ import { PaintColourField } from '../garage/PaintColourField';
 import { useState } from 'react';
 import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
-import { commitUpdate } from '../../features/demo/commitUpdate';
+import { api } from '../../data-access/api';
+import { appointmentStamp } from '../../data-access/map';
+import { afterSave, commitUpdate } from '../../features/demo/commitUpdate';
 import {
   createBooking,
   saveVehicle,
@@ -20,11 +22,13 @@ export function BookingDialog({
   description,
   editingJob,
   go,
+  live = false,
   modal,
   requestId,
   setDate,
   setDescription,
   setModal,
+  refresh,
   setRequestId,
   setStep,
   setTime,
@@ -37,9 +41,14 @@ export function BookingDialog({
   vehicles,
 }: any) {
   const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const choices = activeVehicles(vehicles || []);
+  const known = [
+    ...(vehicles || []),
+    ...added.filter((item) => !(vehicles || []).some((vehicle: any) => vehicle.id === item.id)),
+  ];
+  const choices = activeVehicles(known);
   const ownerId = customerId || demoCustomerId;
 
   function close() {
@@ -63,26 +72,34 @@ export function BookingDialog({
           </h2>
           <p>Verifi Auto is being designed for independent mobile mechanics and workshops.</p>
           <div className="notice">
-            Applications are not open in this design preview. Verification criteria and the pilot
-            city are still being finalised.
+            {live
+              ? 'Create a mechanic account to submit your business for review. Admin access is invitation-only.'
+              : 'Applications are not open in this design preview. Verification criteria and the pilot city are still being finalised.'}
           </div>
           <button
             className="primary"
             onClick={() => {
               close();
-              anchor('trust');
+              if (live) go('register');
+              else anchor('trust');
             }}
           >
-            Explore our proposed standard <ArrowRight size={18} />
+            {live ? 'Create a mechanic account' : 'Explore our proposed standard'} <ArrowRight size={18} />
           </button>
         </>
       ) : step === 2 ? (
         <div className="success">
           <CheckCircle2 size={60} />
           <h2>
-            Your demo request
-            <br />
-            is ready.
+            {live ? (
+              'Request sent'
+            ) : (
+              <>
+                Your demo request
+                <br />
+                is ready.
+              </>
+            )}
           </h2>
           <p>
             {modal.name}
@@ -90,8 +107,9 @@ export function BookingDialog({
             {date} at {time}
           </p>
           <div className="notice">
-            No appointment has been sent to a professional and no payment has been taken. The time
-            is a preference, not confirmed availability.
+            {live
+              ? 'The professional can accept or decline this request. The time is a preference, not confirmed availability. No payment has been taken.'
+              : 'No appointment has been sent to a professional and no payment has been taken. The time is a preference, not confirmed availability.'}
           </div>
           <button
             className="primary"
@@ -108,6 +126,28 @@ export function BookingDialog({
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
+            if (live) {
+              void api('/vehicles', 'POST', {
+                make: String(form.get('make') || ''),
+                model: String(form.get('model') || ''),
+                year: Number(form.get('year')),
+                registration: String(form.get('registration') || ''),
+                mileage: Number(form.get('mileage') || 0),
+                bodyStyle: String(form.get('bodyStyle') || ''),
+                variant: String(form.get('variant') || ''),
+                paintColor: String(form.get('paintColor') || ''),
+                paintColorName: String(form.get('paintColorName') || ''),
+              })
+                .then((created: any) => {
+                  setAdded((rows) => [...rows, created]);
+                  setVehicleId(created.id);
+                  setAdding(false);
+                  setError('');
+                  refresh?.();
+                })
+                .catch((reason: any) => setError(reason?.message || 'Could not save this vehicle.'));
+              return;
+            }
             let createdId = '';
             const saved = commitUpdate(
               update,
@@ -131,10 +171,12 @@ export function BookingDialog({
               setError,
               '',
             );
-            if (!saved) return;
-            setVehicleId(createdId);
-            setAdding(false);
-            setError('');
+            afterSave(saved, (ok) => {
+              if (!ok) return;
+              setVehicleId(createdId);
+              setAdding(false);
+              setError('');
+            });
           }}
         >
           <h2>Add vehicle</h2>
@@ -181,7 +223,7 @@ export function BookingDialog({
           </div>
           <label>
             Registration
-            <input name="registration" required autoComplete="off" defaultValue="DEMO 002" />
+            <input name="registration" required autoComplete="off" defaultValue={modal.sample === false ? '' : 'DEMO 002'} />
           </label>
           <div className="form-row">
             <label>
@@ -224,6 +266,26 @@ export function BookingDialog({
             setError('');
             try {
               const vehicle = choices.find((item) => item.id === vehicleId);
+              if (live && !editingJob) {
+                void api('/bookings', 'POST', {
+                  vehicleId,
+                  professionalId: modal.id,
+                  appointmentAt: appointmentStamp(date, time),
+                  description,
+                  clientRequestId: requestId,
+                })
+                  .then(() => {
+                    setSubmitting(false);
+                    setRequestId(crypto.randomUUID());
+                    setStep(2);
+                    refresh?.();
+                  })
+                  .catch((reason: any) => {
+                    setSubmitting(false);
+                    setError(reason?.message || 'Could not send this request.');
+                  });
+                return;
+              }
               let duplicate = false;
               const saved = commitUpdate(
                 update,
@@ -253,24 +315,33 @@ export function BookingDialog({
                 setError,
                 '',
               );
-              if (!saved) return;
-              if (duplicate) {
-                setError('This request was already saved.');
-                return;
-              }
-              if (editingJob) {
-                notify('Demo request updated in this browser.');
-                close();
-              } else {
-                setRequestId(crypto.randomUUID());
-                setStep(2);
-              }
-            } finally {
+              afterSave(saved, (ok) => {
+                setSubmitting(false);
+                if (!ok) return;
+                if (duplicate) {
+                  setError('This request was already saved.');
+                  return;
+                }
+                if (editingJob) {
+                  notify(
+                    modal.sample === false
+                      ? 'This booking cannot be edited after it is sent.'
+                      : 'Demo request updated in this browser.',
+                  );
+                  if (modal.sample !== false) close();
+                } else {
+                  setRequestId(crypto.randomUUID());
+                  setStep(2);
+                }
+              });
+              return;
+            } catch (reason: any) {
               setSubmitting(false);
+              setError(reason?.message || 'Could not save this request.');
             }
           }}
         >
-          <span className="chip">SAMPLE PROFESSIONAL</span>
+          {modal.sample === false ? null : <span className="chip">SAMPLE PROFESSIONAL</span>}
           <h2>{modal.name}</h2>
           <p>
             {modal.area} · {modal.type}
@@ -297,7 +368,7 @@ export function BookingDialog({
             </p>
           ) : null}
           <button className="primary full" type="submit" disabled={submitting || !choices.length}>
-            {submitting ? 'Saving request' : editingJob ? 'Save changes' : 'Create demo request'}
+            {submitting ? 'Saving request' : editingJob ? 'Save changes' : live ? 'Send request' : 'Create demo request'}
             <ArrowRight size={18} />
           </button>
         </form>

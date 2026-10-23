@@ -3,5 +3,7 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.demo
+!.env.e2e
 *.log
 .DS_Store

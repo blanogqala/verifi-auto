@@ -15,6 +15,10 @@ import { useState, useEffect, useRef } from 'react';
 
 import { Workspace } from './layouts/WorkspaceLayout';
 import { AuthPage as Auth } from './pages/auth/AuthPage';
+import { api, setCsrf } from './data-access/api';
+import { liveDirectoryHits, mapDirectoryProfessional } from './data-access/directory';
+import { useLiveSource } from './data-access/useLiveSource';
+import { RoadLoader } from './components/ui/RoadLoader';
 import {
   Role,
   roles,
@@ -48,7 +52,11 @@ export default function App() {
     canonicalPage(storedRole(), location.hash.slice(1) || 'home'),
   );
   const [role, setRole] = useState<Role | null>(storedRole);
-  const [data, update] = useDemoStore();
+  const [demoData, demoUpdate] = useDemoStore();
+  const connected = Boolean(import.meta.env.VITE_API_URL);
+  const live = useLiveSource(connected, page);
+  const data = connected ? live.data : demoData;
+  const update = connected ? live.update : demoUpdate;
   const openingDraft = readBookingDraft();
   const [pending, setPending] = useState<any>(openingDraft?.professional ?? null);
   const [menu, setMenu] = useState(false);
@@ -66,12 +74,19 @@ export default function App() {
   const [description, setDescription] = useState(openingDraft?.description || '');
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [toast, setToast] = useState('');
+  useEffect(() => {
+    if (connected && live.error) setToast(live.error);
+  }, [connected, live.error]);
   const [sectionTarget, setSectionTarget] = useState<{
     id: string;
     nonce: number;
     smooth: boolean;
   } | null>(null);
   const handledSection = useRef(0);
+  useEffect(() => {
+    if (!connected) return;
+    setRole(live.role);
+  }, [connected, live.role]);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     try {
@@ -117,7 +132,8 @@ export default function App() {
       let p = canonicalPage(role, raw);
       if (p.startsWith('dashboard/') && !role) p = 'login';
       else if (p.startsWith('dashboard/') && role && !canVisit(role, p)) p = 'dashboard/overview';
-      if (!['home', 'find', 'login', 'register', 'forgot'].includes(p) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(p))
+      const base = p.split('?')[0];
+      if (!['home', 'find', 'login', 'register', 'forgot', 'reset', 'verify'].includes(base) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(base))
         p = 'home';
       setPage(p);
       if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = '';
@@ -127,7 +143,53 @@ export default function App() {
     change();
     return () => window.removeEventListener('hashchange', change);
   }, [role]);
-  function login(r: Role, register = false, details: any = {}) {
+  async function login(r: Role, register = false, details: any = {}) {
+    if (connected) {
+      try {
+        if (details.intent === 'forgot') {
+          await api('/auth/forgot', 'POST', { email: details.email });
+          return;
+        }
+        if (details.intent === 'reset') {
+          await api('/auth/reset', 'POST', { token: details.token, password: details.password });
+          setToast('Password updated. Sign in with the new password.');
+          go('login');
+          return;
+        }
+        if (details.intent === 'verify') {
+          await api('/auth/verify', 'POST', { token: details.token });
+          setToast('Email verified. You can sign in.');
+          go('login');
+          return;
+        }
+        if (register) {
+          await api('/auth/register', 'POST', {
+            name: details.name,
+            email: details.email,
+            password: details.password,
+            role: r === 'mechanic' ? 'MECHANIC' : 'CUSTOMER',
+          });
+          setToast('Check your email to verify your account before signing in.');
+          go('login');
+          return;
+        }
+        const result = await api('/auth/login', 'POST', {
+          email: details.email,
+          password: details.password,
+        });
+        setCsrf(result.csrf);
+        live.setUser(result.user);
+        live.refresh();
+        const next =
+          result.user.role === 'MECHANIC' ? 'dashboard/profile/business' : 'dashboard/overview';
+        setPage(next);
+        location.hash = next;
+      } catch (error: any) {
+        setToast(error?.message || 'Could not complete sign-in.');
+        throw error;
+      }
+      return;
+    }
     if (r === 'customer' || r === 'mechanic') {
       try {
         const saved = update((d: any) => applyAccountDetails(d, r, details));
@@ -169,6 +231,17 @@ export default function App() {
     window.scrollTo(0, 0);
   }
   function logout() {
+    if (connected) {
+      void api('/auth/logout', 'POST', {})
+        .catch(() => undefined)
+        .finally(() => {
+          live.setUser(null);
+          setRole(null);
+          setPage('login');
+          location.hash = 'login';
+        });
+      return;
+    }
     if (role) {
       try {
         if (update((d: any) => appendAdminActivity(d, { action: 'Signed out', actor: role === 'customer' ? d.settings?.name || 'Customer' : role === 'mechanic' ? d.profile?.name || 'Mechanic' : d.adminAccount?.name || 'Admin', role })) === false) setToast(storageFailureMessage);
@@ -302,7 +375,7 @@ export default function App() {
       location.hash = 'login';
       setToast(
         role
-          ? 'Enter the customer preview to book a professional.'
+          ? 'Sign in with a customer account to book a professional.'
           : 'Sign in to continue your booking.',
       );
       window.scrollTo(0, 0);
@@ -333,7 +406,10 @@ export default function App() {
     });
   }, [modal, vehicleId, date, time, description]);
   const listed = directoryEntries(providers, data);
-  const results = browseDirectory(listed, discovery, data);
+  const liveProfessionals = live.professionals.map(mapDirectoryProfessional);
+  const results = connected
+    ? liveDirectoryHits(liveProfessionals, discovery)
+    : browseDirectory(listed, discovery, data);
   function setService(service: string) {
     setDiscovery((current) => ({ ...current, service }));
   }
@@ -343,7 +419,7 @@ export default function App() {
   const customerName =
     role === 'customer' && typeof data.settings?.name === 'string' ? data.settings.name.trim() : '';
   const accountLabel = customerName || 'My account';
-  const showAuth = ['login', 'register', 'forgot'].includes(page);
+  const showAuth = ['login', 'register', 'forgot', 'reset', 'verify'].includes(page.split('?')[0]);
   const showWorkspace = page.startsWith('dashboard/') && role !== null && canVisit(role, page);
   useEffect(() => {
     if (showWorkspace) setMenu(false);
@@ -372,8 +448,19 @@ export default function App() {
           theme={theme}
         />
       )}
-      {showAuth ? (
-        <Auth key={page} mode={page} role={role} setRole={setRole} onLogin={login} go={go} pending={pending} />
+      {connected && !live.ready && (showAuth || showWorkspace) ? (
+        <RoadLoader label="Loading Verifi Auto…" />
+      ) : showAuth ? (
+        <Auth
+          key={page.split('?')[0]}
+          mode={page.split('?')[0]}
+          role={role}
+          setRole={setRole}
+          onLogin={login}
+          go={go}
+          pending={pending}
+          connected={connected}
+        />
       ) : showWorkspace ? (
         <Workspace
           role={role}
@@ -385,6 +472,9 @@ export default function App() {
           notify={setToast}
           theme={theme}
           setTheme={setTheme}
+          live={connected}
+          verified={live.verified}
+          refresh={live.refresh}
           directory={{
             book,
             discovery,
@@ -394,6 +484,9 @@ export default function App() {
             setService,
             setType,
             type: discovery.type,
+            profileFor: (id: string) =>
+              liveProfessionals.find((item) => item.id === id) ||
+              (live.profile?.id === id ? mapDirectoryProfessional(live.profile) : null),
           }}
         />
       ) : page === 'home' ? (
@@ -423,6 +516,13 @@ export default function App() {
         />
       ) : page.startsWith('professional/') ? (
         safeRouteId(page.slice('professional/'.length)) ? (
+        connected &&
+        !(
+          liveProfessionals.find((item) => item.id === safeRouteId(page.slice('professional/'.length))) ||
+          live.profile?.id === safeRouteId(page.slice('professional/'.length))
+        ) ? (
+          <RoadLoader label="Loading professional…" />
+        ) : (
         <ProfessionalProfilePage
           book={book}
           data={data}
@@ -431,7 +531,24 @@ export default function App() {
           professionalId={safeRouteId(page.slice('professional/'.length)) || ''}
           role={role}
           update={update}
+          connected={
+            connected
+              ? (() => {
+                  const id = safeRouteId(page.slice('professional/'.length)) || '';
+                  const profile =
+                    liveProfessionals.find((item) => item.id === id) ||
+                    mapDirectoryProfessional(live.profile);
+                  return {
+                    profile,
+                    reviews: profile.reviews || [],
+                    directionsUrl: profile.directionsUrl,
+                    rating: profile.rating,
+                  };
+                })()
+              : undefined
+          }
         />
+        )
         ) : (
           <main className="page-wrap">
             <h1>This link is not valid</h1>
@@ -446,6 +563,8 @@ export default function App() {
         <BookingDialog
           anchor={anchor}
           customerId={data.settings?.id}
+          live={connected}
+          refresh={connected ? live.refresh : undefined}
           date={date}
           description={description}
           go={go}
