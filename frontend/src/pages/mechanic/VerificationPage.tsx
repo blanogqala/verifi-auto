@@ -8,7 +8,9 @@ import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 export function VerificationPage({ data, note, notify, route, update, connected }: any) {
   const status = data.application?.status || 'Draft';
   const documents: any[] = data.documents || [];
-  const doc = (kind: string) => documents.find((item: any) => item.kind === kind);
+  const doc = (kind: string) => [...documents]
+    .sort((left: any, right: any) => String(right.date || right.createdAt || '').localeCompare(String(left.date || left.createdAt || '')))
+    .find((item: any) => item.kind === kind);
   const identity = doc('Identity evidence');
   const qualification = doc('Qualifications / experience');
   const profileReady = Boolean(
