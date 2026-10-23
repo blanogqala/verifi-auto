@@ -110,7 +110,10 @@ const profile = z
     city: z.string().trim().min(2).max(100),
     address: z.string().trim().max(300),
     about: z.string().trim().min(10).max(4000),
-    services: z.array(z.string().trim().min(2).max(100)).min(1).max(30),
+    services: z.array(z.string().trim().min(2).max(100)).min(1).max(30)
+      .refine((value) => new Set(value.map((v) => v.toLowerCase())).size === value.length, "Services must be unique."),
+    serviceAreas: z.array(z.string().trim().min(2).max(100)).min(1).max(25).optional()
+      .refine((value) => !value || new Set(value.map((v) => v.toLowerCase())).size === value.length, "Service areas must be unique."),
     phone,
     website: z.union([
       z.literal(""),
@@ -149,7 +152,12 @@ professionalRoutes.patch("/me", async (req, res) => {
     // Identity/business changes require another review; approval cannot be retained by client input.
     const updated = await tx.professional.update({
       where: { id: pro.id },
-      data: { ...input, status: "DRAFT", version: { increment: 1 } },
+      data: {
+        ...input,
+        serviceAreas: input.serviceAreas?.length ? input.serviceAreas : [input.city],
+        status: "DRAFT",
+        version: { increment: 1 },
+      },
     });
     await audit(tx, actor(req).userId, "PROFESSIONAL_UPDATED", pro.id);
     return updated;
@@ -213,7 +221,7 @@ documentRoutes.get("/", async (req, res) =>
   res.json(
     await db.document.findMany({
       where: { userId: actor(req).userId },
-      select: { id: true, kind: true, name: true, mime: true, createdAt: true },
+      select: { id: true, kind: true, name: true, mime: true, reviewStatus: true, reviewNote: true, reviewedAt: true, createdAt: true },
     }),
   ),
 );
@@ -271,12 +279,37 @@ documentRoutes.post(
           mime: file.mimetype,
           bytes: new Uint8Array(file.buffer),
         },
-        select: { id: true, kind: true, name: true, createdAt: true },
+        select: { id: true, kind: true, name: true, reviewStatus: true, reviewNote: true, createdAt: true },
       });
     });
     res.status(201).json(result);
   },
 );
+// Private inline view: accessible only to the document owner or a verified administrator.
+documentRoutes.get("/:id/preview", async (req, res) => {
+  const doc = await db.document.findFirst({
+    where: {
+      id: id.parse(req.params.id),
+      ...(actor(req).role === "ADMIN" ? {} : { userId: actor(req).userId }),
+    },
+  });
+  requireThat(doc, 404, "NOT_FOUND", "Document not found.");
+  requireThat(
+    ["application/pdf", "image/png", "image/jpeg"].includes(doc.mime),
+    415,
+    "UNSUPPORTED_DOCUMENT",
+    "This document cannot be previewed.",
+  );
+  res
+    .set({
+      "Content-Type": doc.mime,
+      "Content-Disposition": 'inline',
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox",
+    })
+    .send(Buffer.from(doc.bytes));
+});
 documentRoutes.get("/:id", async (req, res) => {
   const doc = await db.document.findFirst({
     where: {

@@ -104,6 +104,7 @@ model Professional {
   address String @default("") @db.VarChar(300)
   about String @default("") @db.VarChar(4000)
   services String[] @default([])
+  serviceAreas String[] @default([])
   phone String @default("")
   website String @default("")
   latitude Float?
@@ -304,6 +305,10 @@ model Document {
   name String
   mime String
   bytes Bytes
+  reviewStatus String @default("PENDING") @db.VarChar(24)
+  reviewNote String @default("") @db.VarChar(1000)
+  reviewedAt DateTime?
   createdAt DateTime @default(now())
   @@index([userId])
+  @@index([userId, reviewStatus])
 }
