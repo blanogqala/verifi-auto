@@ -277,6 +277,10 @@ async function connected(browser) {
     }),
   );
   await businessName.fill('Updated Workshop');
+  await page.getByLabel('Add custom service area').fill('Durbanville, Cape Town');
+  await page.getByRole('button', { name: 'Add', exact: true }).first().click();
+  await page.getByLabel('Add custom service').fill('Wheel balancing');
+  await page.getByRole('button', { name: 'Add', exact: true }).last().click();
   await page.getByRole('button', { name: 'Save profile' }).click();
   await page.getByText('Business profile saved').waitFor();
   await page.reload();
@@ -286,6 +290,8 @@ async function connected(browser) {
       return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Updated Workshop';
     }),
   );
+  await page.getByRole('button', { name: 'Remove Durbanville, Cape Town' }).waitFor();
+  await page.getByRole('button', { name: 'Remove Wheel balancing' }).waitFor();
   await page.getByRole('tab', { name: 'Banking details' }).click();
   await page.getByText('Payout onboarding is not connected yet').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
@@ -301,6 +307,10 @@ async function connected(browser) {
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' })
     .getByRole('button', { name: 'View application' }).waitFor();
   await page.getByRole('button', { name: 'View application' }).click();
+  await page.getByText('Business details', { exact: true }).waitFor();
+  await page.getByText('Submitted documents', { exact: true }).waitFor();
+  await page.getByText('Application decision', { exact: true }).waitFor();
+  await page.getByRole('link', { name: 'View Identity evidence' }).waitFor();
   await page.getByRole('button', { name: 'Approve Identity evidence' }).click();
   await page.waitForFunction(() =>
     document.querySelector('[aria-label="Approve Identity evidence"]')?.hasAttribute('disabled') === true,
