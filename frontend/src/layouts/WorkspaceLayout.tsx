@@ -1,5 +1,6 @@
 import { AdminJobsPage, AdminDisputePage } from '../pages/admin/AdminJobsPage';
 import { appendAdminActivity } from '../features/admin/detailRecords';
+import { finishApplicationReview } from '../features/admin/reviewResult';
 import { ApplicationDetailPage, ProfessionalAdminDetailPage, CustomerAdminDetailPage, AdminJobDetailPage } from '../pages/admin/AdminDetailPages';
 import { JobCard } from '../components/jobs/JobCard';
 import { Card } from '../components/ui/Card';
@@ -28,7 +29,9 @@ import { NotificationsPage } from '../pages/shared/NotificationsPage';
 import { SettingsPage } from '../pages/shared/SettingsPage';
 import { ProfessionalsPage } from '../pages/public/ProfessionalsPage';
 import { ProfessionalProfilePage } from '../components/professionals/ProfessionalProfilePage';
+import { RoadLoader } from '../components/ui/RoadLoader';
 import { defaultDiscovery, type DiscoverySession } from '../features/professionals/discovery';
+import { canSubmit } from '../features/onboarding/applicationRules';
 
 import { StatusBadge as Status } from '../components/ui/StatusBadge';
 import { useState, useEffect, useRef } from 'react';
@@ -111,6 +114,9 @@ export type DirectoryProps = {
   setType: (value: string) => void;
   type: string;
   profileFor?: (id: string) => any;
+  profileState?: 'idle' | 'loading' | 'found' | 'missing' | 'error';
+  directoryStatus?: 'loading' | 'ready';
+  loadError?: string;
 };
 
 const emptyDirectory: DirectoryProps = {
@@ -138,6 +144,7 @@ export type WorkspaceProps = {
   live?: boolean;
   verified?: boolean;
   refresh?: () => void;
+  loadError?: string;
 };
 
 export function Workspace({
@@ -154,6 +161,7 @@ export function Workspace({
   live = false,
   verified = true,
   refresh = () => {},
+  loadError = '',
 }: WorkspaceProps) {
   const [side, setSide] = useState(false);
   const [drawer, setDrawer] = useState(false);
@@ -165,6 +173,21 @@ export function Workspace({
   const [checks, setChecks] = useState<string[]>([]);
   const [reviewNote, setReviewNote] = useState('');
   const [profile, setProfile] = useState<any>(data.profile);
+  const profileDirty = useRef(false);
+  const profileEditStamp = useRef(0);
+  function editProfile(next: any) {
+    profileDirty.current = true;
+    profileEditStamp.current += 1;
+    setProfile(next);
+  }
+  useEffect(() => {
+    if (!live || profileDirty.current) return;
+    setProfile({
+      ...(data.profile || {}),
+      services: Array.isArray(data.profile?.services) ? data.profile.services : [],
+      photo: data.profile?.photo || data.settings?.photo || '',
+    });
+  }, [live, data.profile, data.settings?.photo]);
   const [editItems, setEditItems] = useState<any[]>([]);
   const [quoteNotes, setQuoteNotes] = useState('');
   const [previewing] = useState(mechanicPreviewActive);
@@ -388,9 +411,12 @@ export function Workspace({
       notify,
       '',
     );
-    if (!saved) return;
-    setDialog(null);
-    notify('Demo application ' + status.toLowerCase());
+    finishApplicationReview(saved, {
+      live,
+      status,
+      notify,
+      close: () => setDialog(null),
+    });
   }
   function openReview(a: any) {
     setChecks([]);
@@ -529,6 +555,14 @@ export function Workspace({
           unread={unread}
         />
         <div className="workspace-body">
+          {live && loadError ? (
+            <div className="notice" role="alert">
+              <p>{loadError}</p>
+              <button className="secondary" type="button" onClick={() => refresh()}>
+                Try again
+              </button>
+            </div>
+          ) : null}
           {live && !verified && !tab.startsWith('profile') && tab !== 'notifications' ? (
             <Card as="section" className="dash-panel">
               <h2>Verify your email</h2>
@@ -841,9 +875,18 @@ export function Workspace({
               setService={directory.setService}
               setType={directory.setType}
               type={directory.type}
+              live={live}
+              loading={live && directory.directoryStatus === 'loading'}
+              error={live ? directory.loadError || '' : ''}
             />
           )}
           {!locked && professionalId && role === 'customer' && (
+            live &&
+            !directory.profileFor?.(professionalId) &&
+            directory.profileState !== 'missing' &&
+            directory.profileState !== 'error' ? (
+              <RoadLoader label="Loading professional…" />
+            ) : (
             <ProfessionalProfilePage
               book={directory.book}
               data={data}
@@ -854,16 +897,17 @@ export function Workspace({
               role={role}
               update={update}
               connected={
-                live && directory.profileFor?.(professionalId)
+                live
                   ? {
-                      profile: directory.profileFor(professionalId),
-                      reviews: directory.profileFor(professionalId).reviews || [],
-                      directionsUrl: directory.profileFor(professionalId).directionsUrl,
-                      rating: directory.profileFor(professionalId).rating,
+                      profile: directory.profileFor?.(professionalId) || null,
+                      reviews: directory.profileFor?.(professionalId)?.reviews || [],
+                      directionsUrl: directory.profileFor?.(professionalId)?.directionsUrl,
+                      rating: directory.profileFor?.(professionalId)?.rating,
                     }
                   : undefined
               }
             />
+            )
           )}
           {!locked && merchantSection && (
             <MerchantProfilePage
@@ -877,10 +921,60 @@ export function Workspace({
               role={role}
               route={route}
               section={merchantSection}
-              setProfile={setProfile}
+              setProfile={live ? editProfile : setProfile}
               update={update}
               upload={upload}
               uploadError={uploadError}
+              connected={
+                live
+                  ? {
+                      save: async (nextProfile: any) => {
+                        const stamp = profileEditStamp.current;
+                        try {
+                          await update((current: any) => ({
+                            ...current,
+                            profile: { ...current.profile, ...nextProfile },
+                          }));
+                          if (profileEditStamp.current === stamp) profileDirty.current = false;
+                          notify(
+                            'Business profile saved. Changes require a fresh review before the directory listing is shown again.',
+                          );
+                        } catch (reason: any) {
+                          notify(reason?.message || 'The profile could not be saved.');
+                          throw reason;
+                        }
+                      },
+                      savePhoto: async (photo: string) => {
+                        await update((current: any) => ({
+                          ...current,
+                          settings: { ...current.settings, photo },
+                          profile: { ...current.profile, photo },
+                        }));
+                        setProfile((current: any) => ({ ...current, photo }));
+                        notify(photo ? 'Profile photo saved.' : 'Profile photo removed.');
+                      },
+                      remove: async (id: string) => {
+                        try {
+                          await api('/documents/' + id, 'DELETE');
+                          refresh();
+                          notify('Document removed.');
+                        } catch (reason: any) {
+                          notify(reason?.message || 'The document could not be removed.');
+                        }
+                      },
+                      submit: async () => {
+                        try {
+                          await api('/professional/me/submit', 'POST', {});
+                          refresh();
+                          notify('Submitted for review.');
+                        } catch (reason: any) {
+                          notify(reason?.message || 'The application could not be submitted.');
+                        }
+                      },
+                      canSubmit: canSubmit(data),
+                    }
+                  : undefined
+              }
             />
           )}
           {!locked && (tab === 'applications' || tab === 'applications/history') && (

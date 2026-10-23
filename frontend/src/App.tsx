@@ -407,6 +407,22 @@ export default function App() {
   }, [modal, vehicleId, date, time, description]);
   const listed = directoryEntries(providers, data);
   const liveProfessionals = live.professionals.map(mapDirectoryProfessional);
+  const publicProfessionalId = page.startsWith('professional/')
+    ? safeRouteId(page.slice('professional/'.length)) || ''
+    : '';
+  const publicProfessional = !connected || !publicProfessionalId
+    ? null
+    : live.profileState === 'found' && live.profile?.id === publicProfessionalId
+      ? mapDirectoryProfessional(live.profile)
+      : live.profileState === 'missing'
+        ? null
+        : liveProfessionals.find((item) => item.id === publicProfessionalId) || null;
+  const publicProfessionalPending =
+    connected &&
+    Boolean(publicProfessionalId) &&
+    !publicProfessional &&
+    live.profileState !== 'missing' &&
+    live.profileState !== 'error';
   const results = connected
     ? liveDirectoryHits(liveProfessionals, discovery)
     : browseDirectory(listed, discovery, data);
@@ -475,6 +491,7 @@ export default function App() {
           live={connected}
           verified={live.verified}
           refresh={live.refresh}
+          loadError={connected ? live.loadError : ''}
           directory={{
             book,
             discovery,
@@ -484,9 +501,15 @@ export default function App() {
             setService,
             setType,
             type: discovery.type,
-            profileFor: (id: string) =>
-              liveProfessionals.find((item) => item.id === id) ||
-              (live.profile?.id === id ? mapDirectoryProfessional(live.profile) : null),
+            loadError: connected ? live.loadError : '',
+            directoryStatus: live.directoryStatus,
+            profileState: live.profileState,
+            profileFor: (id: string) => {
+              if (!connected || live.profileState === 'missing') return null;
+              if (live.profileState === 'found' && live.profile?.id === id)
+                return mapDirectoryProfessional(live.profile);
+              return liveProfessionals.find((item) => item.id === id) || null;
+            },
           }}
         />
       ) : page === 'home' ? (
@@ -506,7 +529,10 @@ export default function App() {
         <ProfessionalsPage
           book={book}
           discovery={discovery}
+          error={connected ? live.loadError : ''}
           go={go}
+          live={connected}
+          loading={connected && live.directoryStatus !== 'ready'}
           results={results}
           service={discovery.service}
           setDiscovery={setDiscovery}
@@ -515,39 +541,41 @@ export default function App() {
           type={discovery.type}
         />
       ) : page.startsWith('professional/') ? (
-        safeRouteId(page.slice('professional/'.length)) ? (
-        connected &&
-        !(
-          liveProfessionals.find((item) => item.id === safeRouteId(page.slice('professional/'.length))) ||
-          live.profile?.id === safeRouteId(page.slice('professional/'.length))
-        ) ? (
+        publicProfessionalId ? (
+        publicProfessionalPending ? (
           <RoadLoader label="Loading professional…" />
         ) : (
+        <>
+          {connected && live.profileState === 'error' && !publicProfessional ? (
+            <div className="page-wrap">
+              <div className="notice" role="alert">
+                <p>{live.loadError || 'This professional could not be loaded.'}</p>
+                <button className="secondary" type="button" onClick={() => live.refresh()}>
+                  Try again
+                </button>
+              </div>
+            </div>
+          ) : null}
         <ProfessionalProfilePage
           book={book}
           data={data}
           go={go}
           notify={setToast}
-          professionalId={safeRouteId(page.slice('professional/'.length)) || ''}
+          professionalId={publicProfessionalId}
           role={role}
           update={update}
           connected={
             connected
-              ? (() => {
-                  const id = safeRouteId(page.slice('professional/'.length)) || '';
-                  const profile =
-                    liveProfessionals.find((item) => item.id === id) ||
-                    mapDirectoryProfessional(live.profile);
-                  return {
-                    profile,
-                    reviews: profile.reviews || [],
-                    directionsUrl: profile.directionsUrl,
-                    rating: profile.rating,
-                  };
-                })()
+              ? {
+                  profile: publicProfessional,
+                  reviews: publicProfessional?.reviews || [],
+                  directionsUrl: publicProfessional?.directionsUrl,
+                  rating: publicProfessional?.rating,
+                }
               : undefined
           }
         />
+        </>
         )
         ) : (
           <main className="page-wrap">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { api, apiBase, roleOf, setCsrf, type LiveUser } from './api';
 import {
   emptyWorkspace,
@@ -16,12 +16,47 @@ function professionalIdFrom(page: string) {
   return match ? decodeURIComponent(match[1]) : '';
 }
 
-async function safe<T>(path: string, fallback: T): Promise<T> {
+const documentLabels: Record<string, string> = {
+  IDENTITY: 'Identity evidence',
+  QUALIFICATION: 'Qualifications / experience',
+  BUSINESS: 'Business registration',
+};
+
+export type ProfileRequestState = 'idle' | 'loading' | 'found' | 'missing' | 'error';
+
+function presentDocument(doc: any) {
+  return {
+    ...doc,
+    kind: documentLabels[doc?.kind] || doc?.kind,
+    date: doc?.createdAt ? String(doc.createdAt).slice(0, 10) : doc?.date || '',
+  };
+}
+
+/** A failed request stays an error. An empty payload is a successful empty result. */
+async function readOrEmpty<T>(path: string, fallback: T, problems: string[]): Promise<T> {
   try {
     return await api<T>(path);
-  } catch {
+  } catch (reason: any) {
+    problems.push(reason?.message || 'Could not load this information.');
     return fallback;
   }
+}
+
+function assignError(
+  setErrors: Dispatch<SetStateAction<Record<string, string>>>,
+  key: string,
+  message: string,
+) {
+  setErrors((current) => (current[key] === message ? current : { ...current, [key]: message }));
+}
+
+function clearError(setErrors: Dispatch<SetStateAction<Record<string, string>>>, key: string) {
+  setErrors((current) => {
+    if (!current[key]) return current;
+    const next = { ...current };
+    delete next[key];
+    return next;
+  });
 }
 
 export function useLiveSource(enabled: boolean, page: string) {
@@ -29,8 +64,11 @@ export function useLiveSource(enabled: boolean, page: string) {
   const [ready, setReady] = useState(!enabled);
   const [data, setData] = useState<any>(emptyWorkspace);
   const [error, setError] = useState('');
+  const [resourceErrors, setResourceErrors] = useState<Record<string, string>>({});
   const [professionals, setProfessionals] = useState<any[]>([]);
+  const [directoryStatus, setDirectoryStatus] = useState<'loading' | 'ready'>(enabled ? 'loading' : 'ready');
   const [profile, setProfile] = useState<any>(null);
+  const [profileState, setProfileState] = useState<ProfileRequestState>('idle');
   const [revision, setRevision] = useState(0);
   const dataRef = useRef(data);
   dataRef.current = data;
@@ -53,19 +91,20 @@ export function useLiveSource(enabled: boolean, page: string) {
         professionalId: '',
       };
     }
+    const problems: string[] = [];
     const notes = verified || session.user
-      ? await safe<any[]>('/notifications?take=100', [])
+      ? await readOrEmpty<any[]>('/notifications?take=100', [], problems)
       : [];
     next.notifications = notes.map((note) => mapNotification(note, role || 'customer'));
     let rawBookings: any[] = [];
     if (verified && role === 'customer') {
       const [vehicles, bookings] = await Promise.all([
-        safe<any[]>('/vehicles', []),
-        safe<any[]>('/bookings?take=100', []),
+        readOrEmpty<any[]>('/vehicles', [], problems),
+        readOrEmpty<any[]>('/bookings?take=100', [], problems),
       ]);
       rawBookings = bookings;
       const details = await Promise.all(
-        vehicles.map((vehicle) => safe<any>('/vehicles/' + vehicle.id, vehicle)),
+        vehicles.map((vehicle) => readOrEmpty<any>('/vehicles/' + vehicle.id, vehicle, problems)),
       );
       next.vehicles = details.map(mapVehicle);
       next.records = details.flatMap((vehicle) => mapRecords(vehicle.id, vehicle.history || []));
@@ -73,9 +112,9 @@ export function useLiveSource(enabled: boolean, page: string) {
     }
     if (verified && role === 'mechanic') {
       const [bookings, me, docs] = await Promise.all([
-        safe<any[]>('/bookings?take=100', []),
-        safe<any>('/professional/me', null),
-        safe<any[]>('/documents', []),
+        readOrEmpty<any[]>('/bookings?take=100', [], problems),
+        readOrEmpty<any>('/professional/me', null, problems),
+        readOrEmpty<any[]>('/documents', [], problems),
       ]);
       rawBookings = bookings;
       next.jobs = bookings.map(mapBooking);
@@ -103,19 +142,16 @@ export function useLiveSource(enabled: boolean, page: string) {
           previouslyApproved: Boolean(me.approvedAt),
         };
       }
-      next.documents = (docs || []).map((doc: any) => ({
-        ...doc,
-        date: doc.createdAt ? String(doc.createdAt).slice(0, 10) : '',
-      }));
+      next.documents = (docs || []).map(presentDocument);
     }
     if (verified && role === 'admin') {
       const [bookings, applications, history, managed, customers, activity] = await Promise.all([
-        safe<any[]>('/bookings?take=100', []),
-        safe<any[]>('/admin/applications?take=100', []),
-        safe<any[]>('/admin/application-history?take=100', []),
-        safe<any[]>('/admin/professionals?take=100', []),
-        safe<any[]>('/admin/users?role=CUSTOMER&take=100', []),
-        safe<any[]>('/admin/activity', []),
+        readOrEmpty<any[]>('/bookings?take=100', [], problems),
+        readOrEmpty<any[]>('/admin/applications?take=100', [], problems),
+        readOrEmpty<any[]>('/admin/application-history?take=100', [], problems),
+        readOrEmpty<any[]>('/admin/professionals?take=100', [], problems),
+        readOrEmpty<any[]>('/admin/users?role=CUSTOMER&take=100', [], problems),
+        readOrEmpty<any[]>('/admin/activity', [], problems),
       ]);
       rawBookings = bookings;
       next.jobs = bookings.map(mapBooking);
@@ -180,6 +216,8 @@ export function useLiveSource(enabled: boolean, page: string) {
     );
     setData(next);
     setError('');
+    if (problems.length) assignError(setResourceErrors, 'workspace', problems[0]);
+    else clearError(setResourceErrors, 'workspace');
   }, [enabled]);
 
   useEffect(() => {
@@ -206,12 +244,23 @@ export function useLiveSource(enabled: boolean, page: string) {
   useEffect(() => {
     if (!enabled) return;
     let active = true;
+    setDirectoryStatus('loading');
     api('/professionals?take=100')
       .then((rows) => {
-        if (active) setProfessionals(rows);
+        if (!active) return;
+        setProfessionals(Array.isArray(rows) ? rows : []);
+        clearError(setResourceErrors, 'directory');
+        setDirectoryStatus('ready');
       })
-      .catch(() => {
-        if (active) setProfessionals([]);
+      .catch((reason) => {
+        if (!active) return;
+        setProfessionals([]);
+        assignError(
+          setResourceErrors,
+          'directory',
+          reason?.message || 'The directory could not be loaded.',
+        );
+        setDirectoryStatus('ready');
       });
     return () => {
       active = false;
@@ -223,15 +272,31 @@ export function useLiveSource(enabled: boolean, page: string) {
     const id = professionalIdFrom(page);
     if (!id) {
       setProfile(null);
+      setProfileState('idle');
+      clearError(setResourceErrors, 'profile');
       return;
     }
     let active = true;
+    setProfileState('loading');
     api('/professionals/' + id)
       .then((row) => {
-        if (active) setProfile(row);
+        if (!active) return;
+        setProfile(row);
+        setProfileState('found');
+        clearError(setResourceErrors, 'profile');
       })
-      .catch(() => {
-        if (active) setProfile(null);
+      .catch((reason) => {
+        if (!active) return;
+        setProfile(null);
+        const missing = reason?.status === 404 || reason?.status === 400;
+        setProfileState(missing ? 'missing' : 'error');
+        if (missing) clearError(setResourceErrors, 'profile');
+        else
+          assignError(
+            setResourceErrors,
+            'profile',
+            reason?.message || 'This professional could not be loaded.',
+          );
       });
     return () => {
       active = false;
@@ -262,6 +327,8 @@ export function useLiveSource(enabled: boolean, page: string) {
 
   const refresh = useCallback(() => setRevision((value) => value + 1), []);
 
+  const loadError = Object.values(resourceErrors).filter(Boolean).join(' ');
+
   return {
     enabled,
     ready,
@@ -270,8 +337,11 @@ export function useLiveSource(enabled: boolean, page: string) {
     verified: Boolean(user?.verifiedAt),
     data,
     error,
+    loadError,
+    directoryStatus,
     professionals,
     profile,
+    profileState,
     update,
     refresh,
     setUser,

@@ -40,6 +40,10 @@ jobs:
         working-directory: backend
       - run: npx prisma generate
         working-directory: backend
+        env:
+          # Prisma 7 reads DATABASE_URL while generating the client. This is the disposable
+          # PGlite address from the API tests. Nothing is listening, and it is not a real database.
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:15439/postgres
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
       - run: npm run e2e

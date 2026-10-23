@@ -35,6 +35,36 @@ const { hashPassword } = await import("../src/lib/security.js");
 
 await db.user.create({
   data: {
+    name: "Review Admin",
+    email: "admin@example.test",
+    role: "ADMIN",
+    passwordHash: await hashPassword("StrongExample9!"),
+    verifiedAt: new Date(),
+  },
+});
+await db.user.create({
+  data: {
+    name: "Pending Mechanic",
+    email: "pending@example.test",
+    role: "MECHANIC",
+    passwordHash: await hashPassword("StrongExample9!"),
+    verifiedAt: new Date(),
+    professional: {
+      create: {
+        name: "Pending Workshop",
+        type: "Workshop",
+        city: "Johannesburg",
+        address: "2 Review Street",
+        about: "Waiting for the disposable review.",
+        services: ["Diagnostics"],
+        phone: "0722345678",
+        status: "SUBMITTED",
+      },
+    },
+  },
+});
+await db.user.create({
+  data: {
     name: "Approved Mechanic",
     email: "mechanic@example.test",
     role: "MECHANIC",

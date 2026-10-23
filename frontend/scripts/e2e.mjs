@@ -195,6 +195,44 @@ async function connected(browser) {
   await other.goto(bookingUrl);
   await other.getByRole('heading', { name: 'Booking not found' }).waitFor();
   await other.close();
+
+  await signIn(page, 'mechanic@example.test');
+  await page.goto(appUrl + '/#dashboard/profile/business');
+  const businessName = page.getByLabel('Business or trading name');
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('label')].some((label) => {
+      const input = label.querySelector('input');
+      return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Approved Workshop';
+    }),
+  );
+  await businessName.fill('Updated Workshop');
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  await page.getByText('Business profile saved').waitFor();
+  await page.reload();
+  await page.waitForFunction(() =>
+    [...document.querySelectorAll('label')].some((label) => {
+      const input = label.querySelector('input');
+      return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Updated Workshop';
+    }),
+  );
+  await page.getByRole('tab', { name: 'Banking details' }).click();
+  await page.getByText('Payout onboarding is not connected yet').waitFor();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  await signIn(page, 'admin@example.test');
+  await page.goto(appUrl + '/#dashboard/applications');
+  await page.getByRole('button', { name: 'View application' }).click();
+  await page.getByRole('button', { name: 'Decision' }).click();
+  await page.getByLabel('Identity reviewed').check();
+  await page.getByLabel('Qualifications / experience reviewed').check();
+  await page.getByLabel('Business and service details reviewed').check();
+  await page.getByLabel('Decision notes').fill('Approved for the disposable test.');
+  await page.getByRole('button', { name: 'Approve application' }).click();
+  await page.getByText('Application updated.').waitFor();
+  await page.goto(appUrl + '/#dashboard/applications');
+  await page.getByText('No applications are waiting for review.').waitFor();
+  await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
+  await page.getByRole('heading', { name: 'Professional not found' }).waitFor();
   await page.close();
   console.log('Connected browser checks passed.');
 }

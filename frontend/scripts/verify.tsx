@@ -1,4 +1,5 @@
 import { liveDirectoryHits, mapDirectoryProfessional } from '../src/data-access/directory';
+import { finishApplicationReview } from '../src/features/admin/reviewResult';
 import { SettingsPage } from '../src/pages/shared/SettingsPage';
 import { OverviewPage } from '../src/pages/shared/OverviewPage';
 import { JobsPage } from '../src/pages/shared/JobsPage';
@@ -2295,11 +2296,46 @@ console.log('Shared connected vehicle fields and server-priced repair review pas
 // These adapters must use the original profile/record surfaces without demo account data.
 import { MerchantProfilePage } from '../src/pages/mechanic/MerchantProfilePage';
 import { ProfessionalAdminDetailPage, CustomerAdminDetailPage } from '../src/pages/admin/AdminDetailPages';
-const profileShell = renderToString(<MerchantProfilePage data={{ profile: {}, documents: [] }} profile={{ name: 'Real Workshop', type: 'Workshop' }} section="business" route={() => {}} connected={{ business: <p>Connected business form</p>, documents: <p>Private documents</p>, banking: <p>Banking unavailable</p>, verification: <p>Verification</p>, savePhoto: async () => {} }} />);
+const profileShell = renderToString(
+  <MerchantProfilePage
+    data={{
+      profile: {
+        name: 'Real Workshop',
+        type: 'Workshop',
+        services: ['Brakes'],
+        phone: '0712345678',
+        bio: 'Brake work',
+        city: 'Cape Town',
+      },
+      documents: [],
+      application: { status: 'Draft' },
+      mechanicAccount: { email: 'mech@example.test' },
+    }}
+    profile={{
+      name: 'Real Workshop',
+      type: 'Workshop',
+      services: ['Brakes'],
+      phone: '0712345678',
+      bio: 'Brake work',
+      city: 'Cape Town',
+    }}
+    section="business"
+    route={() => {}}
+    connected={{
+      save: async () => {},
+      savePhoto: async () => {},
+      remove: async () => {},
+      submit: async () => {},
+      canSubmit: false,
+    }}
+  />,
+);
 assert.equal((profileShell.match(/role="tab"/g) || []).length, 4);
 assert.ok(profileShell.includes('profile-tablist folder-tabs'));
 assert.ok(profileShell.includes('merchant-summary-copy'));
-assert.ok(profileShell.includes('Connected business form'));
+assert.ok(profileShell.includes('Save profile'));
+assert.ok(profileShell.includes('Payout onboarding is not connected yet'));
+assert.ok(!profileShell.includes('Save sample banking details'));
 assert.ok(!profileShell.includes('photo stays in this browser'));
 const connectedAdminRecord = { jobs: [], paid: 0, rating: { count: 0, average: 0 }, reviews: [] };
 const professionalRecordHtml = renderToString(<ProfessionalAdminDetailPage record={{ id: 'real-pro', professionalId: 'real-pro', name: 'Real Workshop', services: [], status: 'Approved' }} data={{}} route={() => {}} connected={connectedAdminRecord} />);
@@ -2315,3 +2351,57 @@ import { VerificationPage } from '../src/pages/mechanic/VerificationPage';
 const approvedVerificationHtml = renderToString(<VerificationPage data={{ application: {status: 'Approved'}, documents: [], profile: {services: []} }} connected={{canSubmit: false}} />);
 assert.ok(!approvedVerificationHtml.includes('VA-DEMO-001'));
 assert.ok(approvedVerificationHtml.includes('Your application is approved'));
+
+let demoReviewClosed = false;
+const demoReviewMessages: string[] = [];
+finishApplicationReview(true, {
+  live: false,
+  status: 'Approved',
+  notify: (message) => demoReviewMessages.push(message),
+  close: () => {
+    demoReviewClosed = true;
+  },
+});
+assert.equal(demoReviewClosed, true);
+assert.deepEqual(demoReviewMessages, ['Demo application approved']);
+
+const failedReviewMessages: string[] = [];
+let failedReviewClosed = false;
+const failedReview = commitUpdate(
+  () => Promise.reject(new Error('Application changed. Review it again.')),
+  (data) => data,
+  (message) => failedReviewMessages.push(message),
+  'Demo application approved',
+);
+finishApplicationReview(failedReview, {
+  live: true,
+  status: 'Approved',
+  notify: (message) => failedReviewMessages.push(message),
+  close: () => {
+    failedReviewClosed = true;
+  },
+});
+const approvedReviewMessages: string[] = [];
+let approvedReviewClosed = false;
+const approvedReview = commitUpdate(
+  () => Promise.resolve(true),
+  (data) => data,
+  (message) => approvedReviewMessages.push(message),
+  '',
+);
+finishApplicationReview(approvedReview, {
+  live: true,
+  status: 'Approved',
+  notify: (message) => approvedReviewMessages.push(message),
+  close: () => {
+    approvedReviewClosed = true;
+  },
+});
+setTimeout(() => {
+  assert.equal(failedReviewClosed, false);
+  assert.ok(failedReviewMessages.includes('Application changed. Review it again.'));
+  assert.ok(!failedReviewMessages.some((message) => message.includes('Demo application')));
+  assert.equal(approvedReviewClosed, true);
+  assert.deepEqual(approvedReviewMessages, ['Application updated.']);
+  console.log('Application review waits for the server before closing.');
+}, 0);
