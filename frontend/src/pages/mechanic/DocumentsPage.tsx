@@ -123,7 +123,8 @@ export function DocumentsPage({
                   </a>
                 )}
                 <button
-                  title={'Delete ' + d.kind}
+                  title={connected && !['Draft', 'Changes requested'].includes(data.application?.status) ? 'Documents cannot be deleted during review' : 'Delete ' + d.kind}
+                  disabled={Boolean(connected) && !['Draft', 'Changes requested'].includes(data.application?.status)}
                   aria-label={'Remove ' + d.kind}
                   onClick={() => {
                     if (connected) {
