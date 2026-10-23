@@ -245,10 +245,20 @@ export function mapNotification(note: any, role: string) {
 }
 
 export function mapApplication(row: any) {
-  const status = applicationStatus[row.status] || row.status;
+  const status = row.status === 'DRAFT' ? 'Incomplete' : applicationStatus[row.status] || row.status;
+  const documents = (row.user?.documents || row.documents || []).map((doc: any) => ({
+    ...doc,
+    kind: doc.kind === 'IDENTITY'
+      ? 'Identity evidence'
+      : doc.kind === 'QUALIFICATION'
+        ? 'Qualifications / experience'
+        : doc.kind === 'BUSINESS'
+          ? 'Business registration'
+          : doc.kind,
+  }));
   return {
     id: row.id,
-    name: row.name || '',
+    name: row.name || row.user?.name || '',
     type: row.type || '',
     city: row.city || '',
     phone: row.phone || '',
@@ -257,12 +267,17 @@ export function mapApplication(row: any) {
     note: row.reviewNote || '',
     previouslyApproved: status === 'Approved' || status === 'Suspended' || Boolean(row.credentialId),
     version: row.version,
-    date: row.updatedAt || row.createdAt || '',
+    date: status === 'Incomplete'
+      ? row.user?.createdAt || row.createdAt || ''
+      : row.updatedAt || row.createdAt || '',
     services: row.services || [],
     about: row.about || '',
+    bio: row.about || '',
     address: row.address || '',
     credentialId: row.credentialId || '',
-    documents: row.user?.documents || row.documents || [],
+    documents,
+    emailVerified: Boolean(row.user?.verifiedAt),
+    accountDisabled: Boolean(row.user?.disabledAt),
     own: false,
   };
 }
