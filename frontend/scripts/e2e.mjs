@@ -279,7 +279,7 @@ async function connected(browser) {
   await businessName.fill('Updated Workshop');
   await page.getByLabel('Add custom service area').fill('Durbanville, Cape Town');
   await page.getByRole('button', { name: 'Add', exact: true }).first().click();
-  await page.getByLabel('Add custom service').fill('Wheel balancing');
+  await page.getByLabel('Add custom service', { exact: true }).fill('Wheel balancing');
   await page.getByRole('button', { name: 'Add', exact: true }).last().click();
   await page.getByRole('button', { name: 'Save profile' }).click();
   await page.getByText('Business profile saved').waitFor();
