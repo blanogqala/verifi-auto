@@ -53,7 +53,12 @@ adminRoutes.get("/applications", async (req, res) =>
 adminRoutes.get("/professionals", async (req, res) => {
   const rows = await db.professional.findMany({
     where: { status: { in: ["APPROVED", "SUSPENDED"] } },
-    include: { user: { select: { email: true, disabledAt: true } } },
+    include: {
+      user: { select: {
+        email: true, disabledAt: true, verifiedAt: true,
+        documents: { select: { id: true, kind: true, name: true, mime: true, reviewStatus: true, reviewNote: true, reviewedAt: true, createdAt: true } },
+      } },
+    },
     take: takeQuery.parse(req.query.take),
     orderBy: { name: "asc" },
   });
@@ -62,6 +67,8 @@ adminRoutes.get("/professionals", async (req, res) => {
       ...p,
       email: user.email,
       disabledAt: user.disabledAt,
+      documents: user.documents,
+      user: { verifiedAt: user.verifiedAt },
     })),
   );
 });
@@ -69,6 +76,12 @@ adminRoutes.get("/application-history", async (req, res) =>
   res.json(
     await db.professional.findMany({
       where: { status: { in: ["CHANGES_REQUESTED", "APPROVED", "SUSPENDED"] } },
+      include: {
+        user: { select: {
+          email: true, verifiedAt: true,
+          documents: { select: { id: true, kind: true, name: true, mime: true, reviewStatus: true, reviewNote: true, reviewedAt: true, createdAt: true } },
+        } },
+      },
       take: takeQuery.parse(req.query.take),
       orderBy: { updatedAt: "desc" },
     }),
@@ -226,10 +239,11 @@ adminRoutes.post("/professionals/:id/review", async (req, res) => {
     if (input.status === "APPROVED") {
       const docs = await tx.document.findMany({
         where: { userId: pro.userId },
-        select: { kind: true, reviewStatus: true },
+        select: { kind: true, reviewStatus: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
       });
       requireThat(
-        ["IDENTITY", "QUALIFICATION"].every((kind) => docs.some((doc) => doc.kind === kind && doc.reviewStatus === "APPROVED")),
+        ["IDENTITY", "QUALIFICATION"].every((kind) => docs.find((doc) => doc.kind === kind)?.reviewStatus === "APPROVED"),
         422,
         "EVIDENCE_NOT_APPROVED",
         "Approve the identity and qualifications documents before approving the application.",
