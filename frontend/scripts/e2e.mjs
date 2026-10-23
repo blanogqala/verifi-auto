@@ -301,11 +301,11 @@ async function connected(browser) {
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' })
     .getByRole('button', { name: 'View application' }).waitFor();
   await page.getByRole('button', { name: 'View application' }).click();
-  await page.getByRole('button', { name: 'Decision' }).click();
-  await page.getByLabel('Identity reviewed').check();
-  await page.getByLabel('Qualifications / experience reviewed').check();
-  await page.getByLabel('Business and service details reviewed').check();
-  await page.getByLabel('Decision notes').fill('Approved for the disposable test.');
+  await page.getByRole('button', { name: 'Approve Identity evidence' }).click();
+  await page.getByRole('button', { name: 'Approve Identity evidence' }).waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Approve Qualifications / experience' }).click();
+  await page.getByRole('button', { name: 'Approve Qualifications / experience' }).waitFor({ state: 'detached' });
+  await page.getByLabel('Decision note').fill('Approved for the disposable test.');
   await page.getByRole('button', { name: 'Approve application' }).click();
   await page.getByText('Application updated.').waitFor();
   await page.goto(appUrl + '/#dashboard/applications');
