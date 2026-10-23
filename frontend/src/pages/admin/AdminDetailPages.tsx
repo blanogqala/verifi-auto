@@ -1,6 +1,6 @@
 import { allApprovedQuotesPaid } from '../../features/jobs/bookingQuotes';
 import { useState } from 'react';
-import { ClipboardCheck, FileText, Star, Users, Wallet, Wrench } from 'lucide-react';
+import { ClipboardCheck, FileText, Star, Users, Wallet, Wrench, Eye, CheckCircle2, Trash2 } from 'lucide-react';
 import {
   DetailBack,
   DetailHeader,
@@ -91,175 +91,152 @@ function Metrics({ jobs }: any) {
     </div>
   );
 }
-export function ApplicationDetailPage({
-  record,
-  data,
-  route,
-  review,
-  checks,
-  setChecks,
-  reviewNote,
-  setReviewNote,
-  connected,
-}: any) {
-  const [section, setSection] = useState('Business');
+export function ApplicationDetailPage({ record, data, route, review, reviewNote, setReviewNote, connected }: any) {
+  const [pendingDocument, setPendingDocument] = useState('');
+  const [documentError, setDocumentError] = useState('');
   if (!record) return <Missing route={route} back="applications" />;
   const business = record.own ? data.profile : record;
   const documents = record.own ? data.documents || [] : record.documents || [];
-  const history = (data.adminActivity || []).filter((e: any) => e.target === record.id);
+  const history = (data.adminActivity || []).filter((entry: any) => entry.target === record.id);
+  const inReview = record.status === 'Pending review';
+  const approvedKind = (kind: string) => [...documents]
+    .sort((left: any, right: any) => String(right.createdAt || '').localeCompare(String(left.createdAt || '')))
+    .find((doc: any) => doc.kind === kind)?.reviewStatus === 'APPROVED';
+  const evidenceApproved = approvedKind('Identity evidence') &&
+    approvedKind('Qualifications / experience');
+
+  async function documentAction(doc: any, action: 'APPROVED' | 'DELETE') {
+    if (!connected || pendingDocument) return;
+    setDocumentError('');
+    if (action === 'DELETE') {
+      if (reviewNote.trim().length < 3) {
+        setDocumentError('Add a reason in the decision note before removing evidence.');
+        return;
+      }
+      if (!window.confirm('Remove this evidence? The mechanic will be asked to upload a replacement.')) return;
+    }
+    setPendingDocument(doc.id);
+    try {
+      if (action === 'DELETE') await connected.removeDocument(doc.id, reviewNote.trim());
+      else await connected.reviewDocument(doc.id, doc.reviewStatus || 'PENDING');
+    } catch (error: any) {
+      setDocumentError(error?.message || 'Could not update this document.');
+    } finally {
+      setPendingDocument('');
+    }
+  }
   return (
-    <div className="admin-detail-page">
+    <div className="admin-detail-page application-review-page">
       <DetailBack label="Back to applications" onClick={() => route('applications')} />
       <DetailHeader
         title={record.name}
         summary={`${record.type || 'Professional'} · ${record.city || 'Location not recorded'}`}
         aside={<StatusBadge value={record.status} />}
       />
-      <Tabs items={['Business', 'Documents', 'Decision']} selected={section} select={setSection} />
-      {section === 'Business' && (
-        <DetailCard title="Business profile" icon={<Wrench size={20} />}>
-          <DetailFields
-            items={[
-              { label: 'Contact person', value: business.individualName || record.name || 'Not recorded' },
-              { label: 'Email', value: record.email || 'Not recorded' },
-              { label: 'Telephone', value: record.phone || 'Not recorded' },
-              { label: record.status === 'Incomplete' ? 'Registered' : 'Submitted', value: record.date || 'Not recorded' },
-              ...(connected
-                ? [{ label: 'Account', value: record.emailVerified ? 'Email verified' : 'Email not verified' }]
-                : []),
-              { label: 'Services', value: (business.services || []).join(' · ') || 'Not recorded' },
-            ]}
-          />
-          <p>{business.bio || 'No business description supplied.'}</p>
-          <button className="secondary" onClick={() => setSection('Documents')}>
-            Review documents
-          </button>
-        </DetailCard>
-      )}
-      {section === 'Documents' && (
-        <DetailCard title="Submitted evidence" icon={<FileText size={20} />}>
-          {documents.length ? (
-            documents.map((doc: any) => (
-              <div className="document-row" key={doc.id || doc.name}>
-                <FileText size={20} />
-                <div>
-                  <b>{doc.kind || 'Document'}</b>
-                  <small>{doc.name || 'Name not recorded'}</small>
-                  {connected && (
-                    <a
-                      className="secondary"
-                      href={connected.documentUrl(doc.id)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Download document
-                    </a>
-                  )}
-                  {!connected && (
-                    <small>Metadata only — file preview unavailable in this demo.</small>
-                  )}
-                </div>
+      <DetailCard title="Business details" icon={<Wrench size={20} />}>
+        <DetailFields items={[
+          { label: 'Business name', value: business.name || 'Not recorded' },
+          { label: 'Contact person', value: business.individualName || record.name || 'Not recorded' },
+          { label: 'Email', value: record.email || 'Not recorded' },
+          { label: 'Telephone', value: record.phone || 'Not recorded' },
+          { label: record.status === 'Incomplete' ? 'Registered' : 'Submitted', value: record.date || 'Not recorded' },
+          ...(connected ? [{ label: 'Email verification', value: record.emailVerified ? 'Verified' : 'Not verified' }] : []),
+          { label: 'Business address', value: business.address || 'Not recorded' },
+          { label: 'Service areas', value: (business.serviceAreas?.length ? business.serviceAreas : [business.city]).filter(Boolean).join(' · ') || 'Not recorded' },
+          { label: 'Services offered', value: (business.services || []).join(' · ') || 'Not recorded' },
+        ]} />
+        <p>{business.bio || 'No business description supplied.'}</p>
+      </DetailCard>
+      <DetailCard title="Submitted documents" icon={<FileText size={20} />}>
+        {documents.length ? documents.map((doc: any) => (
+          <div className="document-row" key={doc.id || doc.name}>
+            <FileText size={20} aria-hidden="true" />
+            <div>
+              <b>{doc.kind || 'Document'}</b>
+              <small>{doc.name || 'Not recorded'}</small>
+              {connected && <small>Review: {doc.reviewStatus === 'APPROVED' ? 'Approved' : doc.reviewStatus === 'CHANGES_REQUESTED' ? 'Changes requested' : 'Awaiting review'}</small>}
+              {doc.reviewNote && <small>Note: {doc.reviewNote}</small>}
+            </div>
+            {connected ? (
+              <div className="evidence-actions">
+                <a className="icon-action" title="View document" aria-label={`View ${doc.kind}`}
+                  href={connected.previewUrl(doc.id)} target="_blank" rel="noopener noreferrer">
+                  <Eye size={17} />
+                </a>
+                {inReview && (
+                  <>
+                    <button type="button" className="icon-action" title={`Approve ${doc.kind}`}
+                      aria-label={`Approve ${doc.kind}`}
+                      disabled={!!pendingDocument || doc.reviewStatus === 'APPROVED'}
+                      onClick={() => void documentAction(doc, 'APPROVED')}>
+                      <CheckCircle2 size={17} />
+                    </button>
+                    <button type="button" className="icon-action" title={`Delete ${doc.kind}`}
+                      aria-label={`Delete ${doc.kind}`}
+                      disabled={!!pendingDocument}
+                      onClick={() => void documentAction(doc, 'DELETE')}>
+                      <Trash2 size={17} />
+                    </button>
+                  </>
+                )}
               </div>
-            ))
-          ) : (
-            <p>
-              {connected
-                ? 'No documents submitted.'
-                : 'No document files are available for this sample application.'}
-            </p>
-          )}
-          <p className="muted">
-            {connected
-              ? 'Documents are private and available only to authorised reviewers.'
-              : 'The current upload stores file metadata, not the file contents. Real document viewing requires secure backend storage.'}
-          </p>
-          <button className="secondary" onClick={() => setSection('Decision')}>
-            Continue to decision
-          </button>
-        </DetailCard>
-      )}
-      {section === 'Decision' && (
-        <DetailCard title="Verification decision" icon={<ClipboardCheck size={20} />}>
-          {connected && record.status === 'Incomplete' && (
-            <p className="notice">
-              Registration received. The mechanic has not submitted their application.
-              Approval unlocks only after submission and email verification.
-            </p>
-          )}
-          <p className="muted">
-            {connected
-              ? 'Review the submitted evidence before recording your decision.'
-              : 'Demo review only. These checks do not verify real credentials.'}
-          </p>
-          {[
-            'Identity reviewed',
-            'Qualifications / experience reviewed',
-            'Business and service details reviewed',
-          ].map((c) => (
-            <label className="check-label" key={c}>
-              <input
-                type="checkbox"
-                disabled={Boolean(connected) && record.status !== 'Pending review'}
-                checked={checks.includes(c)}
-                onChange={(e) =>
-                  setChecks(
-                    e.target.checked ? [...checks, c] : checks.filter((v: string) => v !== c),
-                  )
-                }
-              />
-              {c}
-            </label>
-          ))}
-          <label className="field-label">
-            Decision notes
-            <textarea
-              value={reviewNote}
-              onChange={(e) => setReviewNote(e.target.value)}
-              placeholder="Explain the decision or the changes needed"
-            />
-          </label>
-          <div className="button-row">
-            <button
-              className="primary"
-              disabled={
-                checks.length < 3 ||
-                (connected ? record.status !== 'Pending review' : record.status === 'Approved')
-              }
-              onClick={() => review(record, 'Approved')}
-            >
-              Approve application
-            </button>
-            <button
-              className="secondary"
-              disabled={connected && record.status !== 'Pending review'}
-              onClick={() => review(record, 'Changes requested')}
-            >
-              Request changes
-            </button>
-            {(!connected || record.status === 'Approved') && (
-              <button
-                className="secondary"
-                onClick={() =>
-                  review(record, record.status === 'Approved' ? 'Suspended' : 'Rejected')
-                }
-              >
-                {record.status === 'Approved' ? 'Suspend credential' : 'Reject application'}
-              </button>
-            )}
+            ) : <small>Demo metadata only — no real file uploaded.</small>}
           </div>
-          {record.note && <p>Latest feedback: {record.note}</p>}
-          {history.length > 0 && (
-            <details className="fold">
-              <summary>Decision history</summary>
-              {history.map((e: any) => (
-                <p key={e.id}>
-                  {e.action} · {formatWhen(e.at)} · {e.actor}
-                </p>
-              ))}
-            </details>
+        )) : <p className="muted">No documents uploaded yet.</p>}
+        <p className="muted">
+          {connected
+            ? 'View private evidence, approve individual documents, or request a corrected upload. Only administrators and the owner can access these files.'
+            : 'This preview does not store real document contents.'}
+        </p>
+        {documentError && <p className="form-error" role="alert">{documentError}</p>}
+      </DetailCard>
+      <DetailCard title="Application decision" icon={<ClipboardCheck size={20} />}>
+        {connected && !inReview && (
+          <p className="notice">
+            {record.status === 'Incomplete'
+              ? 'This mechanic has not submitted the application yet.'
+              : 'This application cannot be approved until it is resubmitted.'}
+          </p>
+        )}
+        {connected && inReview && !evidenceApproved && (
+          <p className="notice">
+            Approve identity evidence and qualifications/experience before approving this application.
+          </p>
+        )}
+        <label className="field-label">
+          Decision note
+          <textarea value={reviewNote} onChange={(event) => setReviewNote(event.target.value)}
+            placeholder="Explain required corrections. A reason is required when requesting changes or deleting evidence." />
+        </label>
+        <div className="button-row">
+          <button type="button" className="primary"
+            disabled={connected ? !inReview || !evidenceApproved : record.status === 'Approved'}
+            onClick={() => review(record, 'Approved')}>
+            Approve application
+          </button>
+          <button type="button" className="secondary"
+            disabled={Boolean(connected) && (!inReview || reviewNote.trim().length < 3)}
+            onClick={() => review(record, 'Changes requested')}>
+            Request changes
+          </button>
+          {(!connected || record.status === 'Approved') && (
+            <button type="button" className="secondary"
+              onClick={() => review(record, record.status === 'Approved' ? 'Suspended' : 'Rejected')}>
+              {record.status === 'Approved' ? 'Suspend credential' : 'Reject application'}
+            </button>
           )}
-        </DetailCard>
-      )}
+        </div>
+        <p className="muted">The mechanic sees your decision and feedback in Verification status.</p>
+        {record.note && <p>Latest feedback: {record.note}</p>}
+        {history.length > 0 && (
+          <details className="fold">
+            <summary>Review activity</summary>
+            {history.map((event: any) => (
+              <p key={event.id}>{event.action} · {formatWhen(event.at)} · {event.actor}</p>
+            ))}
+          </details>
+        )}
+      </DetailCard>
     </div>
   );
 }

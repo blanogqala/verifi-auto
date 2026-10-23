@@ -467,6 +467,19 @@ test(
         ["IDENTITY", "QUALIFICATION"],
       );
       assert.ok(!JSON.stringify(submittedRow).includes("bytes"));
+      const rejectedWithoutEvidence = await send("post", `/api/admin/professionals/${pro.id}/review`, {
+        status: "APPROVED", note: "", version: pro.version,
+      }, admin);
+      assert.equal(rejectedWithoutEvidence.status, 422);
+      for (const doc of submittedRow.user.documents) {
+        const response = await send("post", `/api/admin/documents/${doc.id}/review`, {
+          decision: "APPROVED", previousStatus: "PENDING", note: "",
+        }, admin);
+        assert.equal(response.status, 200, JSON.stringify(response.body));
+        assert.equal(response.body.reviewStatus, "APPROVED");
+        assert.equal((await send("get", `/api/documents/${doc.id}/preview`, undefined, admin)).status, 200);
+        assert.equal((await send("get", `/api/documents/${doc.id}/preview`, undefined, alice)).status, 404);
+      }
       assert.equal(
         (
           await send(

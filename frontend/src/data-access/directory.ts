@@ -39,6 +39,7 @@ export function mapDirectoryProfessional(pro: any) {
     name: pro.name || '',
     type: pro.type || 'Workshop',
     area: pro.city || '',
+    serviceAreas: Array.isArray(pro.serviceAreas) ? pro.serviceAreas : [],
     place: pro.city || '',
     special: services.join(' · '),
     services,

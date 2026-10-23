@@ -369,10 +369,6 @@ export function Workspace({
     return finish(saved !== false);
   }
   function review(app: any, status: string) {
-    if (status === 'Approved' && checks.length < 3) {
-      notify('Complete all three review checks first.');
-      return;
-    }
     if (status !== 'Approved' && !reviewNote.trim()) {
       notify('Add a reason or requested changes first.');
       return;
@@ -619,7 +615,21 @@ export function Workspace({
               <p>The address could not be read. Open the page again from the menu.</p>
             </Card>
           ) : null}
-          {adminDetailKind === 'applications' && <ApplicationDetailPage key={adminDetailId} record={apps.find((a: any) => a.id === adminDetailId)} data={data} route={route} review={review} checks={checks} setChecks={setChecks} reviewNote={reviewNote} setReviewNote={setReviewNote} connected={live ? { documentUrl: (id: string) => `${apiBase}/api/documents/${encodeURIComponent(id)}` } : undefined} />}
+          {adminDetailKind === 'applications' && <ApplicationDetailPage key={adminDetailId} record={apps.find((a: any) => a.id === adminDetailId)} data={data} route={route} review={review} checks={checks} setChecks={setChecks} reviewNote={reviewNote} setReviewNote={setReviewNote} connected={live ? {
+            previewUrl: (id: string) => `${apiBase}/api/documents/${encodeURIComponent(id)}/preview`,
+            reviewDocument: async (id: string, previousStatus: string) => {
+              await api(`/admin/documents/${encodeURIComponent(id)}/review`, 'POST', {
+                decision: 'APPROVED', previousStatus, note: '',
+              });
+              refresh();
+              notify('Document approved.');
+            },
+            removeDocument: async (id: string, note: string) => {
+              await api(`/admin/documents/${encodeURIComponent(id)}`, 'DELETE', { note });
+              refresh();
+              notify('Document removed. The mechanic must submit a replacement.');
+            },
+          } : undefined} />}
           {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} />}
           {adminDetailKind === 'customers' && (
             <CustomerAdminDetailPage
@@ -928,6 +938,7 @@ export function Workspace({
               connected={
                 live
                   ? {
+                      previewUrl: (id: string) => `${apiBase}/api/documents/${encodeURIComponent(id)}/preview`,
                       save: async (nextProfile: any) => {
                         const stamp = profileEditStamp.current;
                         try {

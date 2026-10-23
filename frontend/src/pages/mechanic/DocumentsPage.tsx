@@ -1,6 +1,6 @@
 import { Card } from '../../components/ui/Card';
 
-import { ArrowRight, ShieldCheck, FileText, Upload, Trash2 } from 'lucide-react';
+import { ArrowRight, ShieldCheck, FileText, Upload, Trash2, Eye } from 'lucide-react';
 
 import { EmptyState as Empty } from '../../components/ui/EmptyState';
 import { commitUpdate } from '../../features/demo/commitUpdate';
@@ -111,8 +111,20 @@ export function DocumentsPage({
                   <span>
                     {connected ? 'Private document' : 'Metadata only'} · {d.date}
                   </span>
+                  {connected && <small>
+                    Review: {d.reviewStatus === 'APPROVED' ? 'Approved' : d.reviewStatus === 'CHANGES_REQUESTED' ? 'Changes requested' : 'Not reviewed yet'}
+                    {d.reviewNote ? ` · ${d.reviewNote}` : ''}
+                  </small>}
                 </div>
+                {connected && (
+                  <a className="icon-action" aria-label={'View ' + d.kind} title={'View ' + d.kind}
+                    href={connected.previewUrl(d.id)} target="_blank" rel="noopener noreferrer">
+                    <Eye size={18} />
+                  </a>
+                )}
                 <button
+                  title={connected && !['Draft', 'Changes requested'].includes(data.application?.status) ? 'Documents cannot be deleted during review' : 'Delete ' + d.kind}
+                  disabled={Boolean(connected) && !['Draft', 'Changes requested'].includes(data.application?.status)}
                   aria-label={'Remove ' + d.kind}
                   onClick={() => {
                     if (connected) {

@@ -49,6 +49,12 @@ await db.user.create({
     role: "MECHANIC",
     passwordHash: await hashPassword("StrongExample9!"),
     verifiedAt: new Date(),
+    documents: {
+      create: ["IDENTITY", "QUALIFICATION"].map((kind) => ({
+        kind, name: `${kind.toLowerCase()}-evidence.pdf`, mime: "application/pdf",
+        bytes: new Uint8Array(Buffer.from("%PDF-1.4\\nDisposable verification evidence")),
+      })),
+    },
     professional: {
       create: {
         name: "Pending Workshop",

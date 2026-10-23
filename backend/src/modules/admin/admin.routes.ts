@@ -39,7 +39,7 @@ adminRoutes.get("/applications", async (req, res) =>
           select: {
             name: true, email: true, verifiedAt: true, createdAt: true, disabledAt: true,
             documents: {
-              select: { id: true, kind: true, name: true, mime: true, createdAt: true },
+              select: { id: true, kind: true, name: true, mime: true, reviewStatus: true, reviewNote: true, reviewedAt: true, createdAt: true },
               orderBy: { createdAt: "asc" },
             },
           },
@@ -53,7 +53,12 @@ adminRoutes.get("/applications", async (req, res) =>
 adminRoutes.get("/professionals", async (req, res) => {
   const rows = await db.professional.findMany({
     where: { status: { in: ["APPROVED", "SUSPENDED"] } },
-    include: { user: { select: { email: true, disabledAt: true } } },
+    include: {
+      user: { select: {
+        email: true, disabledAt: true, verifiedAt: true,
+        documents: { select: { id: true, kind: true, name: true, mime: true, reviewStatus: true, reviewNote: true, reviewedAt: true, createdAt: true } },
+      } },
+    },
     take: takeQuery.parse(req.query.take),
     orderBy: { name: "asc" },
   });
@@ -62,6 +67,8 @@ adminRoutes.get("/professionals", async (req, res) => {
       ...p,
       email: user.email,
       disabledAt: user.disabledAt,
+      documents: user.documents,
+      user: { verifiedAt: user.verifiedAt },
     })),
   );
 });
@@ -69,6 +76,12 @@ adminRoutes.get("/application-history", async (req, res) =>
   res.json(
     await db.professional.findMany({
       where: { status: { in: ["CHANGES_REQUESTED", "APPROVED", "SUSPENDED"] } },
+      include: {
+        user: { select: {
+          email: true, verifiedAt: true,
+          documents: { select: { id: true, kind: true, name: true, mime: true, reviewStatus: true, reviewNote: true, reviewedAt: true, createdAt: true } },
+        } },
+      },
       take: takeQuery.parse(req.query.take),
       orderBy: { updatedAt: "desc" },
     }),
@@ -105,6 +118,9 @@ adminRoutes.get("/professionals/:id", async (req, res) => {
               kind: true,
               name: true,
               mime: true,
+              reviewStatus: true,
+              reviewNote: true,
+              reviewedAt: true,
               createdAt: true,
             },
           },
@@ -115,11 +131,87 @@ adminRoutes.get("/professionals/:id", async (req, res) => {
   requireThat(pro, 404, "NOT_FOUND", "Professional not found.");
   res.json(pro);
 });
+// Each piece of evidence is reviewed individually and audited.
+adminRoutes.post("/documents/:id/review", async (req, res) => {
+  const input = z.object({
+    decision: z.enum(["APPROVED", "CHANGES_REQUESTED"]),
+    note: z.string().trim().max(1000).default(""),
+    previousStatus: z.enum(["PENDING", "APPROVED", "CHANGES_REQUESTED"]),
+  }).strict().refine(
+    (value) => value.decision !== "CHANGES_REQUESTED" || value.note.length >= 3,
+    "Explain the correction the mechanic needs to make.",
+  ).parse(req.body);
+  const result = await transaction(async (tx) => {
+    const doc = await tx.document.findUnique({
+      where: { id: id.parse(req.params.id) },
+      include: { user: { select: { professional: true } } },
+    });
+    const professional = doc?.user.professional;
+    requireThat(doc && professional, 404, "NOT_FOUND", "Evidence not found.");
+    requireThat(professional.status === "SUBMITTED", 409, "INVALID_STATE", "Only submitted evidence can be reviewed.");
+    const updated = await tx.document.updateMany({
+      where: { id: doc.id, reviewStatus: input.previousStatus },
+      data: {
+        reviewStatus: input.decision,
+        reviewNote: input.note,
+        reviewedAt: new Date(),
+      },
+    });
+    requireThat(updated.count === 1, 409, "CONFLICT", "This document changed. Reload it before reviewing.");
+    if (input.decision === "CHANGES_REQUESTED") {
+      await tx.professional.update({
+        where: { id: professional.id },
+        data: {
+          status: "CHANGES_REQUESTED",
+          reviewNote: `${doc.kind}: ${input.note}`,
+          version: { increment: 1 },
+        },
+      });
+    }
+    await announce(tx, [doc.userId], "application", professional.id,
+      input.decision === "APPROVED" ? "A document was approved" : `Document needs changes: ${doc.kind}`);
+    await audit(tx, actor(req).userId, "DOCUMENT_REVIEWED", doc.id, {
+      decision: input.decision, note: input.note,
+    });
+    return tx.document.findUniqueOrThrow({
+      where: { id: doc.id },
+      select: { id: true, kind: true, reviewStatus: true, reviewNote: true, reviewedAt: true },
+    });
+  });
+  res.json(result);
+});
+// Deleting submitted evidence always returns the application to changes requested.
+adminRoutes.delete("/documents/:id", async (req, res) => {
+  const { note } = z.object({
+    note: z.string().trim().min(3).max(1000),
+  }).strict().parse(req.body);
+  await transaction(async (tx) => {
+    const doc = await tx.document.findUnique({
+      where: { id: id.parse(req.params.id) },
+      include: { user: { select: { professional: true } } },
+    });
+    const professional = doc?.user.professional;
+    requireThat(doc && professional, 404, "NOT_FOUND", "Evidence not found.");
+    requireThat(professional.status === "SUBMITTED", 409, "INVALID_STATE", "Evidence can only be removed during a submitted review.");
+    await tx.document.delete({ where: { id: doc.id } });
+    await tx.professional.update({
+      where: { id: professional.id },
+      data: {
+        status: "CHANGES_REQUESTED",
+        reviewNote: `Removed ${doc.kind} evidence: ${note}`,
+        version: { increment: 1 },
+      },
+    });
+    await announce(tx, [doc.userId], "application", professional.id, "Document removed — replacement required");
+    await audit(tx, actor(req).userId, "DOCUMENT_REMOVED_BY_ADMIN", doc.id, { note, kind: doc.kind });
+  });
+  res.status(204).end();
+});
 adminRoutes.post("/professionals/:id/review", async (req, res) => {
   const input = z
     .object({
       status: z.enum(["APPROVED", "CHANGES_REQUESTED", "SUSPENDED"]),
-      note: z.string().trim().min(3).max(2000),
+      note: z.string().trim().max(2000),
       version: expectedVersion,
     })
     .strict()
@@ -144,11 +236,27 @@ adminRoutes.post("/professionals/:id/review", async (req, res) => {
       "INVALID_STATE",
       "Review a submitted application with a verified email.",
     );
+    if (input.status === "APPROVED") {
+      const docs = await tx.document.findMany({
+        where: { userId: pro.userId },
+        select: { kind: true, reviewStatus: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      });
+      requireThat(
+        ["IDENTITY", "QUALIFICATION"].every((kind) => docs.find((doc) => doc.kind === kind)?.reviewStatus === "APPROVED"),
+        422,
+        "EVIDENCE_NOT_APPROVED",
+        "Approve the identity and qualifications documents before approving the application.",
+      );
+    } else {
+      requireThat(input.note.length >= 3, 422, "REVIEW_NOTE_REQUIRED", "Explain the requested changes or suspension.");
+    }
+    const decisionNote = input.note || "Profile and required evidence approved.";
     const updated = await tx.professional.update({
       where: { id: pro.id },
       data: {
         status: input.status,
-        reviewNote: input.note,
+        reviewNote: decisionNote,
         version: { increment: 1 },
         ...(input.status === "APPROVED" && !pro.credentialId
           ? { credentialId: `VA-${crypto.randomUUID()}` }
@@ -164,7 +272,7 @@ adminRoutes.post("/professionals/:id/review", async (req, res) => {
     );
     await audit(tx, actor(req).userId, "APPLICATION_REVIEWED", pro.id, {
       status: input.status,
-      note: input.note,
+      note: decisionNote,
     });
     return updated;
   });

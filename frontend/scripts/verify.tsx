@@ -507,10 +507,10 @@ assert.ok(mechanicDocuments.includes('Supporting evidence'));
 assert.ok(mechanicDocuments.includes('filenames and sizes'));
 const mechanicVerification = screen('mechanic', 'application');
 assert.ok(mechanicVerification.includes('id="profile-tab-verification"'));
-assert.ok(mechanicVerification.includes('Your verification journey'));
+assert.ok(mechanicVerification.includes('Verification status'));
 assert.ok(mechanicVerification.includes('data-profile-target="profile/business"'));
 assert.ok(mechanicVerification.includes('data-profile-target="profile/documents"'));
-assert.ok(mechanicVerification.includes('Submit for demo review'));
+assert.ok(mechanicVerification.includes('Submit for review'));
 assert.ok(!mechanicVerification.includes('Verified'));
 const mechanicQuotes = screen('mechanic', 'quotes');
 assert.ok(mechanicQuotes.includes('Quotes &amp; invoices'));
@@ -1994,7 +1994,7 @@ for (const role of ['customer', 'mechanic'] as const) {
 }
 assert.equal(canVisit('admin', 'dashboard/customers/%2F'), false);
 assert.equal(canVisit('admin', 'dashboard/jobs/a/b'), false);
-assert.ok(screen('admin', 'applications/app-02').includes('Business profile'));
+assert.ok(screen('admin', 'applications/app-02').includes('Business details'));
 assert.ok(screen('admin', 'applications/app-02').includes('Urban Auto Care'));
 assert.ok(!screen('admin', 'applications/app-02').includes('role="dialog"'));
 assert.ok(screen('admin', 'professionals/app-03').includes('Platform activity'));
@@ -2350,7 +2350,7 @@ console.log('Connected mechanic profile and admin records retain shared demo sur
 import { VerificationPage } from '../src/pages/mechanic/VerificationPage';
 const approvedVerificationHtml = renderToString(<VerificationPage data={{ application: {status: 'Approved'}, documents: [], profile: {services: []} }} connected={{canSubmit: false}} />);
 assert.ok(!approvedVerificationHtml.includes('VA-DEMO-001'));
-assert.ok(approvedVerificationHtml.includes('Your application is approved'));
+assert.ok(approvedVerificationHtml.includes('Your business has been approved'));
 
 let demoReviewClosed = false;
 const demoReviewMessages: string[] = [];
