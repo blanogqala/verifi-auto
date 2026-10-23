@@ -49,6 +49,7 @@ export function VerificationPage({ data, note, notify, route, update, connected 
           { done: Boolean(qualification), title: 'Qualifications or experience', info: reviewLabel(qualification), target: 'profile/documents' },
         ].map((item) => (
           <button type="button" className="checklist-row" key={item.title}
+            data-profile-target={item.target}
             onClick={() => route(item.target)}>
             <span className={item.done ? 'check-circle complete' : 'check-circle'}>
               {item.done ? <Check size={17} /> : <span />}
