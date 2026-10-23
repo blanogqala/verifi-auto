@@ -63,6 +63,22 @@ await db.user.create({
     },
   },
 });
+// A new mechanic must be visible in Admin > Applications before submission.
+await db.user.create({
+  data: {
+    name: "Incomplete Mechanic",
+    email: "incomplete@example.test",
+    role: "MECHANIC",
+    passwordHash: await hashPassword("StrongExample9!"),
+    verifiedAt: new Date(),
+    professional: {
+      create: {
+        name: "Incomplete Workshop",
+        status: "DRAFT",
+      },
+    },
+  },
+});
 await db.user.create({
   data: {
     name: "Approved Mechanic",
