@@ -416,7 +416,7 @@ test(
         about: "A properly equipped test workshop.",
         services: ["Brakes"],
         phone: "0712345678",
-        website: "",
+        website: "https://workshop.example.test",
         latitude: -33.9,
         longitude: 18.4,
         version: 0,
@@ -516,8 +516,13 @@ test(
       assert.equal(listing.body.length, 1);
       assert.ok(!JSON.stringify(listing.body).includes("passwordHash"));
       assert.equal(listing.body[0].user, undefined, 'Public directory must not expose the account relation');
+      assert.equal(listing.body[0].email, undefined, 'Directory cards must not disclose registered email');
       const publicProfile = await send("get", `/api/professionals/${pro.id}`);
       assert.equal(publicProfile.status, 200);
+      assert.equal(publicProfile.body.email, "mechanic@example.test");
+      assert.equal(publicProfile.body.address, "Test address");
+      assert.equal(publicProfile.body.phone, "0712345678");
+      assert.equal(publicProfile.body.website, "https://workshop.example.test");
       assert.equal(publicProfile.body.reviewCount, 0);
       assert.equal(publicProfile.body.rating, null);
       assert.equal(publicProfile.body.user, undefined);
