@@ -550,6 +550,14 @@ test(
       const booked = await send("post", "/api/bookings", bookingInput, alice);
       assert.equal(booked.status, 201, JSON.stringify(booked.body));
       const bookingId = booked.body.id;
+      assert.equal(booked.body.customer.name, "Alice");
+      assert.equal(booked.body.customer.email, "alice@example.test");
+      const mechanicBooking = await send("get", `/api/bookings/${bookingId}`, undefined, mechanic);
+      assert.equal(mechanicBooking.status, 200);
+      assert.equal(mechanicBooking.body.customer.email, "alice@example.test");
+      assert.equal(mechanicBooking.body.customer.phone, "");
+      assert.equal(mechanicBooking.body.vehicle.make, "Toyota");
+      assert.ok(!JSON.stringify(mechanicBooking.body).includes("passwordHash"));
       const overview = (
         await send("get", "/api/customer/overview", undefined, alice)
       ).body;
