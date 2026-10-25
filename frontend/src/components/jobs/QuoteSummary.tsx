@@ -7,7 +7,22 @@ function showQuantity(items: any[]) {
 }
 
 export function QuoteSummary({ job, title = 'Quotation' }: { job: any; title?: string }) {
-  if (!job?.quoteId && job?.additionalQuotes?.length) return <div className="booking-quotations">{bookingQuotations(job).filter((quote) => quote.items?.length).map((quote) => <QuoteSummary key={quote.quoteId} job={quote} title={`Quotation ${quote.quoteNumber}${quote.paid ? ' · Demo paid' : ` · ${quote.status}`}`} />)}</div>;
+  if (!job?.quoteId && job?.additionalQuotes?.length) {
+    const quotes = bookingQuotations(job).filter((quote) => quote.items?.length);
+    return (
+      <div className="booking-quotations">
+        <div className="quotation-cards-grid">
+          {quotes.map((quote) => (
+            <QuoteSummary
+              key={quote.quoteId}
+              job={quote}
+              title={`Quotation ${quote.quoteNumber}${quote.paid ? ' · Demo paid' : ` · ${quote.status}`}`}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
   const items = Array.isArray(job?.items) ? job.items : [];
   const versions = Array.isArray(job?.quoteVersions) ? job.quoteVersions : [];
   const current = versions.find((version: any) => version.version === job.quoteVersion) || versions[versions.length - 1];

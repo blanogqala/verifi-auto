@@ -2154,6 +2154,9 @@ assert.throws(() => applyJobTransition(multiPaid.data, newQuotation(multiPaid.jo
 assert.ok(demoDocumentHtml(paymentRows[1], 'invoice').includes('Quotation 2'));
 assert.ok(!demoDocumentHtml(paymentRows[1], 'invoice').includes('Pads'));
 const customerMultiHtml = renderToString(<BookingQuotations job={selectedExtra.job} setDialog={() => {}} />);
+assert.ok(customerMultiHtml.includes('quotation-cards-grid'));
+assert.ok(customerMultiHtml.includes('quotation-totals'));
+assert.ok(customerMultiHtml.indexOf('quotation-totals') < customerMultiHtml.indexOf('quotation-cards-grid'));
 assert.ok(customerMultiHtml.includes('Quotation 1'));
 assert.ok(customerMultiHtml.includes('Quotation 2'));
 assert.ok(customerMultiHtml.includes('Edit repair selection'));

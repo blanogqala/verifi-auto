@@ -65,7 +65,8 @@ export function BookingQuotations({
         <DetailCard title="Quotations">
           <p>Your professional has not sent a quotation yet.</p>
         </DetailCard>
-      ) : null}
+      ) : (
+        <div className="quotation-cards-grid">
       {visible.map((quote) => {
         const editable =
           mechanic &&
@@ -173,6 +174,8 @@ export function BookingQuotations({
           </DetailCard>
         );
       })}
+        </div>
+      )}
     </div>
   );
 }
