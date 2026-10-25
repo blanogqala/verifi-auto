@@ -99,20 +99,21 @@ export function BusinessProfilePage({
         </label>
       </div>
       <div className="form-row">
-        <div>
-          <label>Service areas</label>
-          <TagPicker
-            label="Service area"
-            values={areas}
-            suggestions={areaSuggestions}
-            onChange={(next) => setProfile({
-              ...profile,
-              serviceAreas: next,
-              city: next.includes(profile.city) ? profile.city : next[0] || '',
-            })}
+        <label>
+          Email address
+          <input
+            readOnly={!!connected}
+            name="accountEmail"
+            type="email"
+            required
+            autoComplete="off"
+            value={email}
+            onChange={(e) => {
+              emailEdited.current = true;
+              setEmail(e.target.value);
+            }}
           />
-          <p className="muted">Select whole cities or individual areas. These are coverage labels, not verified GPS coordinates.</p>
-        </div>
+        </label>
         <label>
           Contact number
           <input
@@ -125,40 +126,6 @@ export function BusinessProfilePage({
         </label>
       </div>
       <label>
-        Email address
-        <input
-          readOnly={!!connected}
-          name="accountEmail"
-          type="email"
-          required
-          autoComplete="off"
-          value={email}
-          onChange={(e) => {
-            emailEdited.current = true;
-            setEmail(e.target.value);
-          }}
-        />
-      </label>
-      {connected ? (
-        <div className="form-row">
-          <label>
-            Business address
-            <input
-              value={profile.address || ''}
-              onChange={(e) => setProfile({ ...profile, address: e.target.value })}
-            />
-          </label>
-          <label>
-            Website
-            <input
-              type="url"
-              value={profile.website || ''}
-              onChange={(e) => setProfile({ ...profile, website: e.target.value })}
-            />
-          </label>
-        </div>
-      ) : null}
-      <label>
         About your expertise
         <textarea
           required
@@ -168,12 +135,42 @@ export function BusinessProfilePage({
           onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
         />
       </label>
-      <fieldset>
-        <legend>Services offered</legend>
-        <TagPicker label="Service" values={services}
+      <div className="form-row">
+        <label>
+          Business address
+          <input
+            value={profile.address || ''}
+            onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+          />
+        </label>
+        <label>
+          Website
+          <input
+            type="url"
+            value={profile.website || ''}
+            onChange={(e) => setProfile({ ...profile, website: e.target.value })}
+          />
+        </label>
+      </div>
+      <div className="form-row profile-offerings-row">
+        <TagPicker
+          label="Service Areas"
+          values={areas}
+          suggestions={areaSuggestions}
+          onChange={(next) => setProfile({
+            ...profile,
+            serviceAreas: next,
+            city: next.includes(profile.city) ? profile.city : next[0] || '',
+          })}
+        />
+        <TagPicker
+          label="Services Offered"
+          values={services}
           suggestions={['Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical', 'Engine repairs', 'Tyres', 'Air conditioning', 'Suspension', 'Bodywork']}
-          maxItems={30} onChange={(next) => setProfile({ ...profile, services: next })} />
-      </fieldset>
+          maxItems={30}
+          onChange={(next) => setProfile({ ...profile, services: next })}
+        />
+      </div>
       {!connected && profile.type === 'Mobile mechanic' ? (
         <label>
           Service radius
