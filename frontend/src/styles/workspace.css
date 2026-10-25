@@ -2803,3 +2803,30 @@ td .text-link {
 .evidence-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .application-review-page { display: grid; gap: 18px; }
 @media (max-width: 740px) { .tag-picker-controls { grid-template-columns: 1fr; } .evidence-actions { width: 100%; } }
+
+
+/* Unread assessment activities: orange dot on navigation and the exact card.
+   Markers are state-driven, not cleared merely by visiting the list. */
+.sidebar-scroll .nav-attention-dot {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #f39b38;
+  box-shadow: 0 0 0 3px rgb(243 155 56 / 22%);
+  margin-left: auto;
+}
+.appointment-card .booking-card-hit { position: relative; }
+.appointment-card .booking-attention-dot {
+  display: block;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #f39b38;
+  box-shadow: 0 0 0 4px rgb(243 155 56 / 20%);
+  pointer-events: none;
+}
