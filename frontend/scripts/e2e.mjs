@@ -241,7 +241,18 @@ async function connected(browser) {
 
   await signIn(page, 'mechanic@example.test');
   await page.goto(appUrl + '/#dashboard/appointments/pending');
+  // A new backend booking shows one orange dot on the sidebar and the exact card.
+  await page.locator('.nav-item').filter({ hasText: 'Appointments' })
+    .locator('.nav-attention-dot').waitFor();
+  await page.locator('.appointment-card .booking-attention-dot').waitFor();
   await page.getByRole('button', { name: /Open appointment/ }).click();
+  // The detail comes from the scoped booking API, not admin-only customer lists.
+  await page.getByText('Casey Customer', { exact: true }).first().waitFor();
+  await page.getByText('customer@example.test', { exact: true }).waitFor();
+  await page.getByText('CA123456', { exact: true }).waitFor();
+  // Reaching the actual request acknowledges it; the parent list alone does not.
+  await page.locator('.nav-item').filter({ hasText: 'Appointments' })
+    .locator('.nav-attention-dot').waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Accept appointment' }).click();
   await page.getByRole('button', { name: 'Prepare quotation' }).waitFor();
   await page.getByRole('tab', { name: 'Quotes & payments' }).click();
