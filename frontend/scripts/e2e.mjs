@@ -218,9 +218,41 @@ async function connected(browser) {
     if (!grid || !card) return false;
     return Math.abs(grid.getBoundingClientRect().width - card.getBoundingClientRect().width) < 3;
   });
-  await page.setViewportSize({ width: 1280, height: 720 });
+  // The public directory must use the SAME one-card desktop columns as the
+  // customer dashboard. The public footer must never be fixed or sticky.
+  await page.setViewportSize({ width: 1280, height: 1400 });
   await page.goto(appUrl + '/#find');
   await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
+  const publicLayout = await page.evaluate(() => {
+    const grid = document.querySelector('main.app-page .provider-grid');
+    const card = grid?.querySelector('.provider-card');
+    const footer = document.querySelector('footer.site-footer');
+    return {
+      gridWidth: grid?.getBoundingClientRect().width || 0,
+      cardWidth: card?.getBoundingClientRect().width || 0,
+      footerBottom: footer?.getBoundingClientRect().bottom || 0,
+      footerPosition: footer ? getComputedStyle(footer).position : '',
+      pageHeight: document.documentElement.scrollHeight,
+      viewportHeight: innerHeight,
+    };
+  });
+  if (!(publicLayout.gridWidth > 700 && publicLayout.cardWidth > 0 &&
+      publicLayout.cardWidth < publicLayout.gridWidth * .75)) {
+    throw new Error('Public directory must preserve desktop grid columns: ' + JSON.stringify(publicLayout));
+  }
+  if (publicLayout.footerPosition !== 'static' ||
+      publicLayout.pageHeight > publicLayout.viewportHeight + 2 ||
+      Math.abs(publicLayout.footerBottom - publicLayout.viewportHeight) > 2) {
+    throw new Error('Public footer must finish a short page without hanging or sticking: ' + JSON.stringify(publicLayout));
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => {
+    const grid = document.querySelector('main.app-page .provider-grid');
+    const card = grid?.querySelector('.provider-card');
+    return !!grid && !!card &&
+      Math.abs(grid.getBoundingClientRect().width - card.getBoundingClientRect().width) < 3;
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole('button', { name: 'Book assessment' }).click();
   await page.getByRole('button', { name: 'Add vehicle' }).click();
   await page.getByLabel('Make').fill('Toyota');
