@@ -107,7 +107,7 @@ export function WorkspaceTopbar({
         </button>
         <button
           type="button"
-          className={'avatar small profile-link' + (profileActive ? ' active' : '')}
+          className={'avatar small profile-link' + (merchant ? ' mechanic-photo-avatar' : '') + (profileActive ? ' active' : '')}
           aria-label="Open profile"
           aria-current={profileActive ? 'page' : undefined}
           onClick={() => route(profileTarget)}

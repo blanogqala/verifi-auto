@@ -342,6 +342,56 @@ async function connected(browser) {
       return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Approved Workshop';
     }),
   );
+  // Photo uploads are stored on User.photo. Ensure the same saved image appears
+  // on the business header, profile summary, sidebar and topbar after reload.
+  const profilePng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGOcFvGCARtgwio6aCUAckkB5gXesI0AAAAASUVORK5CYII=',
+    'base64',
+  );
+  await page.locator('.mechanic-summary input[type="file"]').setInputFiles({
+    name: 'mechanic-workshop-logo.png',
+    mimeType: 'image/png',
+    buffer: profilePng,
+  });
+  await page.getByText('Profile photo saved.').waitFor();
+  const profileImageSelectors = [
+    '.sidebar .workspace-identity .mechanic-photo-avatar img',
+    '.workspace-top .mechanic-photo-avatar img',
+    '.merchant-summary .mechanic-photo-avatar img',
+    '.settings-form .panel-title .mechanic-photo-avatar img',
+  ];
+  const imageReady = (selectors) =>
+    selectors.every((selector) => {
+      const image = document.querySelector(selector);
+      return image instanceof HTMLImageElement &&
+        image.src.startsWith('data:image/jpeg;base64,') &&
+        getComputedStyle(image).objectFit === 'contain' &&
+        image.complete && image.naturalWidth > 0;
+    });
+  for (const selector of profileImageSelectors) {
+    await page.locator(selector).waitFor({ state: 'attached', timeout: 12000 });
+    const result = await page.locator(selector).evaluate((img) => ({
+      photo: img instanceof HTMLImageElement && img.src.startsWith('data:image/jpeg;base64,'),
+      fit: getComputedStyle(img).objectFit,
+      loaded: img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0,
+    }));
+    if (!result.photo || result.fit !== 'contain' || !result.loaded)
+      throw new Error('Mechanic avatar check failed for ' + selector + ': ' + JSON.stringify(result));
+  }
+  await page.reload();
+  await page.getByLabel('Business or trading name').waitFor();
+  await page.waitForFunction(imageReady, profileImageSelectors, { timeout: 20000 });
+  await page.goto(appUrl + '/#find');
+  await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
+  await page.waitForFunction(() => {
+    const image = document.querySelector('main.app-page .provider-card .provider-art img');
+    return image instanceof HTMLImageElement &&
+      image.src.startsWith('data:image/jpeg;base64,') &&
+      image.complete && image.naturalWidth > 0 &&
+      getComputedStyle(image).objectFit === 'contain';
+  });
+  await page.goto(appUrl + '/#dashboard/profile/business');
+  await page.getByLabel('Business or trading name').waitFor();
   await businessName.fill('Updated Workshop');
   await page.getByLabel('Add custom service area').fill('Durbanville, Cape Town');
   await page.getByRole('button', { name: 'Add', exact: true }).first().click();
