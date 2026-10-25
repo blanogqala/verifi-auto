@@ -70,8 +70,12 @@ export function BusinessProfilePage({
           <h2>A profile that tells your story.</h2>
           <p>Help customers understand your expertise and where you work.</p>
         </div>
-        <span className="avatar big">
-          <Wrench size={30} />
+        <span className="avatar big mechanic-photo-avatar">
+          {profile?.photo ? (
+            <img src={profile.photo} alt="" />
+          ) : (
+            <Wrench size={30} aria-hidden="true" />
+          )}
         </span>
       </div>
       <div className="form-row">
