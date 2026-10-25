@@ -89,13 +89,6 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
       );
   }, [data.jobs, filter, notes, query]);
   const active = threads.find((thread) => thread.key === selected) || null;
-  const unreadKey = active
-    ? active.items
-        .filter((item: any) => item.read !== true)
-        .map((item: any) => item.id)
-        .join('|')
-    : '';
-
   useEffect(() => {
     const media = window.matchMedia('(max-width: 800px)');
     const sync = () => setNarrow(media.matches);
@@ -108,21 +101,6 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
     if (!narrow && threads[0]) setSelected(threads[0].key);
     else if (!threads.some((thread) => thread.key === selected)) setSelected('');
   }, [narrow, selected, threads]);
-  useEffect(() => {
-    if (!unreadKey) return;
-    const ids = unreadKey.split('|');
-    if (connected) {
-      void connected.mark(ids);
-      return;
-    }
-    commitUpdate(
-      update,
-      (current: any) => markNotificationsRead(current, { role, id: self, ids }),
-      () => {},
-      '',
-    );
-  }, [role, self, unreadKey, update]);
-
   function openThread(key: string) {
     setSelected(key);
   }
@@ -131,6 +109,22 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
       ? connected.destination(note)
       : notificationDestination(data, role, note);
     if (!path) return;
+    // Opening the inbox list does not clear outstanding work. Opening its
+    // associated activity acknowledges that specific notification.
+    if (!note.read) {
+      const result = connected
+        ? connected.mark([note.id])
+        : commitUpdate(
+            update,
+            (current: any) => markNotificationsRead(current, { role, id: self, ids: [note.id] }),
+            notify,
+            '',
+          );
+      if (result && typeof (result as Promise<unknown>).catch === 'function')
+        void (result as Promise<unknown>).catch((error: any) =>
+          notify(error?.message || 'Could not mark this notification as read.'),
+        );
+    }
     followDetail(go, 'dashboard/notifications', path);
   }
 
