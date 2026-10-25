@@ -380,21 +380,6 @@ async function connected(browser) {
   }
   await page.reload();
   await page.getByLabel('Business or trading name').waitFor();
-  // Report each element's real state if reload fails, rather than a silent timeout.
-  await page.waitForTimeout(500);
-  console.log('Mechanic photo after reload:', JSON.stringify(await page.evaluate((selectors) => ({
-    path: location.href,
-    images: selectors.map((selector) => {
-      const image = document.querySelector(selector);
-      return {
-        selector,
-        found: image instanceof HTMLImageElement,
-        hasPhoto: image instanceof HTMLImageElement && image.src.startsWith('data:image/jpeg;base64,'),
-        fit: image instanceof HTMLImageElement ? getComputedStyle(image).objectFit : '',
-        loaded: image instanceof HTMLImageElement ? image.complete && image.naturalWidth > 0 : false,
-      };
-    }),
-  }), profileImageSelectors)));
   await page.waitForFunction(imageReady, profileImageSelectors, { timeout: 20000 });
   await page.goto(appUrl + '/#find');
   await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
