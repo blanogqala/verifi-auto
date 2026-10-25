@@ -111,7 +111,7 @@ export function unreadAppointmentRequestIds(data: any, jobs: any[]): string[] {
   const pending = new Set(
     (jobs || []).filter((job: any) => job.status === 'Requested').map((job: any) => job.id),
   );
-  return [...new Set(
+  return [...new Set<string>(
     notificationsFor(data, 'mechanic', self)
       .filter((note: any) =>
         !note.read &&
