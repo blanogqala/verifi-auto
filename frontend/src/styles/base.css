@@ -112,6 +112,8 @@ h1 {
 h2 {
   font-size: clamp(1.25rem, 2vw, 1.5rem);
   line-height: 1.25;
+  font-weight: 100;
+  color: var(--purple);
 }
 .section h2 {
   font-size: clamp(29px, 3vw, 43px);
