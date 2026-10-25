@@ -113,6 +113,7 @@ export function BusinessProfilePage({
               setEmail(e.target.value);
             }}
           />
+          {connected && <small className="muted">This verified account email appears on your approved public business profile.</small>}
         </label>
         <label>
           Contact number
