@@ -98,6 +98,7 @@ export function TagPicker({ label, values, suggestions, onChange, maxItems = 25 
           disabled={full}
           placeholder={'Search or add ' + label.toLowerCase()}
           onFocus={() => { setOpen(true); setActive(-1); }}
+          onClick={() => { setOpen(true); setActive(-1); }}
           onChange={(event) => { setQuery(event.target.value); setOpen(true); setActive(-1); }}
           onKeyDown={handleKeys}
         />
@@ -108,9 +109,9 @@ export function TagPicker({ label, values, suggestions, onChange, maxItems = 25 
           aria-expanded={open && !full}
           disabled={full}
           onClick={() => {
+            field.current?.focus();
             setOpen((current) => !current);
             setActive(-1);
-            field.current?.focus();
           }}
         >
           <ChevronDown size={18} />
