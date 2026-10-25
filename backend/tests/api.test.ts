@@ -555,7 +555,7 @@ test(
       const mechanicBooking = await send("get", `/api/bookings/${bookingId}`, undefined, mechanic);
       assert.equal(mechanicBooking.status, 200);
       assert.equal(mechanicBooking.body.customer.email, "alice@example.test");
-      assert.equal(mechanicBooking.body.customer.phone, "");
+      assert.equal(mechanicBooking.body.customer.phone, "0821234567");
       assert.equal(mechanicBooking.body.vehicle.make, "Toyota");
       assert.ok(!JSON.stringify(mechanicBooking.body).includes("passwordHash"));
       const overview = (
