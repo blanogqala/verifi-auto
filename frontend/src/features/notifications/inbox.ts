@@ -103,6 +103,26 @@ export function unreadNotificationCount(data: any, role: string, id = participan
   return notificationsFor(data, role, id).filter((item: any) => item.read !== true).length;
 }
 
+/** New appointment attention is tied to a specific unread backend event.
+ * Visiting the appointment list does not acknowledge it.
+ */
+export function unreadAppointmentRequestIds(data: any, jobs: any[]): string[] {
+  const self = participantId(data, 'mechanic');
+  const pending = new Set(
+    (jobs || []).filter((job: any) => job.status === 'Requested').map((job: any) => job.id),
+  );
+  return [...new Set<string>(
+    notificationsFor(data, 'mechanic', self)
+      .filter((note: any) =>
+        !note.read &&
+        pending.has(note.bookingId) &&
+        (note.title === 'New assessment request' ||
+          (note.type === 'request' && /^new (assessment )?request\b/i.test(note.title || ''))),
+      )
+      .map((note: any) => String(note.bookingId)),
+  )];
+}
+
 export function markNotificationsRead(data: any, input: { role: string; id: string; ids?: string[] | 'all' }) {
   const mine = new Set(notificationsFor(data, input.role, input.id).map((item: any) => item.id));
   const chosen =
