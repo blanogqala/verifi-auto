@@ -62,6 +62,7 @@ export function MerchantProfilePage({
   );
   const displayName = merchantIdentityLabel(profile?.name);
   const initials = initialsFromName(profile?.name);
+  const accountPhoto = profile?.photo ?? data.settings?.photo ?? '';
   const verification = data.application?.status || 'Draft';
 
   function select(next: MerchantProfileSection) {
@@ -110,11 +111,11 @@ export function MerchantProfilePage({
         <div className="avatar-upload">
           <button
             type="button"
-            className="avatar big avatar-picker"
-            aria-label={profile?.photo ? 'Replace profile photo' : 'Add profile photo'}
+            className="avatar big avatar-picker mechanic-photo-avatar"
+            aria-label={accountPhoto ? 'Replace profile photo' : 'Add profile photo'}
             onClick={() => photoInput.current?.click()}
           >
-            {profile?.photo ? <img src={profile.photo} alt="" /> : initials}
+            {accountPhoto ? <img src={accountPhoto} alt="" /> : initials}
             <span className="avatar-edit" aria-hidden="true">
               <Camera size={14} />
             </span>
@@ -126,7 +127,7 @@ export function MerchantProfilePage({
             hidden
             onChange={onPhoto}
           />
-          {profile?.photo ? (
+          {accountPhoto ? (
             <button
               type="button"
               className="text-link"
