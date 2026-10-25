@@ -486,7 +486,7 @@ assert.ok(mechanicAccount.includes('Banking details'));
 assert.ok(mechanicAccount.includes('Verification status'));
 assert.ok(mechanicAccount.includes('status-draft'));
 assert.ok(mechanicAccount.includes('workspace-identity active'));
-assert.ok(mechanicAccount.includes('profile-link active'));
+assert.ok(mechanicAccount.includes('profile-link mechanic-photo-avatar active'));
 assert.ok(mechanicAccount.includes('stays in this browser'));
 assert.ok(!mechanicAccount.includes('KEEP GOOD WORK MOVING'));
 assert.ok(!mechanicAccount.includes('Alex Morgan'));
