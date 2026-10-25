@@ -196,6 +196,29 @@ async function connected(browser) {
   page.setDefaultTimeout(60000);
   page.setDefaultNavigationTimeout(60000);
   await registerAndVerify(page, 'Casey Customer', customerEmail);
+  // The connected directory contains one approved mechanic. On desktop, keep
+  // the empty grid tracks instead of stretching the sole card full-width.
+  await page.goto(appUrl + '/#dashboard/find');
+  await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
+  const desktop = await page.evaluate(() => {
+    const grid = document.querySelector('.directory-embedded .provider-grid');
+    const card = grid?.querySelector('.provider-card');
+    return {
+      grid: grid?.getBoundingClientRect().width || 0,
+      card: card?.getBoundingClientRect().width || 0,
+    };
+  });
+  if (!(desktop.grid > 700 && desktop.card > 0 && desktop.card < desktop.grid * 0.75)) {
+    throw new Error('A single professional should occupy one desktop grid column: ' + JSON.stringify(desktop));
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => {
+    const grid = document.querySelector('.directory-embedded .provider-grid');
+    const card = grid?.querySelector('.provider-card');
+    if (!grid || !card) return false;
+    return Math.abs(grid.getBoundingClientRect().width - card.getBoundingClientRect().width) < 3;
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(appUrl + '/#find');
   await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
   await page.getByRole('button', { name: 'Book assessment' }).click();

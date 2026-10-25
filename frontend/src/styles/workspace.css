@@ -681,6 +681,13 @@ body:has(.modal-backdrop) {
   padding: 0;
   min-height: 0;
 }
+/* Keep the approved multi-column card layout when only one live professional exists.
+   auto-fit collapses empty tracks and stretches that single card to the full row. */
+@media (min-width: 751px) {
+  .workspace .directory-embedded .provider-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  }
+}
 .merchant-profile {
   display: flex;
   flex-direction: column;
