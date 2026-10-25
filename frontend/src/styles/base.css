@@ -1150,8 +1150,8 @@ footer.site-footer > div:nth-child(2) {
 }
 .modal {
   position: relative;
-  background: var(--surface);
-  border: 1px solid var(--line);
+  background: var(--tint);
+  border: 4px solid var(--purple);
   border-radius: 15px;
   padding: 20px 24px 28px;
   width: min(36rem, 100%);
@@ -1172,8 +1172,8 @@ footer.site-footer > div:nth-child(2) {
   display: grid;
   place-items: center;
   margin: 0 0 8px 8px;
-  color: var(--muted);
-  background: var(--surface);
+  color: #140b22;
+  background: var(--purple);
   border-radius: 8px;
 }
 .modal h2 {

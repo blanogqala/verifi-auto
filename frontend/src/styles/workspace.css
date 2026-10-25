@@ -700,11 +700,11 @@ body:has(.modal-backdrop) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
+  gap: 55px;
 }
 .merchant-summary .avatar {
-  width: 72px;
-  height: 72px;
+  width: 120px;
+  height: 120px;
   border-radius: 18px;
   font-size: 18px;
 }
@@ -1430,7 +1430,6 @@ body:has(.modal-backdrop) {
 }
 .settings-form {
   max-width: none;
-  padding: 20px;
 }
 .settings-form label {
   margin-top: 22px;
