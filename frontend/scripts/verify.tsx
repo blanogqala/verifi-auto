@@ -372,7 +372,7 @@ assert.ok(customerProfile.includes('Email address'));
 assert.ok(customerProfile.includes('Email updates preference'));
 assert.ok(customerProfile.includes('Save profile'));
 assert.ok(customerProfile.includes('Profile'));
-assert.ok(customerProfile.includes('stays in this browser'));
+assert.ok(customerProfile.includes('Upload photo'));
 assert.ok(!customerProfile.includes('Display name'));
 assert.ok(!customerProfile.includes('Business or trading name'));
 assert.ok(!customerProfile.includes('Account holder name'));
