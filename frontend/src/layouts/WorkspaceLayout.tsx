@@ -64,6 +64,7 @@ import {
 } from '../data/mechanicShowcase';
 import { followDetail, readBookingFilters, writeBookingFilters } from '../features/navigation/returnPath';
 import { api, apiBase } from '../data-access/api';
+import { unreadAppointmentRequestIds, markNotificationsRead, notificationsFor } from '../features/notifications/inbox';
 import { VehicleStage } from '../components/garage/VehicleStage';
 import {
   Role,
@@ -263,6 +264,9 @@ export function Workspace({
       : role === 'customer'
         ? bookingsForCustomer(jobs, data.settings?.id || 'cust-01')
         : jobs;
+  const unreadRequestIds = role === 'mechanic'
+    ? unreadAppointmentRequestIds(data, scopedJobs)
+    : [];
   const accountName =
     role === 'customer'
       ? data.settings?.name
@@ -311,6 +315,29 @@ export function Workspace({
   const adminDetailId = adminDetailKind ? detailId(tab, adminDetailKind) : undefined;
   useEffect(() => { setChecks([]); setReviewNote(apps.find((a: any) => a.id === adminDetailId)?.note || ''); }, [adminDetailId]);
   const customers = customerRecords(data);
+  // Opening the parent Appointments tab never clears its orange dot.
+  // A particular unread request is acknowledged only when its detail is reached.
+  const attendedRef = useRef('');
+  useEffect(() => {
+    if (role !== 'mechanic' || !appointmentDetail || appointmentDetail.section !== 'pending') return;
+    const bookingId = appointmentDetail.id;
+    if (!unreadRequestIds.includes(bookingId)) return;
+    const ids = notificationsFor(data, 'mechanic', selfId)
+      .filter((note: any) => !note.read && note.bookingId === bookingId &&
+        (note.title === 'New assessment request' ||
+          (note.type === 'request' && /^new (assessment )?request\b/i.test(note.title || ''))))
+      .map((note: any) => note.id);
+    if (!ids.length) return;
+    const key = bookingId + ':' + ids.join('|');
+    if (attendedRef.current === key) return;
+    attendedRef.current = key;
+    void Promise.resolve(
+      update((current: any) => markNotificationsRead(current, { role: 'mechanic', id: selfId, ids })),
+    ).catch((error: any) => {
+      attendedRef.current = '';
+      notify(error?.message || 'Could not mark the appointment as viewed.');
+    });
+  }, [role, appointmentDetail?.id, appointmentDetail?.section, data.notifications, selfId, update]);
   function route(t: string) {
     go('dashboard/' + t);
     setSide(false);
@@ -531,6 +558,7 @@ export function Workspace({
         side={side}
         tab={tab}
         unread={unread}
+        appointmentAttention={unreadRequestIds.length}
       />
       <main className="workspace-main">
         <WorkspaceTopbar
@@ -691,6 +719,8 @@ export function Workspace({
             <AppointmentsPage
               customerName={(job: any) => job.customerName || customerNameForJob(job, customers)}
               jobs={scopedJobs}
+              unreadRequestIds={unreadRequestIds}
+              live={live}
               onOpen={(job: any) => route('appointments/' + appointmentView + '/' + encodeURIComponent(job.id))}
               route={route}
               section={appointmentView}
