@@ -77,7 +77,12 @@ directoryRoutes.get("/:id", async (req, res) => {
       status: "APPROVED",
       user: { disabledAt: null },
     },
-    select: professionalPublicSelect,
+    // The detail view may publish the registered workshop contact email;
+    // never include it in the public directory listing or expose the user relation.
+    select: {
+      ...professionalPublicSelect,
+      user: { select: { photo: true, email: true } },
+    },
   });
   requireThat(row, 404, "NOT_FOUND", "Professional not found.");
   const reviews = await db.review.findMany({
@@ -101,6 +106,7 @@ directoryRoutes.get("/:id", async (req, res) => {
   res.json({
     ...publicRow,
     photo: user.photo,
+    email: user.email,
     rating: summary._avg.rating,
     reviewCount: summary._count,
     reviews: reviews.map(({ customer, ...review }) => ({

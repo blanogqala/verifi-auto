@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState } from 'react';
 import type { FormEvent } from 'react';
-import { ArrowRight, ArrowUpRight, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Globe, Mail, MapPin, Phone, ShieldCheck, Star } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { DetailBack, DetailCard } from '../ui/DetailChrome';
 import { RoadLoader } from '../ui/RoadLoader';
@@ -18,6 +18,7 @@ import { chargeConfirmation } from '../../features/jobs/pricingModel';
 import { distanceFor } from '../../features/professionals/discovery';
 import { readDiscoverySession } from '../../features/professionals/discoveryState';
 import { approximateDistanceLabel, mapsDirectionsUrl } from '../../features/professionals/geo';
+import { safeWebsite } from '../../features/professionals/professionalProfile';
 import {
   deleteCustomerReview,
   eligibleReviewBookings,
@@ -267,6 +268,41 @@ export function ProfessionalProfilePage({
               )}
             </section>
             <section className="pro-information-section">
+              <h2>Contact</h2>
+              {profile.phone || profile.email || profile.website ||
+               (profile.type === 'Workshop' && profile.address) ? (
+                <ul className="pro-contact pro-contact-details">
+                  {profile.type === 'Workshop' && profile.address ? (
+                    <li>
+                      <MapPin size={17} aria-hidden="true" />
+                      <span><strong>Business address</strong><span>{profile.address}</span></span>
+                    </li>
+                  ) : null}
+                  {profile.phone ? (
+                    <li>
+                      <Phone size={17} aria-hidden="true" />
+                      <span><strong>Contact number</strong><a href={'tel:' + profile.phone}>{profile.phone}</a></span>
+                    </li>
+                  ) : null}
+                  {profile.email ? (
+                    <li>
+                      <Mail size={17} aria-hidden="true" />
+                      <span><strong>Email address</strong><a href={'mailto:' + profile.email}>{profile.email}</a></span>
+                    </li>
+                  ) : null}
+                  {safeWebsite(profile.website) ? (
+                    <li>
+                      <Globe size={17} aria-hidden="true" />
+                      <span><strong>Website</strong><a href={safeWebsite(profile.website)} target="_blank"
+                        rel="noopener noreferrer">Visit website <ArrowUpRight size={14} aria-hidden="true" /></a></span>
+                    </li>
+                  ) : null}
+                </ul>
+              ) : (
+                <p>No business contact details have been recorded.</p>
+              )}
+            </section>
+            <section className="pro-information-section">
               <h2>Services</h2>
               {profile.services.length ? (
                 <ul className="pro-service-tags">
@@ -276,32 +312,6 @@ export function ProfessionalProfilePage({
                 </ul>
               ) : (
                 <p>No services have been recorded.</p>
-              )}
-            </section>
-            <section className="pro-information-section">
-              <h2>Contact</h2>
-              {profile.phone || profile.email || profile.website ? (
-                <ul className="pro-contact">
-                  {profile.phone ? (
-                    <li>
-                      <a href={'tel:' + profile.phone}>{profile.phone}</a>
-                    </li>
-                  ) : null}
-                  {profile.email ? (
-                    <li>
-                      <a href={'mailto:' + profile.email}>{profile.email}</a>
-                    </li>
-                  ) : null}
-                  {profile.website ? (
-                    <li>
-                      <a href={profile.website} target="_blank" rel="noopener noreferrer">
-                        Website
-                      </a>
-                    </li>
-                  ) : null}
-                </ul>
-              ) : (
-                <p>No public phone, email, or website has been recorded.</p>
               )}
             </section>
           </Card>

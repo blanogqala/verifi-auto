@@ -245,6 +245,20 @@ async function connected(browser) {
       Math.abs(publicLayout.footerBottom - publicLayout.viewportHeight) > 2) {
     throw new Error('Public footer must finish a short page without hanging or sticking: ' + JSON.stringify(publicLayout));
   }
+  // A customer must see contact fields from the approved professional API,
+  // without falling back to demo profile details.
+  await page.getByRole('button', { name: /View profile/ }).first().click();
+  await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
+  await page.getByText('1 Test Street', { exact: true }).last().waitFor();
+  await page.getByRole('link', { name: 'mechanic@example.test' }).waitFor();
+  await page.getByRole('link', { name: '0712345678' }).waitFor();
+  await page.getByRole('link', { name: /Visit website/ }).waitFor();
+  const sections = await page.locator('.pro-information-section > h2').allTextContents();
+  if (sections.join('|') !== 'About|Contact|Services') {
+    throw new Error('Public professional profile sections are out of order: ' + sections.join('|'));
+  }
+  await page.goto(appUrl + '/#find');
+  await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForFunction(() => {
     const grid = document.querySelector('main.app-page .provider-grid');

@@ -101,6 +101,7 @@ await db.user.create({
         about: "Approved for the disposable browser test.",
         services: ["Brakes"],
         phone: "0712345678",
+        website: "https://approved-workshop.example.test",
         latitude: -33.9249,
         longitude: 18.4241,
         status: "APPROVED",
