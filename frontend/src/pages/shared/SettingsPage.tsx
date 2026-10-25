@@ -74,12 +74,12 @@ export function SettingsPage({ data, notify, update, connected }: any) {
   return (
     <div className="customer-profile">
       <Card as="form" className="dash-panel settings-form" onSubmit={save}>
-        <h2>Profile</h2>
+        {/* <h2>Profile</h2>
         <p className="muted">
           {connected
             ? 'Keep your personal details and contact preferences up to date.'
             : 'Use sample details. This profile stays in this browser and does not create a real account or send notifications.'}
-        </p>
+        </p> */}
         <div className="avatar-upload">
           <span className="avatar big" aria-hidden="true">
             {photo ? <img src={photo} alt="" /> : initialsFromName(name)}

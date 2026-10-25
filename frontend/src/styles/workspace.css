@@ -1429,7 +1429,8 @@ body:has(.modal-backdrop) {
   padding: 12px 14px;
 }
 .settings-form {
-  max-width: 850px;
+  max-width: none;
+  padding: 20px;
 }
 .settings-form label {
   margin-top: 22px;

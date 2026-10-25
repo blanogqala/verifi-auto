@@ -1,7 +1,7 @@
 /* Shared card appearance across customer, mechanic, admin, and public pages. */
 :root {
   --card-radius: 12px;
-  --card-padding: 20px;
+  --card-padding: 40px;
   --card-border-width: 2px;
   --card-border: var(--purple);
   --card-surface: #1b1724;
