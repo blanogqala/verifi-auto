@@ -308,7 +308,11 @@ export function Workspace({
   const hideFindCta =
     role === 'customer' && ['profile', 'settings', 'garage', 'payments'].includes(sectionRoot);
   const accountPhoto =
-    role === 'customer' ? data.settings?.photo || '' : role === 'mechanic' ? data.profile?.photo || '' : '';
+    role === 'customer'
+      ? data.settings?.photo || ''
+      : role === 'mechanic'
+        ? profile?.photo ?? data.settings?.photo ?? data.profile?.photo ?? ''
+        : '';
   const heading = pageTitle(role, tab);
   const apps = applicationRecords(data);
   const adminDetailKind = role === 'admin' && ['applications', 'professionals', 'customers', 'jobs', 'disputes'].includes(sectionRoot) && tab.includes('/') && tab !== 'applications/history' && tab !== 'jobs/disputes' ? sectionRoot : '';

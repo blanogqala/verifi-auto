@@ -57,6 +57,7 @@ export function emptyWorkspace() {
       website: '',
       fee: null,
       version: 0,
+      photo: '',
       latitude: null,
       longitude: null,
     },

@@ -945,7 +945,10 @@ footer.site-footer > div:nth-child(2) {
 .provider-art img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Uploaded profile pictures are often logos. Show the entire file,
+     including transparent/white margins, without cropping the artwork. */
+  object-fit: contain;
+  object-position: center;
   display: block;
 }
 .provider-info {
