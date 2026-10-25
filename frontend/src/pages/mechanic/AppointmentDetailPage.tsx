@@ -68,8 +68,10 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
     );
   }
   const records = customerRecords(data);
-  const customer = customerNameForJob(job, records);
+  // Connected mechanic accounts are not given the admin customer directory.
+  // Read contact details from the scoped booking response instead.
   const contact = records.find((item) => item.id === (job.customerId || 'cust-01'));
+  const customer = job.customerName || customerNameForJob(job, records);
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
   const image = vehicle ? vehicleCardImage(resolveVehicleAsset(vehicle)) : '';
   const registration = vehicle?.registration || job.registration || 'Not recorded';
@@ -179,7 +181,8 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
                   <DetailFields
                     items={[
                       { label: 'Registration', value: registration },
-                      { label: 'Mileage', value: vehicle?.mileage ? `${vehicle.mileage} km` : 'Not recorded' },
+                      { label: 'Mileage', value: (vehicle?.mileage ?? job.vehicleMileage) != null
+                        ? `${vehicle?.mileage ?? job.vehicleMileage} km` : 'Not recorded' },
                     ]}
                   />
                 </div>
@@ -189,9 +192,9 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
               <DetailFields
                 items={[
                   { label: 'Name', value: customer },
-                  { label: 'Email', value: contact?.email || 'Not recorded' },
-                  { label: 'Phone', value: contact?.phone || 'Not recorded' },
-                  { label: 'City', value: contact?.city || 'Not recorded' },
+                  { label: 'Email', value: job.customerEmail || contact?.email || 'Not provided' },
+                  { label: 'Phone', value: job.customerPhone || contact?.phone || 'Not provided' },
+                  ...(contact?.city ? [{ label: 'City', value: contact.city }] : []),
                 ]}
               />
             </DetailCard>

@@ -689,7 +689,7 @@ export function Workspace({
           )}
           {!locked && appointmentView && (
             <AppointmentsPage
-              customerName={(job: any) => customerNameForJob(job, customers)}
+              customerName={(job: any) => job.customerName || customerNameForJob(job, customers)}
               jobs={scopedJobs}
               onOpen={(job: any) => route('appointments/' + appointmentView + '/' + encodeURIComponent(job.id))}
               route={route}

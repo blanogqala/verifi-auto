@@ -17,7 +17,9 @@ export const bookingInclude = {
       type: true,
     },
   },
-  customer: { select: { id: true, name: true, phone: true } },
+  // Booking participants can see the customer's contact details for this appointment.
+  // This relation is scope-protected by the booking query; do not expose it in the directory.
+  customer: { select: { id: true, name: true, email: true, phone: true } },
   quotes: {
     include: { lines: true, payment: true },
     orderBy: { number: "asc" as const },

@@ -134,7 +134,7 @@ export function AppointmentsPage({
                   </span>
                   <span className="booking-card-copy">
                     <strong>{vehicleName}</strong>
-                    <span>{customerName(job)}</span>
+                    <span>{job.customerName || customerName(job)}</span>
                     <span>{when}</span>
                     {registration ? <span>{registration}</span> : null}
                     <span className="reference">{bookingReference(job)}</span>
