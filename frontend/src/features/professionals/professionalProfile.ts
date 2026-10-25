@@ -6,7 +6,7 @@ export function safeWebsite(value: unknown) {
   if (typeof value !== 'string' || !value.trim()) return '';
   try {
     const url = new URL(value.trim());
-    if (url.protocol !== 'https:') return '';
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
     return url.href;
   } catch {
     return '';
