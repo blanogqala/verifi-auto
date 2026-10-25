@@ -393,10 +393,27 @@ async function connected(browser) {
   await page.goto(appUrl + '/#dashboard/profile/business');
   await page.getByLabel('Business or trading name').waitFor();
   await businessName.fill('Updated Workshop');
-  await page.getByLabel('Add custom service area').fill('Durbanville, Cape Town');
-  await page.getByRole('button', { name: 'Add', exact: true }).first().click();
-  await page.getByLabel('Add custom service', { exact: true }).fill('Wheel balancing');
-  await page.getByRole('button', { name: 'Add', exact: true }).last().click();
+  // The mechanic form has one editable dropdown per field, not two inputs.
+  const areaPicker = page.getByRole('combobox', { name: 'Service Areas' });
+  const servicePicker = page.getByRole('combobox', { name: 'Services Offered' });
+  await areaPicker.fill('Durbanville, Cape Town');
+  await areaPicker.press('Enter');
+  await page.getByRole('button', { name: 'Remove Durbanville, Cape Town' }).waitFor();
+  await servicePicker.fill('Wheel balancing');
+  await servicePicker.press('Enter');
+  await page.getByRole('button', { name: 'Remove Wheel balancing' }).waitFor();
+  await servicePicker.click();
+  await page.getByRole('option', { name: 'Tyres', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove Tyres' }).waitFor();
+  const layout = await page.evaluate(() => {
+    const row = document.querySelector('.profile-offerings-row');
+    const fields = row?.querySelectorAll('.tag-picker');
+    if (!row || !fields || fields.length !== 2) return { ok: false };
+    const first = fields[0].getBoundingClientRect();
+    const second = fields[1].getBoundingClientRect();
+    return { ok: Math.abs(first.y - second.y) < 3 && second.x > first.right - 3 };
+  });
+  if (!layout.ok) throw new Error('Service areas and offered services must share the desktop row.');
   await page.getByRole('button', { name: 'Save profile' }).click();
   await page.getByText('Business profile saved').waitFor();
   await page.reload();
@@ -408,6 +425,16 @@ async function connected(browser) {
   );
   await page.getByRole('button', { name: 'Remove Durbanville, Cape Town' }).waitFor();
   await page.getByRole('button', { name: 'Remove Wheel balancing' }).waitFor();
+  await page.getByRole('button', { name: 'Remove Tyres' }).waitFor();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => {
+    const fields = [...document.querySelectorAll('.profile-offerings-row .tag-picker')];
+    if (fields.length !== 2) return false;
+    const a = fields[0].getBoundingClientRect();
+    const b = fields[1].getBoundingClientRect();
+    return Math.abs(a.x - b.x) < 3 && b.y > a.bottom;
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole('tab', { name: 'Banking details' }).click();
   await page.getByText('Payout onboarding is not connected yet').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();

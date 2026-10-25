@@ -2797,20 +2797,121 @@ td .text-link {
   [data-theme='light'] .auth-page .auth-card.ui-card { background: #f4eefb; }
 }
 
-/* Mechanic service areas, custom services and evidence-review controls. */
-.tag-picker { display: grid; gap: 10px; margin: 8px 0 14px; min-width: 0; }
-.tag-picker-controls { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto; gap: 8px; align-items: center; }
-.tag-picker-controls > select, .tag-picker-controls > input { min-width: 0; width: 100%; }
-.tag-picker-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.tag-picker-tag { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid var(--purple); border-radius: 14px; background: color-mix(in srgb, var(--purple) 11%, transparent); font-size: .85rem; }
-.tag-picker-tag button { display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; color: inherit; padding: 2px; cursor: pointer; }
+/* Business profile: two matching searchable selectors, one input per field. */
+.settings-form .profile-offerings-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 25px);
+  align-items: start;
+  margin: 22px 0 0;
+}
+.settings-form .profile-offerings-row > * { min-width: 0; }
+.tag-picker { position: relative; display: grid; gap: 10px; min-width: 0; }
+.settings-form .tag-picker-label {
+  display: block;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.tag-picker-shell { position: relative; min-width: 0; }
+.settings-form .tag-picker-shell input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 13px 50px 13px 14px;
+  border: 1px solid var(--purple);
+  border-radius: 9px;
+  background: var(--tint);
+  color: var(--ink);
+  font-size: var(--field-font);
+  outline-offset: 3px;
+}
+.tag-picker-shell.is-open input { box-shadow: 0 0 0 2px color-mix(in srgb, var(--purple) 24%, transparent); }
+.settings-form .tag-picker-shell input:disabled { opacity: .65; }
+.tag-picker-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--soft);
+  background: color-mix(in srgb, var(--purple) 9%, transparent);
+}
+.tag-picker-toggle:hover { background: color-mix(in srgb, var(--purple) 19%, transparent); }
+.tag-picker-toggle svg { transition: transform .18s ease; }
+.tag-picker-shell.is-open .tag-picker-toggle svg { transform: rotate(180deg); }
+.tag-picker-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  overflow-y: auto;
+  max-height: 244px;
+  padding: 5px;
+  border: 1px solid var(--purple);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 16px 34px rgb(31 13 58 / 23%);
+}
+.tag-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 11px;
+  width: 100%;
+  text-align: left;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.tag-picker-option svg { flex: 0 0 auto; color: var(--soft); }
+.tag-picker-option:hover, .tag-picker-option.is-active, .tag-picker-option[aria-selected='true'] {
+  background: var(--tint);
+  color: var(--ink);
+}
+.tag-picker-empty { padding: 9px; font-size: 12px; color: var(--muted); }
+.tag-picker-tags { display: flex; flex-wrap: wrap; gap: 7px; min-height: 8px; }
+.tag-picker-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 11px;
+  border: 1px solid var(--purple);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--purple) 11%, transparent);
+  font-size: 12px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.tag-picker-tag button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: inherit;
+}
+.tag-picker-tag button:hover { background: color-mix(in srgb, var(--purple) 24%, transparent); }
+.tag-picker-help { display: block; font-size: 11px; line-height: 1.5; color: var(--muted); }
 .icon-action { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; min-height: 36px; padding: 7px; border: 1px solid color-mix(in srgb, var(--purple) 45%, transparent); border-radius: 9px; color: inherit; background: color-mix(in srgb, var(--purple) 8%, transparent); cursor: pointer; }
 .icon-action:hover { background: color-mix(in srgb, var(--purple) 24%, transparent); }
-.icon-action:disabled { opacity: .45; cursor: not-allowed; }
 .evidence-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
 .application-review-page { display: grid; gap: 18px; }
-@media (max-width: 740px) { .tag-picker-controls { grid-template-columns: 1fr; } .evidence-actions { width: 100%; } }
-
+@media (max-width: 750px) {
+  .settings-form .profile-offerings-row { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+  .evidence-actions { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tag-picker-toggle svg { transition: none; }
+}
 
 /* Unread assessment activities: orange dot on navigation and the exact card.
    Markers are state-driven, not cleared merely by visiting the list. */
