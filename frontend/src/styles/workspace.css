@@ -404,6 +404,13 @@ button.workspace-identity.active:active {
   height: 100%;
   object-fit: cover;
 }
+/* A mechanic photo may be a business logo, not a headshot. Fit it inside
+   every small and large mechanic avatar without cropping the brand mark. */
+.mechanic-photo-avatar img {
+  object-fit: contain;
+  object-position: center;
+  padding: 2px;
+}
 .avatar.small {
   width: 32px;
   height: 32px;
