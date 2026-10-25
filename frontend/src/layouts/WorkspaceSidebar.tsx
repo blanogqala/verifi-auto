@@ -193,7 +193,7 @@ export function WorkspaceSidebar({
           aria-current={profileActive ? 'page' : undefined}
           onClick={() => route(profileTarget)}
         >
-          <span className="avatar" aria-hidden="true">
+          <span className={'avatar' + (merchant ? ' mechanic-photo-avatar' : '')} aria-hidden="true">
             {accountPhoto ? <img src={accountPhoto} alt="" /> : initials}
           </span>
           <span className="workspace-identity-text">
