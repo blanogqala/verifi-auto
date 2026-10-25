@@ -269,73 +269,91 @@
   stroke: var(--soft);
   stroke-width: 3;
 }
+/* Shared centred loading illustration; no fixed corner positioning. */
 .road-loader {
-  display: grid;
-  justify-items: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  min-height: clamp(250px, 52vh, 440px);
+  margin-inline: auto;
+  padding: 28px 16px;
   gap: 6px;
 }
 .road-loader-scene {
   position: relative;
-  width: 148px;
-  height: 36px;
+  display: block;
+  width: min(100%, 320px);
+  height: 140px;
   overflow: hidden;
 }
-.road-loader-road {
+.road-loader-glow {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 6px;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--purple), transparent);
+  width: 170px;
+  height: 70px;
+  left: 50%;
+  bottom: 30px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse, rgb(150 88 232 / 25%), transparent 70%);
 }
 .road-loader-car {
   position: absolute;
-  bottom: 8px;
-  left: 0;
-  width: 28px;
-  height: 14px;
-  border-radius: 4px 6px 3px 3px;
-  background: var(--purple);
-  animation: road-drive 1.4s ease-in-out infinite;
+  display: block;
+  width: 164px;
+  height: 76px;
+  bottom: 31px;
+  left: 50%;
+  margin-left: -82px;
+  filter: drop-shadow(0 11px 9px rgb(29 11 53 / 18%));
+  animation: road-glide 2.6s ease-in-out infinite;
 }
-.road-loader-car::before,
-.road-loader-car::after {
-  content: '';
+.road-loader-car svg { display: block; width: 100%; height: 100%; }
+.road-loader-body {
+  fill: var(--purple);
+  stroke: color-mix(in srgb, var(--purple) 65%, var(--ink));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+.road-loader-windows { fill: #ebe4fc; stroke: #6b48ad; stroke-width: 1.4; stroke-linejoin: round; }
+.road-loader-detail { fill: none; stroke: #4c2c79; stroke-width: 2; stroke-linecap: round; }
+.road-loader-light { fill: #ffeaac; }
+.road-loader-taillight { fill: #f99b8f; }
+.road-loader-tyre { fill: #252132; stroke: #121019; stroke-width: 2; }
+.road-loader-rim { fill: #f5eefc; stroke: #a78bc3; stroke-width: 2; }
+.road-loader-reflection { fill: none; stroke: #ead6ff; opacity: .75; stroke-width: 2; stroke-linecap: round; }
+.road-loader-track {
   position: absolute;
-  bottom: -4px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ink);
+  bottom: 18px;
+  left: 15px;
+  right: 15px;
+  height: 5px;
+  background: color-mix(in srgb, var(--purple) 30%, var(--line));
+  border-radius: 10px;
 }
-.road-loader-car::before {
-  left: 3px;
-}
-.road-loader-car::after {
-  right: 3px;
+.road-loader-track-stripes {
+  position: absolute;
+  inset: -12px 0 auto;
+  height: 2px;
+  background: repeating-linear-gradient(90deg, transparent 0 15px, var(--purple) 15px 37px, transparent 37px 54px);
+  opacity: .5;
+  animation: road-move .9s linear infinite;
 }
 .road-loader-label {
-  color: var(--muted);
-  font-size: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
 }
-@keyframes road-drive {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(112px);
-  }
+.road-loader-caption { color: var(--muted); font-size: 12px; }
+@keyframes road-glide {
+  0%, 100% { transform: translate(-16px, 2px) rotate(-.5deg); }
+  50% { transform: translate(16px, -2px) rotate(.5deg); }
 }
+@keyframes road-move { to { background-position-x: -54px; } }
 @media (prefers-reduced-motion: reduce) {
-  .road-loader-car {
-    animation: none;
-    left: 60px;
-  }
-}
-.page-skeleton {
-  height: 18px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--line) 70%, transparent);
+  .road-loader-car, .road-loader-track-stripes { animation: none; }
 }
 @media (max-width: 750px) {
   .pro-banner,
