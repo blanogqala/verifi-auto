@@ -47,6 +47,7 @@ export function AppointmentsPage({
   section,
   vehicles = [],
   live = false,
+  unreadRequestIds = [],
 }: any) {
   const pending = jobs.filter(isPendingRequest);
   const rejected = jobs.filter(isRejectedRequest);
@@ -108,6 +109,7 @@ export function AppointmentsPage({
       {visible.length ? (
         <div className="appointment-grid">
           {visible.map((job: any) => {
+            const hasNewRequest = section === 'pending' && unreadRequestIds.includes(job.id);
             const vehicleName = job.vehicleLabel || job.vehicle || 'Vehicle not recorded';
             const when = `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}`;
             const registration =
@@ -141,6 +143,12 @@ export function AppointmentsPage({
                     {job.rejectionReason ? <span>Reason: {job.rejectionReason}</span> : null}
                   </span>
                   <Status value={job.status} />
+                  {hasNewRequest && (
+                    <>
+                      <span className="booking-attention-dot" aria-hidden="true" />
+                      <span className="visually-hidden">New unread assessment request</span>
+                    </>
+                  )}
                   <ArrowRight className="booking-card-arrow" size={18} aria-hidden="true" />
                 </button>
               </Card>
