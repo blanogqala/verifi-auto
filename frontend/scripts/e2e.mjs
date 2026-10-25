@@ -368,7 +368,16 @@ async function connected(browser) {
         getComputedStyle(image).objectFit === 'contain' &&
         image.complete && image.naturalWidth > 0;
     });
-  await page.waitForFunction(imageReady, profileImageSelectors);
+  for (const selector of profileImageSelectors) {
+    await page.locator(selector).waitFor({ state: 'attached', timeout: 12000 });
+    const result = await page.locator(selector).evaluate((img) => ({
+      photo: img instanceof HTMLImageElement && img.src.startsWith('data:image/jpeg;base64,'),
+      fit: getComputedStyle(img).objectFit,
+      loaded: img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0,
+    }));
+    if (!result.photo || result.fit !== 'contain' || !result.loaded)
+      throw new Error('Mechanic avatar check failed for ' + selector + ': ' + JSON.stringify(result));
+  }
   await page.reload();
   await page.getByLabel('Business or trading name').waitFor();
   // Report each element's real state if reload fails, rather than a silent timeout.
