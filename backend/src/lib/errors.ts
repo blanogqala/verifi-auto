@@ -62,6 +62,12 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
         requestId: req.requestId,
         error: error?.name || "Error",
         code: error?.code || "INTERNAL_ERROR",
+        ...(process.env.NODE_ENV === "test"
+          ? {
+              route: req.originalUrl,
+              detail: String(error?.message || "").slice(0, 350),
+            }
+          : {}),
       }),
     );
   res
