@@ -962,7 +962,26 @@ select {
 .pro-about-more summary { line-height: 1.7; cursor: pointer; }
 .pro-about-more summary span { color: var(--soft); white-space: nowrap; }
 
-.booking-quotations { display: grid; gap: 1.25rem; min-width: 0; }
+.booking-quotations { display: grid; gap: 1.25rem; min-width: 0; container: quotations / inline-size; }
+.quotation-cards-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; min-width: 0; align-items: stretch; }
+.quotation-cards-grid > * { min-width: 0; max-width: 100%; height: auto; }
+.quotation-cards-grid .quote-line > span,
+.quotation-cards-grid .quote-line > b,
+.quotation-cards-grid .quote-summary h3,
+.quotation-cards-grid .detail-card h2 { min-width: 0; overflow-wrap: anywhere; }
+.quotation-cards-grid .button-row { min-width: 0; }
+.quotation-cards-grid .button-row .primary,
+.quotation-cards-grid .button-row .secondary { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.quotation-cards-grid > .detail-card,
+.quotation-cards-grid > .quote-summary { container: quotation-card / inline-size; }
+@container quotations (min-width: 680px) {
+  .quotation-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container quotation-card (max-width: 560px) {
+  .quote-editor-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .quote-editor-description,
+  .quote-editor > label { grid-column: 1 / -1; }
+}
 .quotation-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
 .quotation-state { font-size: .875rem; font-weight: 600; padding: .35rem .75rem; border-radius: 999px; border: 1px solid rgba(139, 92, 246, .45); background: rgba(139, 92, 246, .12); }
 .quotation-totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
