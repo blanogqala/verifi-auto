@@ -40,7 +40,13 @@ export function mapDirectoryProfessional(pro: any) {
     type: pro.type || 'Workshop',
     area: pro.city || '',
     serviceAreas: Array.isArray(pro.serviceAreas) ? pro.serviceAreas : [],
-    place: pro.city || '',
+    // Published street address is appropriate for workshops, but not a
+    // mobile mechanic's potentially private base location.
+    place: pro.type === 'Workshop' && typeof pro.address === 'string' && pro.address.trim()
+      ? pro.address.trim() : pro.city || '',
+    address: pro.type === 'Workshop' ? pro.address || '' : '',
+    email: pro.email || '',
+    website: pro.website || '',
     special: services.join(' · '),
     services,
     photo: pro.photo || '',
