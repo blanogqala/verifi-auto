@@ -123,6 +123,9 @@ export function useLiveSource(enabled: boolean, page: string) {
           ...next.profile,
           ...me,
           bio: me.about || '',
+          // The uploaded professional picture belongs to the user account
+          // (User.photo), not the Professional business record.
+          photo: account.photo || '',
           version: me.version,
         };
         next.mechanicAccount.professionalId = me.id;
