@@ -93,6 +93,7 @@ export function EmergencyPage({ data, professionals, live, go, notify, refresh, 
           createdCar = { ...newVehicle, id: crypto.randomUUID(), customerId: data.settings?.id || 'cust-01' };
         }
         carId = createdCar.id;
+        setVehicleId(carId); // An unsuccessful booking retry must reuse the saved vehicle.
       }
       const body = {
         kind: 'EMERGENCY', emergencyType: issue,
