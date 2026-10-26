@@ -40,6 +40,14 @@ const vehicleInput = z
     paintColor: z
       .union([z.literal(""), z.string().regex(/^#[a-fA-F0-9]{6}$/)])
       .default(""),
+    // Actual owner photo, JPEG-only after client resize, never external URLs/SVG.
+    photo: z.string().max(210000).refine((value) => {
+      if (value === "") return true;
+      if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return false;
+      const bytes = Buffer.from(value.slice("data:image/jpeg;base64,".length), "base64");
+      return bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8 &&
+        bytes[2] === 0xff && bytes.at(-2) === 0xff && bytes.at(-1) === 0xd9;
+    }, "Choose a valid JPG, PNG or WebP image to upload.").optional(),
     licenceDiscExpiry: z.iso.date().nullable().optional(),
     nextServiceDate: z.iso.date().nullable().optional(),
     nextServiceMileage: z
