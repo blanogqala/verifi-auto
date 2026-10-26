@@ -135,6 +135,24 @@ async function verifyLink(email) {
   }
 }
 
+// Browser journeys intentionally exercise several roles in quick succession.
+// Clear only the throwaway PGlite counters between scenarios, so normal API
+// rate limiting stays enabled and unchanged for actual users and production.
+async function resetDisposableRateLimits() {
+  const client = new pg.Client({
+    connectionString: 'postgresql://postgres:postgres@127.0.0.1:15440/postgres',
+    connectionTimeoutMillis: 8000,
+    query_timeout: 8000,
+  });
+  await client.connect();
+  try {
+    await client.query('DELETE FROM "RateLimit"');
+    record('[e2e] reset request counters in disposable database before admin journey\n');
+  } finally {
+    await client.end();
+  }
+}
+
 async function signIn(page, email) {
   await page.goto(appUrl + '/#login');
   await page.getByLabel('Email address').fill(email);
@@ -270,9 +288,18 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Book assessment' }).click();
   await page.getByRole('button', { name: 'Add vehicle' }).click();
   await page.getByLabel('Make').fill('Toyota');
-  await page.getByLabel('Model').fill('Corolla');
-  await page.getByLabel('Year').fill('2018');
+  await page.getByLabel('Model (vehicle name)').fill('Corolla');
+  await page.getByLabel('Model year').fill('2018');
   await page.getByLabel('Registration').fill('CA123456');
+  // Real car photos are compressed in-browser and persisted in the owned garage.
+  const actualCarPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAFElEQVR4nGOcFvGCARtgwio6aCUAckkB5gXesI0AAAAASUVORK5CYII=',
+    'base64',
+  );
+  await page.getByLabel('Choose vehicle photo').setInputFiles({
+    name: 'my-actual-car.png', mimeType: 'image/png', buffer: actualCarPng,
+  });
+  await page.getByAltText('Preview of your car photograph').waitFor();
   await page.getByRole('button', { name: 'Save vehicle' }).click();
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   await page.getByLabel('Preferred date').fill(tomorrow);
@@ -337,6 +364,20 @@ async function connected(browser) {
   await page.reload();
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
+  await page.goto(appUrl + '/#dashboard/garage');
+  await page.locator('.garage-real-photo img').waitFor();
+  await page.waitForFunction(() => {
+    const image = document.querySelector('.garage-real-photo img');
+    return image instanceof HTMLImageElement &&
+      image.src.startsWith('data:image/jpeg;base64,') && image.complete && image.naturalWidth > 0 &&
+      getComputedStyle(image).objectFit === 'contain';
+  });
+  await page.reload();
+  await page.locator('.garage-real-photo img').waitFor();
+  await page.waitForFunction(() => {
+    const image = document.querySelector('.garage-card img');
+    return image instanceof HTMLImageElement && image.src.startsWith('data:image/jpeg;base64,');
+  });
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   const other = await browser.newPage();
@@ -453,6 +494,7 @@ async function connected(browser) {
   await page.getByText('Payout onboarding is not connected yet').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
+  await resetDisposableRateLimits();
   await signIn(page, 'admin@example.test');
   await page.goto(appUrl + '/#dashboard/customers');
   const customerRow = page.getByRole('row').filter({ hasText: 'Casey Customer' });
@@ -516,6 +558,9 @@ async function connected(browser) {
   await freshDraft.getByRole('button', { name: 'View progress' }).waitFor();
   await editedDraft.getByRole('button', { name: 'View progress' }).waitFor();
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).waitFor({ state: 'detached' });
+  // The professional audit is a separate high-activity browser scenario.
+  // Avoid carrying over counters from the customer and application review paths.
+  await resetDisposableRateLimits();
   await page.goto(appUrl + '/#dashboard/professionals');
   await page.getByText('Pending Workshop', { exact: true }).waitFor();
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).getByRole('button', { name: 'View profile' }).click();

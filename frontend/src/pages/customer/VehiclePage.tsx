@@ -113,9 +113,9 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
   const serviceDate = dateCareState(vehicle.nextServiceDate);
   const serviceMileage = mileageCareState(vehicle.mileage, vehicle.nextServiceMileage);
   const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ') || 'Vehicle';
-  const image = live
+  const image = vehicle.photo || (live
     ? vehicle.modelAsset?.previewUrl || ''
-    : vehicleCardImage(resolveVehicleAsset(vehicle));
+    : vehicleCardImage(resolveVehicleAsset(vehicle)));
   const shared = grantsOf(data).filter(
     (grant: any) => grant?.vehicleId === vehicle.id && grant?.status === 'active',
   );

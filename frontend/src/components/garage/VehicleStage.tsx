@@ -52,8 +52,29 @@ export function VehicleStage({
     setWebgl(webglAvailable());
   }, [vehicle?.id, asset?.id]);
   const paintColor = typeof vehicle?.paintColor === 'string' ? vehicle.paintColor : '';
+  // An owner-supplied real photograph takes precedence over all 3D previews
+  // and approximate demonstration models. Do not pretend a concept car is theirs.
+  if (vehicle?.photo) return (
+    <div className={'vehicle-stage' + (compact ? ' vehicle-stage-compact' : '')}>
+      <div className="garage-real-photo">
+        <img src={vehicle.photo} alt={`Photograph of ${[vehicle.make, vehicle.model].filter(Boolean).join(' ')}`} />
+      </div>
+      <div className="vehicle-stage-meta">
+        <p className="model-caption">Photo uploaded by vehicle owner · Actual vehicle</p>
+      </div>
+    </div>
+  );
   let view = <RoadLoader label="Loading vehicle model" />;
-  if (resolution.status === 'ambiguous') {
+  if (resolution.status === 'unavailable' && !asset?.src) {
+    // A made-up car shape must never be labelled as an actual make/model match.
+    view = (
+      <div className="garage-no-photo" role="status">
+        <strong>No photograph for this vehicle yet</strong>
+        <p>Open Vehicle Details and choose Edit to upload a photo of your actual car.</p>
+        <p className="muted">A licensed exact-model image can also be shown when one has been approved for this model.</p>
+      </div>
+    );
+  } else if (resolution.status === 'ambiguous') {
     view = (
       <div className="vehicle-choice">
         <FallbackArt />

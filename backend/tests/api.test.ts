@@ -254,8 +254,20 @@ test(
         registration: "CA123456",
         paintColorName: "Silver",
       };
-      const car = await send("post", "/api/vehicles", carInput, alice);
+      const car = await send("post", "/api/vehicles", { ...carInput, photo: profilePhoto }, alice);
       assert.equal(car.status, 201, JSON.stringify(car.body));
+      assert.equal(car.body.photo, profilePhoto, "The actual owner's photo is saved on the car.");
+      assert.equal((await send("get", "/api/vehicles", undefined, alice)).body[0].photo, profilePhoto);
+      assert.equal((await send("get", "/api/vehicles/" + car.body.id, undefined, alice)).body.photo, profilePhoto);
+      for (const badPhoto of [
+        "https://untrusted.example/image.jpg",
+        "data:image/svg+xml;base64,PHN2Zz4=",
+        "data:image/jpeg;base64,bm90LWEtanBlZw==",
+      ]) {
+        assert.equal((await send("post", "/api/vehicles", {
+          ...carInput, registration: "BADPHO", photo: badPhoto,
+        }, alice)).status, 422);
+      }
       assert.equal(
         (await send("get", "/api/vehicles/" + car.body.id, undefined, bob))
           .status,
@@ -313,6 +325,7 @@ test(
       assert.equal(paintOnly.body.nextServiceSource, "mechanic");
       assert.equal(paintOnly.body.licenceDiscExpiry, "2026-12-31");
       assert.equal(paintOnly.body.paintColorName, "White");
+      assert.equal(paintOnly.body.photo, null, "Vehicles without uploaded images remain empty.");
       const dated = await send(
         "patch",
         "/api/vehicles/" + kept.body.id,

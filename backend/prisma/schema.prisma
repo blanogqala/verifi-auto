@@ -132,6 +132,8 @@ model Vehicle {
   paintColor String @default("") @db.VarChar(7)
   mileage Int @default(0)
   bodyStyle String @default("") @db.VarChar(40)
+  // Customer-supplied, resized JPEG of this actual vehicle. Private to vehicle owner.
+  photo String? @db.Text
   licenceDiscExpiry DateTime? @db.Date
   licenceDiscSource String @default("owner") @db.VarChar(16)
   nextServiceDate DateTime? @db.Date

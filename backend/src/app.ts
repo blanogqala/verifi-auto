@@ -58,7 +58,8 @@ app.use((req, _res, next) => {
   }
   next();
 });
-app.use(express.json({ limit: "128kb" }), cookieParser());
+// Vehicle photos are resized before upload and individually validated to 210 KB.
+app.use(express.json({ limit: "256kb" }), cookieParser());
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/ready", async (_req, res) => {
   await db.$queryRaw`SELECT 1`;
