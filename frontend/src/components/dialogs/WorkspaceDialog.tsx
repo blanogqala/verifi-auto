@@ -49,6 +49,10 @@ export function WorkspaceDialog({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (e.currentTarget.querySelector('[data-vehicle-photo-working="true"]')) {
+              notify('The vehicle photo is still being prepared. Save after it finishes.');
+              return;
+            }
             const f = new FormData(e.currentTarget);
             const vehicle = {
               id: dialog.vehicle?.id,
@@ -67,6 +71,7 @@ export function WorkspaceDialog({
               bodyStyle: f.get('bodyStyle'),
               paintColor: f.get('paintColor'),
               paintColorName: f.get('paintColorName'),
+              photo: f.get('photo') || '',
             };
             try {
               const saved = commitUpdate(update, (d: any) => saveVehicle(d, vehicle), notify, '');
