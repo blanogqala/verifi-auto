@@ -52,6 +52,18 @@ export function VehicleStage({
     setWebgl(webglAvailable());
   }, [vehicle?.id, asset?.id]);
   const paintColor = typeof vehicle?.paintColor === 'string' ? vehicle.paintColor : '';
+  // An owner-supplied real photograph takes precedence over all 3D previews
+  // and approximate demonstration models. Do not pretend a concept car is theirs.
+  if (vehicle?.photo) return (
+    <div className={'vehicle-stage' + (compact ? ' vehicle-stage-compact' : '')}>
+      <div className="garage-real-photo">
+        <img src={vehicle.photo} alt={`Photograph of ${[vehicle.make, vehicle.model].filter(Boolean).join(' ')}`} />
+      </div>
+      <div className="vehicle-stage-meta">
+        <p className="model-caption">Photo uploaded by vehicle owner · Actual vehicle</p>
+      </div>
+    </div>
+  );
   let view = <RoadLoader label="Loading vehicle model" />;
   if (resolution.status === 'ambiguous') {
     view = (
