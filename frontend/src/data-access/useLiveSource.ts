@@ -172,7 +172,6 @@ export function useLiveSource(enabled: boolean, page: string) {
         disabledAt: customer.disabledAt || null,
         city: '',
         sample: false,
-        disabledAt: customer.disabledAt,
       }));
       next.adminActivity = (Array.isArray(activity) ? activity : []).map((event: any) => ({
         id: event.id,
