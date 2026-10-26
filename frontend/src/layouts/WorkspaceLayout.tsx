@@ -819,7 +819,7 @@ export function Workspace({
                             status: vehicle.modelAsset ? 'exact' : 'unavailable',
                             label: vehicle.modelAsset
                               ? 'Verified vehicle model'
-                              : 'Vehicle illustration · An exact 3D model is not available yet.',
+                              : 'No exact vehicle image on file yet.',
                             asset: vehicle.modelAsset
                               ? {
                                   ...vehicle.modelAsset,
