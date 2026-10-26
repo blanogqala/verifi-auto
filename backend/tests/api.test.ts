@@ -532,6 +532,31 @@ test(
         assert.equal(result.status, 200);
         assert.ok(!JSON.stringify(result.body).includes("passwordHash"));
       }
+      const adminProfessional = await send("get", `/api/admin/professionals/${pro.id}`, undefined, admin);
+      assert.equal(adminProfessional.status, 200);
+      assert.equal(adminProfessional.body.user.email, "mechanic@example.test");
+      assert.ok(adminProfessional.body.user.documents.some((doc: any) => doc.reviewStatus === "APPROVED"));
+      assert.equal(adminProfessional.body.bookingTotal, 0);
+      assert.equal(adminProfessional.body.bookingCounts.active, 0);
+      assert.equal(adminProfessional.body.recordedGrossRevenueCents, 0);
+      assert.equal(adminProfessional.body.user.passwordHash, undefined);
+      assert.equal((await send("delete", `/api/admin/professionals/${pro.id}`, {}, alice)).status, 403);
+      const guardedProfessional = await send("delete", `/api/admin/professionals/${pro.id}`, {}, admin);
+      assert.equal(guardedProfessional.status, 409);
+      assert.equal(guardedProfessional.body.error.code, "PROFESSIONAL_HAS_HISTORY");
+
+      const unencumbered = await db.user.create({
+        data: {
+          role: "MECHANIC", name: "Unused Garage",
+          email: "unused-garage@example.test", passwordHash: "not-a-login",
+          professional: { create: { name: "Unused Garage" } },
+        },
+        include: { professional: true },
+      });
+      const deleteUnused = await send("delete", `/api/admin/professionals/${unencumbered.professional!.id}`, {}, admin);
+      assert.equal(deleteUnused.status, 200, JSON.stringify(deleteUnused.body));
+      assert.equal(await db.user.findUnique({ where: { id: unencumbered.id } }), null);
+      assert.equal((await send("get", `/api/admin/professionals/${unencumbered.professional!.id}`, undefined, admin)).status, 404);
       const managed = await send("get", "/api/admin/professionals", undefined, admin);
       assert.equal(managed.body[0].id, pro.id);
       const bookingInput = {
@@ -557,6 +582,11 @@ test(
       const bookingId = booked.body.id;
       assert.equal(booked.body.customer.name, "Alice Customer");
       assert.equal(booked.body.customer.email, "alice@example.test");
+      const withBooking = await send("get", `/api/admin/professionals/${pro.id}`, undefined, admin);
+      assert.equal(withBooking.status, 200);
+      assert.equal(withBooking.body.bookingTotal, 1);
+      assert.equal(withBooking.body.bookingCounts.active, 1);
+      assert.equal(withBooking.body.recentBookings[0].vehicle.make, "Volkswagen");
       const mechanicBooking = await send("get", `/api/bookings/${bookingId}`, undefined, mechanic);
       assert.equal(mechanicBooking.status, 200);
       assert.equal(mechanicBooking.body.customer.email, "alice@example.test");
