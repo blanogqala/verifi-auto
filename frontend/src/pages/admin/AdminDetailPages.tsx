@@ -432,7 +432,7 @@ export function CustomerAdminDetailPage({ customer, data, route, connected }: an
     if (!live || saving || confirmEmail !== account.email) return;
     setSaving(true); setError('');
     try {
-      await api('/admin/customers/' + encodeURIComponent(id), 'DELETE');
+      await api('/admin/customers/' + encodeURIComponent(id), 'DELETE', {});
       connected?.refresh?.();
       route('customers');
     } catch (reason: any) {
