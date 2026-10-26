@@ -135,6 +135,24 @@ async function verifyLink(email) {
   }
 }
 
+// Browser journeys intentionally exercise several roles in quick succession.
+// Clear only the throwaway PGlite counters between scenarios, so normal API
+// rate limiting stays enabled and unchanged for actual users and production.
+async function resetDisposableRateLimits() {
+  const client = new pg.Client({
+    connectionString: 'postgresql://postgres:postgres@127.0.0.1:15440/postgres',
+    connectionTimeoutMillis: 8000,
+    query_timeout: 8000,
+  });
+  await client.connect();
+  try {
+    await client.query('DELETE FROM "RateLimit"');
+    record('[e2e] reset request counters in disposable database before admin journey\n');
+  } finally {
+    await client.end();
+  }
+}
+
 async function signIn(page, email) {
   await page.goto(appUrl + '/#login');
   await page.getByLabel('Email address').fill(email);
@@ -476,6 +494,7 @@ async function connected(browser) {
   await page.getByText('Payout onboarding is not connected yet').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
+  await resetDisposableRateLimits();
   await signIn(page, 'admin@example.test');
   await page.goto(appUrl + '/#dashboard/customers');
   const customerRow = page.getByRole('row').filter({ hasText: 'Casey Customer' });
@@ -539,6 +558,9 @@ async function connected(browser) {
   await freshDraft.getByRole('button', { name: 'View progress' }).waitFor();
   await editedDraft.getByRole('button', { name: 'View progress' }).waitFor();
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).waitFor({ state: 'detached' });
+  // The professional audit is a separate high-activity browser scenario.
+  // Avoid carrying over counters from the customer and application review paths.
+  await resetDisposableRateLimits();
   await page.goto(appUrl + '/#dashboard/professionals');
   await page.getByText('Pending Workshop', { exact: true }).waitFor();
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).getByRole('button', { name: 'View profile' }).click();
