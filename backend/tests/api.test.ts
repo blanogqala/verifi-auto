@@ -523,6 +523,29 @@ test(
         ).status,
         200,
       );
+      // Regression: saving a verified workshop's phone and roadside opt-in must
+      // never revert it to DRAFT or hide it from the customer directory.
+      pro = await db.professional.findUniqueOrThrow({ where: { id: pro.id } });
+      assert.equal(pro.status, "APPROVED");
+      const revised = await send("patch", "/api/professional/me", {
+        ...profile,
+        version: pro.version,
+        phone: "0712345679",
+        roadsideAvailable: true,
+      }, mechanic);
+      assert.equal(revised.status, 200, JSON.stringify(revised.body));
+      assert.equal(revised.body.status, "APPROVED");
+      assert.equal(revised.body.roadsideAvailable, true);
+      assert.equal(revised.body.phone, "0712345679");
+      const roadside = await send("get", "/api/professionals/roadside?latitude=-33.9&longitude=18.4");
+      assert.equal(roadside.status, 200, JSON.stringify(roadside.body));
+      assert.equal(roadside.body.radiusKm, 50);
+      assert.equal(roadside.body.professionals.length, 1);
+      assert.equal(roadside.body.professionals[0].id, pro.id);
+      assert.equal(roadside.body.professionals[0].distanceKm, 0);
+      assert.equal(roadside.body.professionals[0].user, undefined);
+      assert.equal((await send("post", "/api/professional/me/submit", {}, mechanic)).status, 409);
+      assert.equal((await send("get", "/api/admin/applications", undefined, admin)).body.some((row: any) => row.id === pro.id), false);
       const afterApproval = await send("get", "/api/admin/applications", undefined, admin);
       assert.ok(!afterApproval.body.some((row: any) => row.id === pro.id));
       const listing = await send("get", "/api/professionals");
@@ -534,7 +557,7 @@ test(
       assert.equal(publicProfile.status, 200);
       assert.equal(publicProfile.body.email, "mechanic@example.test");
       assert.equal(publicProfile.body.address, "Test address");
-      assert.equal(publicProfile.body.phone, "0712345678");
+      assert.equal(publicProfile.body.phone, "0712345679");
       assert.equal(publicProfile.body.website, "https://workshop.example.test");
       assert.equal(publicProfile.body.reviewCount, 0);
       assert.equal(publicProfile.body.rating, null);

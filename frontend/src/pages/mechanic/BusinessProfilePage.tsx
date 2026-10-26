@@ -5,7 +5,7 @@ import { demoAreas } from '../../data/demoAreas';
 import { TagPicker } from '../../components/ui/TagPicker';
 import { chargeConfirmation } from '../../features/jobs/pricingModel';
 
-import { ArrowRight, Wrench, Check } from 'lucide-react';
+import { ArrowRight, Wrench, Check, MapPin } from 'lucide-react';
 
 /** Presentational view. State and actions are supplied by the owning layout. */
 export function BusinessProfilePage({
@@ -22,6 +22,32 @@ export function BusinessProfilePage({
   const [email, setEmail] = useState(initialEmail);
   const emailEdited = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [locatingBase, setLocatingBase] = useState(false);
+  const [baseLocationNote, setBaseLocationNote] = useState('');
+  function useBusinessLocation() {
+    if (!navigator.geolocation) {
+      setBaseLocationNote('GPS is unavailable. You can still receive requests, but your distance cannot be verified.');
+      return;
+    }
+    setLocatingBase(true);
+    setBaseLocationNote('');
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setProfile({
+          ...profile,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setBaseLocationNote('Location ready. Save your business profile to publish it for nearby searches.');
+        setLocatingBase(false);
+      },
+      () => {
+        setBaseLocationNote('Location was not shared. Roadside customers can still see you as an unlocated provider.');
+        setLocatingBase(false);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 },
+    );
+  }
   const areas = Array.isArray(profile.serviceAreas)
     ? profile.serviceAreas : profile.city ? [profile.city] : [];
   const services = Array.isArray(profile.services) ? profile.services : [];
@@ -58,10 +84,10 @@ export function BusinessProfilePage({
               ...(d.mechanicAccount || d.merchantAccount || {}),
               email: email.trim(),
             },
-            application: { ...d.application, status: 'Draft' },
+            application: { ...d.application, status: d.application?.status === 'Approved' ? 'Approved' : 'Draft' },
           }),
           notify,
-          'Business profile saved. Changes require application review.',
+          'Business profile saved. Approved workshops stay verified.',
         );
       }}
     >
@@ -141,7 +167,7 @@ export function BusinessProfilePage({
           Business address
           <input
             value={profile.address || ''}
-            onChange={(e) => setProfile({ ...profile, address: e.target.value })}
+            onChange={(e) => setProfile({ ...profile, address: e.target.value, latitude: null, longitude: null })}
           />
         </label>
         <label>
@@ -176,6 +202,19 @@ export function BusinessProfilePage({
         <input type="checkbox" checked={profile.roadsideAvailable === true} onChange={(e) => setProfile({ ...profile, roadsideAvailable: e.target.checked })} />
         <span><strong>Accept emergency roadside requests</strong><small>Opt in only if you offer mobile breakdown assistance. Requests need your acceptance before dispatch is confirmed.</small></span>
       </label>
+      {profile.roadsideAvailable === true && (
+        <div className="roadside-workshop-location">
+          <div>
+            <strong><MapPin size={17} /> Set your roadside dispatch location</strong>
+            <p className="muted">For accurate 50–200 km matching, capture your workshop or dispatch-base location while you are physically there. This is optional but recommended.</p>
+          </div>
+          <button type="button" className="secondary" onClick={useBusinessLocation} disabled={locatingBase}>
+            <MapPin size={16} /> {locatingBase ? 'Locating…' : profile.latitude != null && profile.longitude != null ? 'Update base location' : 'Use my location'}
+          </button>
+          {profile.latitude != null && profile.longitude != null && <small className="muted">Base coordinates selected. Save your profile to apply them.</small>}
+          {baseLocationNote && <small role="status">{baseLocationNote}</small>}
+        </div>
+      )}
       {!connected && profile.type === 'Mobile mechanic' ? (
         <label>
           Service radius
@@ -192,7 +231,7 @@ export function BusinessProfilePage({
       <p className="muted">
         {chargeConfirmation}{' '}
         {connected
-          ? 'Changes to business details require a fresh review before the directory listing is shown again.'
+          ? 'Approved profiles stay verified when you update your business details. A saved dispatch location helps customers find you by distance.'
           : 'Coverage selections are labels, not geocoded street addresses.'}
       </p>
       <div className="button-row">
