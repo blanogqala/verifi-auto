@@ -522,7 +522,31 @@ async function connected(browser) {
   await page.getByRole('heading', { name: 'Pending Workshop' }).waitFor();
   await page.getByRole('heading', { name: 'Verification documents' }).waitFor();
   await page.getByRole('link', { name: 'View IDENTITY' }).waitFor();
-  await page.getByRole('heading', { name: 'Business information' }).waitFor();
+  await page.getByRole('heading', { name: 'Customer feedback and activity' }).waitFor();
+  if (await page.getByRole('heading', { name: 'Business information' }).count()) {
+    throw new Error('The professional profile banner already includes business details.');
+  }
+  const professionalCards = page.locator('.admin-professional-overview-grid > *');
+  if (await professionalCards.count() !== 2) {
+    throw new Error('Verification documents and customer feedback must be the only overview cards.');
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.waitForFunction(() => {
+    const cards = [...document.querySelectorAll('.admin-professional-overview-grid > *')];
+    if (cards.length !== 2) return false;
+    const left = cards[0].getBoundingClientRect();
+    const right = cards[1].getBoundingClientRect();
+    return Math.abs(left.top - right.top) < 3 && right.left > left.right - 3;
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => {
+    const cards = [...document.querySelectorAll('.admin-professional-overview-grid > *')];
+    if (cards.length !== 2) return false;
+    const top = cards[0].getBoundingClientRect();
+    const bottom = cards[1].getBoundingClientRect();
+    return Math.abs(top.left - bottom.left) < 3 && bottom.top >= top.bottom - 3;
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByText('Recorded gross revenue', { exact: true }).waitFor();
   await page.getByText('Active / Completed jobs', { exact: true }).waitFor();
   if (await page.getByRole('button', { name: 'View verification record' }).count()) {
