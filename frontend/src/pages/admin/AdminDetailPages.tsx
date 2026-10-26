@@ -1,6 +1,6 @@
 import { allApprovedQuotesPaid } from '../../features/jobs/bookingQuotes';
 import { useEffect, useState } from 'react';
-import { CalendarDays, CarFront, ClipboardCheck, FileText, Star, Users, Wallet, Wrench, Eye, CheckCircle2, Trash2, Ban, Mail, Phone, ShieldCheck, Clock3, ArrowUpRight } from 'lucide-react';
+import { CalendarDays, CarFront, ClipboardCheck, FileText, Star, Users, Wallet, Wrench, Eye, CheckCircle2, Trash2, Ban, Mail, Phone, ShieldCheck, Clock3, ArrowUpRight, Globe2 } from 'lucide-react';
 import {
   DetailBack,
   DetailHeader,
@@ -352,7 +352,7 @@ export function ProfessionalAdminDetailPage({ record, data, route, connected }: 
               <span><ShieldCheck size={15} aria-hidden="true" />
                 {profile.credentialId || 'Credential not recorded'}</span>
               {profile.address ? <span><CarFront size={15} aria-hidden="true" />{profile.address}</span> : null}
-              {profile.website ? <span><Wallet size={15} aria-hidden="true" />{profile.website}</span> : null}
+              {profile.website ? <span><Globe2 size={15} aria-hidden="true" />{profile.website}</span> : null}
             </div>
           </div>
         </div>
@@ -392,19 +392,7 @@ export function ProfessionalAdminDetailPage({ record, data, route, connected }: 
         or payout balance; live payouts are not connected yet.
       </p>
       <Tabs items={['Overview', 'Jobs', 'Reviews']} selected={section} select={setSection} />
-      {section === 'Overview' && <>
-        <DetailCard title="Business information" icon={<Wrench size={20} />}>
-          <DetailFields items={[
-            { label: 'Business name', value: name },
-            { label: 'Professional type', value: profile.type || 'Not recorded' },
-            { label: 'Business address', value: profile.address || 'Not recorded' },
-            { label: 'Website', value: profile.website || 'Not recorded' },
-            { label: 'Coverage areas', value: (profile.serviceAreas || []).join(' · ') || profile.city || 'Not recorded' },
-            { label: 'Services offered', value: (profile.services || []).join(' · ') || 'Not recorded' },
-          ]} />
-          <h3>About the professional</h3>
-          <p>{profile.about || profile.bio || 'No description supplied.'}</p>
-        </DetailCard>
+      {section === 'Overview' && <div className="admin-professional-overview-grid">
         <DetailCard title="Verification documents" icon={<FileText size={20} />}>
           {documents.length ? documents.map((doc: any) => (
             <div className="document-row" key={doc.id || doc.name}>
@@ -439,7 +427,7 @@ export function ProfessionalAdminDetailPage({ record, data, route, connected }: 
           <p className="muted">Jobs and customer reviews have their own sections above.
             This activity summary is for oversight, not a bank payout statement.</p>
         </DetailCard>
-      </>}
+      </div>}
       {section === 'Jobs' && <DetailCard title={`Booking history (${total})`}>
         {jobs.length ? <div className="admin-customer-booking-list">
           {jobs.map((job: any) => (
