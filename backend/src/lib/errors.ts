@@ -56,14 +56,31 @@ export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
     code = "TOO_LARGE";
     message = "The upload or request is too large.";
   }
-  if (status === 500)
+  if (status === 500) {
+    // Prisma validation failures after a schema update often mean that the local
+    // generated client was not rebuilt. Keep request values out of server logs.
+    const prismaValidation =
+      error instanceof Prisma.PrismaClientValidationError;
+    const schemaHint = prismaValidation
+      ? String(error.message).split("\n").map((line) => line.trim())
+          .find((line) => /^(Unknown field|Unknown argument|Argument .* is missing)/.test(line))
+      : undefined;
     console.error(
       JSON.stringify({
         requestId: req.requestId,
         error: error?.name || "Error",
         code: error?.code || "INTERNAL_ERROR",
+        ...(prismaValidation
+          ? {
+              hint: schemaHint || "Generated Prisma Client may not match the schema.",
+              nextStep: "Stop the API, run npm run db:generate and npm run db:migrate in backend/, then restart.",
+            }
+          : error?.code === "P2022"
+            ? { nextStep: "The database is missing a Prisma schema column. Run npm run db:migrate in backend/ and restart." }
+            : {}),
       }),
     );
+  }
   res
     .status(status)
     .json({ error: { code, message, fields, requestId: req.requestId } });
