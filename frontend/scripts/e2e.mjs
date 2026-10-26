@@ -365,23 +365,24 @@ async function connected(browser) {
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
   await page.goto(appUrl + '/#dashboard/garage');
-  await page.getByText('Interactive 3D body-style preview — not an exact manufacturer model').waitFor();
-  // Real owner photos are reference thumbnails, never the showroom background.
-  await page.locator('.showroom-owner-photo img').waitFor();
-  if (await page.locator('.garage-real-photo').count()) {
-    throw new Error('Uploaded 2D photos must not replace the 3D showroom.');
+  // Real car photos are primary until a matching, licensed 3D model is published.
+  // An unrelated concept car must never be identified as this customer's Polo.
+  await page.locator('.showroom-photograph img').waitFor();
+  await page.getByText('Photo of your actual vehicle').waitFor();
+  if (await page.locator('.vehicle-canvas-host canvas').count()) {
+    throw new Error('A generic 3D car must not silently replace the owner photo.');
   }
-  await page.waitForFunction(() =>
-    Boolean(document.querySelector('.vehicle-canvas-host canvas, .vehicle-fallback')),
-  );
-  await page.reload();
-  await page.locator('.showroom-owner-photo img').waitFor();
   await page.waitForFunction(() => {
-    const image = document.querySelector('.garage-card img');
+    const image = document.querySelector('.showroom-photograph img');
+    const card = document.querySelector('.garage-card img');
     return image instanceof HTMLImageElement &&
       image.src.startsWith('data:image/jpeg;base64,') &&
-      document.querySelector('.vehicle-stage .model-caption')?.textContent?.includes('Interactive 3D');
+      card instanceof HTMLImageElement &&
+      card.src.startsWith('data:image/jpeg;base64,');
   });
+  await page.reload();
+  await page.locator('.showroom-photograph img').waitFor();
+  await page.getByText('Photo of your actual vehicle').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   const other = await browser.newPage();
