@@ -967,7 +967,7 @@ export function Workspace({
                           }));
                           if (profileEditStamp.current === stamp) profileDirty.current = false;
                           notify(
-                            'Business profile saved. Changes require a fresh review before the directory listing is shown again.',
+                            'Business profile saved. Your existing approval remains active.',
                           );
                         } catch (reason: any) {
                           notify(reason?.message || 'The profile could not be saved.');
