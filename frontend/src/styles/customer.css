@@ -1104,3 +1104,306 @@ select {
   .showroom-owner-photo { padding: 6px; }
   .showroom-owner-photo img { width: 55px; height: 42px; }
 }
+
+/* Premium My Garage showroom: scoped to the new stage, no global dashboard overrides. */
+.showroom.showroom-premium {
+  position: relative;
+  padding: clamp(14px, 2.5vw, 28px);
+  gap: 18px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 52% 22%, color-mix(in srgb, var(--purple) 13%, transparent), transparent 60%),
+    linear-gradient(155deg, var(--card-background), color-mix(in srgb, var(--purple) 5%, var(--card-background)));
+  border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--card-border));
+  box-shadow: 0 18px 50px color-mix(in srgb, var(--purple) 10%, transparent);
+}
+.showroom.showroom-premium > * { width: 100%; min-width: 0; }
+.showroom-intro {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.showroom-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .13em;
+  color: var(--purple);
+}
+.showroom-intro h2 {
+  font-size: clamp(23px, 2.8vw, 35px);
+  line-height: 1.1;
+  margin: 8px 0 5px;
+  color: var(--ink);
+}
+.showroom-intro p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.showroom-edit-button,
+.showroom-mode-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 39px;
+  padding: 9px 14px;
+  border: 1px solid color-mix(in srgb, var(--purple) 32%, var(--line));
+  border-radius: 10px;
+  background: var(--card-surface);
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  transition: transform .15s ease, border-color .15s ease, background .15s ease;
+}
+.showroom-edit-button:hover,
+.showroom-mode-button:hover {
+  border-color: var(--purple);
+  transform: translateY(-1px);
+}
+.showroom-mode-primary {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #fff;
+}
+.vehicle-stage-premium { gap: 0; min-width: 0; }
+.vehicle-stage-premium > * { width: 100%; }
+.showroom-display {
+  position: relative;
+  width: 100%;
+  height: clamp(300px, 46vw, 540px);
+  min-height: 280px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 52% 38%, color-mix(in srgb, var(--purple) 21%, transparent), transparent 60%),
+    linear-gradient(155deg, #181322, #2d233d 48%, #12101a);
+}
+.showroom-display::before {
+  position: absolute;
+  content: '';
+  inset: 0 0 auto;
+  height: 50%;
+  opacity: .38;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.09), transparent);
+  z-index: 1;
+}
+.showroom-display::after {
+  position: absolute;
+  content: '';
+  left: 8%;
+  right: 8%;
+  bottom: 6%;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(210,185,255,.48), transparent);
+  z-index: 2;
+}
+.showroom-photograph {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+.showroom-photograph img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  padding: clamp(10px, 2vw, 24px);
+  filter: drop-shadow(0 18px 23px rgba(0,0,0,.32));
+}
+.showroom-photograph figcaption {
+  position: absolute;
+  left: 17px;
+  bottom: 18px;
+  padding: 8px 11px;
+  border: 1px solid rgba(255,255,255,.17);
+  border-radius: 999px;
+  background: rgba(18,14,27,.74);
+  color: #f2eafa;
+  backdrop-filter: blur(8px);
+  letter-spacing: .095em;
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 3;
+}
+.showroom-no-asset {
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #fff;
+  text-align: center;
+}
+.showroom-no-asset-icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgba(190,158,255,.48);
+  border-radius: 23px;
+  background: rgba(150,88,232,.13);
+}
+.showroom-no-asset strong { font-size: clamp(19px, 3vw, 29px); }
+.showroom-no-asset p { max-width: 330px; margin: 0; font-size: 13px; color: #d3c8e1; line-height: 1.6; }
+.showroom-no-asset > span:last-child { font-size: 11px; color: #b8a8cf; }
+.showroom-3d-pill {
+  position: absolute;
+  z-index: 4;
+  top: 18px;
+  left: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  letter-spacing: .08em;
+  background: rgba(35,24,50,.8);
+  border: 1px solid rgba(255,255,255,.25);
+}
+.showroom-display .vehicle-viewer,
+.showroom-display .vehicle-canvas-host { width: 100%; height: 100%; min-height: 0; max-height: none; }
+.showroom-display .vehicle-canvas-host { background: transparent; }
+.showroom-display .vehicle-canvas-host canvas { border-radius: 0; }
+.showroom-display-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-height: 52px;
+  padding: 12px 0 4px;
+}
+.showroom-display-note {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.showroom-display-note svg { flex: 0 0 auto; color: var(--purple); }
+.showroom-display-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.showroom-stage-disclaimer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.showroom-status {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 6px 0;
+}
+.showroom-status button { margin-left: 8px; }
+.showroom.showroom-premium .showroom-nav { padding: 4px 0 0; }
+.showroom-collection-heading { margin-top: 18px; }
+.garage-collection-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 21px 0 14px;
+}
+.garage-collection-heading h3 { font-size: 18px; margin: 7px 0 0; }
+.garage-collection-heading h3 span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 7px;
+  margin-left: 4px;
+  font-size: 11px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--purple) 14%, var(--surface));
+  color: var(--purple);
+}
+.garage-collection-heading p { font-size: 12px; color: var(--muted); margin: 0; }
+.garage-cards .garage-card {
+  gap: 4px;
+  padding: 10px;
+  border-radius: 14px;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.garage-card.selected { box-shadow: 0 0 0 2px var(--purple); }
+.garage-card-name { font-weight: 750; font-size: 13px; }
+.garage-card-meta { font-size: 11px; color: var(--muted); }
+.garage-card-empty {
+  display: grid;
+  place-items: center;
+  height: 84px;
+  border-radius: 10px;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--purple) 16%, var(--surface2)), var(--surface2));
+  color: var(--purple);
+}
+.showroom-camera-controls {
+  position: absolute;
+  z-index: 5;
+  bottom: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 5px;
+  border-radius: 12px;
+  background: rgba(20,15,31,.83);
+  border: 1px solid rgba(255,255,255,.2);
+  backdrop-filter: blur(10px);
+}
+.showroom-camera-controls button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+.showroom-camera-controls button:hover { background: rgba(150,88,232,.45); }
+.showroom-camera-divider { width: 1px; height: 18px; background: rgba(255,255,255,.22); margin: 0 4px; }
+.showroom-camera-controls button:focus-visible,
+.showroom-mode-button:focus-visible,
+.showroom-edit-button:focus-visible { outline: 2px solid var(--purple); outline-offset: 3px; }
+@media (max-width: 650px) {
+  .showroom.showroom-premium { padding: 12px; gap: 12px; }
+  .showroom-intro { align-items: flex-start; }
+  .showroom-intro h2 { font-size: 24px; }
+  .showroom-display { height: clamp(250px, 68vw, 350px); min-height: 250px; border-radius: 12px; }
+  .showroom-photograph img { padding: 8px; }
+  .showroom-photograph figcaption { bottom: 12px; left: 10px; }
+  .showroom-display-footer { align-items: flex-start; }
+  .showroom-camera-controls { bottom: 11px; right: 8px; gap: 0; }
+  .showroom-camera-controls button { width: 31px; height: 34px; }
+  .showroom-intro p { line-height: 1.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .showroom-edit-button, .showroom-mode-button, .garage-cards .garage-card { transition: none; }
+}

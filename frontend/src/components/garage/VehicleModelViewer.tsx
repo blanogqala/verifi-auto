@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -36,31 +37,21 @@ function sceneTheme() {
 function buildGarage(theme: string) {
   const light = theme === 'light';
   const group = new THREE.Group();
+  // The premium studio has no fake walls, props, or toy-scale environment.
+  // A neutral matte ground catches contact shadows while CSS provides the backdrop.
   const floor = new THREE.Mesh(
-    new THREE.BoxGeometry(16, 0.08, 10),
-    new THREE.MeshStandardMaterial({ color: light ? '#d7d1e2' : '#3a3448', roughness: 0.92, metalness: 0.04 }),
+    new THREE.PlaneGeometry(24, 24),
+    new THREE.MeshStandardMaterial({
+      color: light ? '#e8e4f1' : '#262332',
+      roughness: 0.7,
+      metalness: 0.04,
+    }),
   );
-  floor.position.y = -0.04;
-  floor.receiveShadow = true;
   floor.name = 'garage-floor';
-  const wall = new THREE.Mesh(
-    new THREE.BoxGeometry(16, 3.6, 0.08),
-    new THREE.MeshStandardMaterial({ color: light ? '#ebe6f2' : '#8d849f', roughness: 1, metalness: 0 }),
-  );
-  wall.position.set(0, 1.7, -3.4);
-  wall.name = 'garage-wall';
-  const rubber = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.92 });
-  const tyreA = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.09, 12, 20), rubber);
-  tyreA.position.set(-4.4, 0.36, 2.15);
-  tyreA.rotation.x = Math.PI / 2;
-  const tyreB = tyreA.clone();
-  tyreB.position.y = 0.58;
-  const tool = new THREE.Mesh(
-    new THREE.BoxGeometry(0.55, 0.24, 0.32),
-    new THREE.MeshStandardMaterial({ color: '#7a5842', roughness: 0.85 }),
-  );
-  tool.position.set(4.3, 0.14, 2.05);
-  group.add(floor, wall, tyreA, tyreB, tool);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -0.012;
+  floor.receiveShadow = true;
+  group.add(floor);
   return group;
 }
 
@@ -74,9 +65,7 @@ function applyGarageTheme(
 ) {
   const light = theme === 'light';
   const floor = garage.getObjectByName('garage-floor') as THREE.Mesh | undefined;
-  const wall = garage.getObjectByName('garage-wall') as THREE.Mesh | undefined;
-  (floor?.material as THREE.MeshStandardMaterial | undefined)?.color.set(light ? '#d7d1e2' : '#3a3448');
-  (wall?.material as THREE.MeshStandardMaterial | undefined)?.color.set(light ? '#ebe6f2' : '#8d849f');
+  (floor?.material as THREE.MeshStandardMaterial | undefined)?.color.set(light ? '#e8e4f1' : '#262332');
   hemi.color.set(light ? '#f7f4fb' : '#f4eefc');
   hemi.groundColor.set(light ? '#c4b8a4' : '#6e657c');
   hemi.intensity = light ? 1.05 : 1.35;
@@ -153,6 +142,8 @@ export default function VehicleModelViewer({
   const hostRef = useRef<HTMLDivElement>(null);
   const paintRef = useRef<(color: string) => void>(() => {});
   const yawRef = useRef<(delta: number) => void>(() => {});
+  const zoomRef = useRef<(delta: number) => void>(() => {});
+  const resetRef = useRef<() => void>(() => {});
   const [ready, setReady] = useState(false);
   const reported = useRef(false);
 
@@ -220,6 +211,20 @@ export default function VehicleModelViewer({
     };
     yawRef.current = (delta) => {
       pivot.rotation.y += delta;
+      render();
+    };
+    let cameraScale = 1;
+    zoomRef.current = (delta) => {
+      cameraScale = Math.min(1.65, Math.max(0.72, cameraScale + delta));
+      camera.position.copy(lookTarget).addScaledVector(baseOffset, cameraScale);
+      camera.lookAt(lookTarget);
+      render();
+    };
+    resetRef.current = () => {
+      pivot.rotation.y = homeYaw;
+      cameraScale = 1;
+      camera.position.copy(lookTarget).add(baseOffset);
+      camera.lookAt(lookTarget);
       render();
     };
     const gate = createLoadGeneration();
@@ -340,6 +345,11 @@ export default function VehicleModelViewer({
       if (event.pointerId !== pointerId) return;
       endDrag(event);
     };
+    const wheel = (event: WheelEvent) => {
+      if (event.cancelable) event.preventDefault();
+      zoomRef.current(Math.sign(event.deltaY) * 0.08);
+    };
+    canvas.addEventListener('wheel', wheel, { passive: false });
     canvas.addEventListener('pointerdown', down);
     canvas.addEventListener('pointermove', move);
     canvas.addEventListener('pointerup', up);
@@ -356,6 +366,7 @@ export default function VehicleModelViewer({
       themeObserver.disconnect();
       document.removeEventListener('visibilitychange', onHide);
       canvas.removeEventListener('webglcontextlost', lost);
+      canvas.removeEventListener('wheel', wheel);
       canvas.removeEventListener('pointerdown', down);
       canvas.removeEventListener('pointermove', move);
       canvas.removeEventListener('pointerup', up);
@@ -391,6 +402,14 @@ export default function VehicleModelViewer({
         }}
       >
         {!ready ? <RoadLoader label="Loading vehicle model" /> : null}
+      </div>
+      <div className="showroom-camera-controls" role="group" aria-label="3D vehicle controls">
+        <button type="button" aria-label="Rotate left" title="Rotate left" onClick={() => yawRef.current(-0.32)}><ChevronLeft size={18} /></button>
+        <button type="button" aria-label="Rotate right" title="Rotate right" onClick={() => yawRef.current(0.32)}><ChevronRight size={18} /></button>
+        <span className="showroom-camera-divider" aria-hidden="true" />
+        <button type="button" aria-label="Zoom in" title="Zoom in" onClick={() => zoomRef.current(-0.13)}><ZoomIn size={18} /></button>
+        <button type="button" aria-label="Zoom out" title="Zoom out" onClick={() => zoomRef.current(0.13)}><ZoomOut size={18} /></button>
+        <button type="button" aria-label="Reset 3D view" title="Reset 3D view" onClick={() => resetRef.current()}><RotateCcw size={18} /></button>
       </div>
     </div>
   );

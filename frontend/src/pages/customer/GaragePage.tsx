@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Camera, CarFront, Settings2, Sparkles } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { VehicleStage } from '../../components/garage/VehicleStage';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
@@ -10,17 +10,6 @@ import {
 } from '../../features/garage/garageSelection';
 import { activeVehicles, unresolvedHistory } from '../../features/demo/links';
 import { followDetail } from '../../features/navigation/returnPath';
-
-function VehicleSilhouette() {
-  return (
-    <svg className="garage-card-silhouette" viewBox="0 0 200 96" aria-hidden="true">
-      <path d="M34 58h132c6 0 10 4 10 8v2H24v-2c0-4 4-8 10-8z" />
-      <path d="M52 58 70 38c2-3 6-6 10-6h48c5 0 9 2 12 6l16 20" />
-      <circle cx="68" cy="70" r="8" />
-      <circle cx="138" cy="70" r="8" />
-    </svg>
-  );
-}
 
 function storedGarageId() {
   try {
@@ -61,7 +50,21 @@ export function GaragePage({ data, go, setDialog, connected }: any) {
         </Card>
       ) : (
         <>
-          <section className="showroom" aria-label="Garage showroom">
+          <section className="showroom showroom-premium" aria-label="Garage showroom">
+            <header className="showroom-intro">
+              <div className="showroom-intro-copy">
+                <div className="showroom-eyebrow"><Sparkles size={14} aria-hidden="true" /> YOUR PERSONAL SHOWROOM</div>
+                <h2>{[selected.make, selected.model].filter(Boolean).join(' ') || 'Your vehicle'}</h2>
+                <p>
+                  {[selected.year, selected.variant || selected.bodyStyle, selected.paintColorName]
+                    .filter(Boolean).join(' · ') || 'Your vehicle, your journey'}
+                </p>
+              </div>
+              <button className="showroom-edit-button" type="button"
+                onClick={() => setDialog({ kind: 'vehicle', vehicle: selected })}>
+                <Settings2 size={16} aria-hidden="true" /> Edit vehicle
+              </button>
+            </header>
             {connected ? connected.renderStage(selected) : <VehicleStage vehicle={selected} />}
             <div className="showroom-nav">
               <button
@@ -97,6 +100,13 @@ export function GaragePage({ data, go, setDialog, connected }: any) {
               </button>
             </div>
           </section>
+          <div className="garage-collection-heading">
+            <div>
+              <span className="showroom-eyebrow"><CarFront size={14} aria-hidden="true" /> THE COLLECTION</span>
+              <h3>Your vehicles <span>{vehicles.length}</span></h3>
+            </div>
+            <p>Select a vehicle to open its showroom.</p>
+          </div>
           <div className="garage-cards" aria-label="Your vehicles">
             {vehicles.map((vehicle) => {
               const selectedCard = vehicle.id === selected.id;
@@ -113,8 +123,13 @@ export function GaragePage({ data, go, setDialog, connected }: any) {
                   aria-label={vehicleCardLabel(vehicle, vehicles)}
                   onClick={() => setSelectedId(vehicle.id)}
                 >
-                  {image ? <img src={image} alt="" /> : <VehicleSilhouette />}
-                  <span>{name}</span>
+                  {image ? (
+                    <img src={image} alt="" loading="lazy" decoding="async" />
+                  ) : (
+                    <span className="garage-card-empty" aria-hidden="true"><Camera size={26} strokeWidth={1.4} /></span>
+                  )}
+                  <span className="garage-card-name">{name}</span>
+                  <span className="garage-card-meta">{[vehicle.year, vehicle.registration].filter(Boolean).join(' · ') || 'Vehicle in your garage'}</span>
                 </button>
               );
             })}
