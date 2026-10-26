@@ -70,10 +70,10 @@
 .roadside-job-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
 .roadside-job-tabs button { padding:10px 15px; border:1px solid var(--line); border-radius:10px; background:var(--surface2); font-size:13px; font-weight:700; }
 .roadside-job-tabs button.selected { border-color:var(--purple); background:var(--tint); color:var(--soft); }
-.roadside-availability-toggle { display:flex!important; align-items:flex-start; gap:12px!important; border:1px solid var(--line); border-radius:13px; padding:15px; background:var(--surface2); }
-.roadside-availability-toggle input { flex:0 0 auto; width:20px!important; height:20px; margin-top:2px; accent-color:var(--purple); }
+.roadside-availability-toggle { display:flex!important; align-items:flex-start; gap:12px!important; border:2px solid #a82743; border-radius:13px; padding:15px; background:#f19fab; }
+.roadside-availability-toggle input { flex:0 0 auto; width:20px!important; height:20px; margin-top:10px; accent-color:var(--purple); }
 .roadside-availability-toggle span { display:grid; gap:5px; }
-.roadside-availability-toggle small { font-weight:450; color:var(--muted); font-size:12px; }
+.roadside-availability-toggle small { font-weight:550; color:black; font-size:12px; }
 .roadside-detail-banner { display:grid; gap:5px; border:1px solid color-mix(in srgb,#d94a58 65%,var(--line)); background:color-mix(in srgb,#b83247 12%,var(--surface)); padding:13px 17px; border-radius:13px; margin:10px 0 16px; }
 .roadside-detail-banner strong { display:flex; gap:8px; align-items:center; color:#eb6477; }
 .roadside-detail-banner span { font-size:13px; overflow-wrap:anywhere; }
