@@ -69,7 +69,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
         }
         aside={<Status value={job.status} />}
       />
-      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> YOUR ROADSIDE ASSISTANCE REQUEST</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span><span>{job.status === 'Requested' ? 'Waiting for the professional to respond. This is not yet a confirmed dispatch.' : 'Use Messages to coordinate with the professional.'}</span></div>}
+      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> YOUR ROADSIDE ASSISTANCE REQUEST</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span>{job.roadsideLatitude != null && job.roadsideLongitude != null && <a className="roadside-directions" target="_blank" rel="noopener noreferrer" href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(job.roadsideLatitude + ',' + job.roadsideLongitude)}>Open location in Maps</a>}<span>{job.status === 'Requested' ? 'Waiting for the professional to respond. This is not yet a confirmed dispatch.' : 'Use Messages to coordinate with the professional.'}</span></div>}
       <DetailCard title="Progress">
         <BookingProgress job={job} />
       </DetailCard>
