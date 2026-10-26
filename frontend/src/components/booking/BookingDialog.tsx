@@ -1,6 +1,6 @@
 import { AppointmentFields } from './AppointmentFields';
 import { DialogShell } from '../dialogs/DialogShell';
-import { PaintColourField } from '../garage/PaintColourField';
+import { VehicleFields } from '../garage/VehicleFields';
 import { useState } from 'react';
 import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
 import { activeVehicles, vehicleOptionLabel } from '../../features/demo/links';
@@ -125,6 +125,10 @@ export function BookingDialog({
         <form
           onSubmit={(event) => {
             event.preventDefault();
+            if (event.currentTarget.querySelector('[data-vehicle-photo-working="true"]')) {
+              setError('The photo is still being prepared. Save once it finishes.');
+              return;
+            }
             const form = new FormData(event.currentTarget);
             if (live) {
               void api('/vehicles', 'POST', {
@@ -137,6 +141,11 @@ export function BookingDialog({
                 variant: String(form.get('variant') || ''),
                 paintColor: String(form.get('paintColor') || ''),
                 paintColorName: String(form.get('paintColorName') || ''),
+                photo: String(form.get('photo') || ''),
+                licenceDiscExpiry: String(form.get('licenceDiscExpiry') || '') || null,
+                nextServiceDate: String(form.get('nextServiceDate') || '') || null,
+                nextServiceMileage: form.get('nextServiceMileage')
+                  ? Number(form.get('nextServiceMileage')) : null,
               })
                 .then((created: any) => {
                   setAdded((rows) => [...rows, created]);
@@ -162,6 +171,10 @@ export function BookingDialog({
                   variant: form.get('variant'),
                   paintColor: form.get('paintColor'),
                   paintColorName: form.get('paintColorName'),
+                  photo: form.get('photo'),
+                  licenceDiscExpiry: form.get('licenceDiscExpiry'),
+                  nextServiceDate: form.get('nextServiceDate'),
+                  nextServiceMileage: form.get('nextServiceMileage'),
                   licenceDiscSource: 'owner',
                   nextServiceSource: 'owner',
                 });
@@ -181,70 +194,10 @@ export function BookingDialog({
         >
           <h2>Add vehicle</h2>
           <p className="muted">
-            Enter the vehicle for this appointment. Make, model, year, and registration are
-            required.
+            Make, model name, model year, and registration are required.
+            You can also add a photo of your actual car.
           </p>
-          <div className="form-row">
-            <label>
-              Make
-              <input name="make" required autoComplete="off" />
-            </label>
-            <label>
-              Model
-              <input name="model" required autoComplete="off" />
-            </label>
-          </div>
-          <div className="form-row">
-            <label>
-              Year
-              <input
-                name="year"
-                type="number"
-                inputMode="numeric"
-                autoComplete="off"
-                min="1900"
-                max="2027"
-                required
-                defaultValue={2020}
-              />
-            </label>
-            <label>
-              Mileage (km)
-              <input
-                name="mileage"
-                type="number"
-                inputMode="numeric"
-                autoComplete="off"
-                min="0"
-                required
-                defaultValue={0}
-              />
-            </label>
-          </div>
-          <label>
-            Registration
-            <input name="registration" required autoComplete="off" defaultValue={modal.sample === false ? '' : 'DEMO 002'} />
-          </label>
-          <div className="form-row">
-            <label>
-              Body style
-              <select name="bodyStyle" defaultValue="">
-                <option value="">Not specified</option>
-                <option value="hatchback">hatchback</option>
-                <option value="sedan">sedan</option>
-                <option value="estate">estate</option>
-                <option value="coupe">coupe</option>
-                <option value="suv">suv</option>
-                <option value="van">van</option>
-              </select>
-            </label>
-            <label>
-              Variant
-              <input name="variant" />
-            </label>
-          </div>
-          <PaintColourField />
-          <p className="muted">Paint colour and body style are saved with the vehicle.</p>
+          <VehicleFields vehicle={live ? undefined : { registration: modal.sample === false ? '' : 'DEMO 002' }} />
           {error ? (
             <p className="form-error" role="alert">
               {error}
