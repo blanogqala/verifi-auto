@@ -524,9 +524,13 @@ async function connected(browser) {
   const customerRow = page.getByRole('row').filter({ hasText: 'Casey Customer' });
   await customerRow.getByRole('button', { name: /View details/ }).click();
   await page.getByRole('heading', { name: 'Casey Customer' }).waitFor();
-  await page.getByText('Customer vehicles (1)').waitFor();
+  // The same customer now has both the booked Toyota and the photo-free Polo Vivo.
+  // Keep the admin count aligned with the vehicle creation journey rather than
+  // masking the new vehicle or altering production code.
+  await page.getByText('Customer vehicles (2)').waitFor();
   await page.getByText('Customer booking history (1)').waitFor();
   await page.getByText('CA123456').first().waitFor();
+  await page.getByText('CVR2021').first().waitFor();
   await page.getByText('Brake noise from the front wheels').waitFor();
   if (await page.locator('.admin-detail-tabs').count()) {
     throw new Error('Customer admin detail must have no Overview/Bookings tabs.');
