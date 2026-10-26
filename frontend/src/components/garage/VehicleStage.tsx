@@ -65,7 +65,16 @@ export function VehicleStage({
     </div>
   );
   let view = <RoadLoader label="Loading vehicle model" />;
-  if (resolution.status === 'ambiguous') {
+  if (resolution.status === 'unavailable' && !asset?.src) {
+    // A made-up car shape must never be labelled as an actual make/model match.
+    view = (
+      <div className="garage-no-photo" role="status">
+        <strong>No photograph for this vehicle yet</strong>
+        <p>Open Vehicle Details and choose Edit to upload a photo of your actual car.</p>
+        <p className="muted">A licensed exact-model image can also be shown when one has been approved for this model.</p>
+      </div>
+    );
+  } else if (resolution.status === 'ambiguous') {
     view = (
       <div className="vehicle-choice">
         <FallbackArt />
