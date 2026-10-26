@@ -7,6 +7,7 @@ import { PaymentsPage } from '../src/pages/customer/PaymentsPage';
 import { MechanicPaymentsPage } from '../src/pages/mechanic/MechanicPaymentsPage';
 import { FinancePage } from '../src/pages/admin/FinancePage';
 import { VehicleFields } from '../src/components/garage/VehicleFields';
+import { VehicleStage } from '../src/components/garage/VehicleStage';
 import { bookingQuotations, newQuotation } from '../src/features/jobs/bookingQuotes';
 import { BookingQuotations } from '../src/components/jobs/BookingQuotations';
 import { QuoteSummary } from '../src/components/jobs/QuoteSummary';
@@ -1543,6 +1544,14 @@ const notVivoGti = resolveVehicleAsset({
   make: 'Volkswagen', model: 'Polo', year: '2021',
   bodyStyle: 'hatchback', variant: 'GTI',
 });
+const autoShowroom = renderToString(
+  <VehicleStage vehicle={{ id: 'auto-polo', make: 'Volkswagen', model: 'Polo', year: '2021',
+    bodyStyle: 'hatchback', variant: '1.6' }} />,
+);
+assert.ok(autoShowroom.includes('showroom-external-3d'));
+assert.ok(autoShowroom.includes('sketchfab.com/models/d0463d789e7c46039e979511ec8f5e92'));
+assert.ok(autoShowroom.includes('generation-level reference') ||
+  autoShowroom.includes('not your exact trim'));
 assert.equal(vivo.status, 'approximate');
 assert.equal(inferredVivo.status, 'approximate');
 assert.equal(vivo.asset?.id, 'sketchfab-polo-mk5-reference');
