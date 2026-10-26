@@ -1,6 +1,9 @@
 name: Frontend integrity
 on:
+  # Feature branches are validated by their PR. Avoid two concurrent browser
+  # suites for each commit (push + pull_request) against separate disposable APIs.
   push:
+    branches: [main]
     paths: ['frontend/**', '.github/workflows/frontend.yml']
   pull_request:
     paths: ['frontend/**', '.github/workflows/frontend.yml']
