@@ -559,10 +559,10 @@ async function connected(browser) {
   await page.goto(appUrl + '/#dashboard/applications');
   // All registered mechanics must be visible, including drafts not yet ready for approval.
   const freshDraft = page.getByRole('row').filter({ hasText: 'Incomplete Workshop' });
-  const editedDraft = page.getByRole('row').filter({ hasText: 'Updated Workshop' });
+  const editedApproved = page.getByRole('row').filter({ hasText: 'Updated Workshop' });
   await freshDraft.getByRole('button', { name: 'View progress' }).waitFor();
-  // Editing an approved business intentionally resets its application to DRAFT.
-  await editedDraft.getByRole('button', { name: 'View progress' }).waitFor();
+  // Editing an approved business must NOT send it back to the applications queue.
+  if (await editedApproved.count()) throw new Error('An approved workshop was sent back for review after a profile edit.');
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' })
     .getByRole('button', { name: 'View application' }).waitFor();
   await page.getByRole('button', { name: 'View application' }).click();
@@ -584,12 +584,13 @@ async function connected(browser) {
   await page.goto(appUrl + '/#dashboard/applications');
   // Approval moves only that application to Professionals; the unsubmitted draft remains.
   await freshDraft.getByRole('button', { name: 'View progress' }).waitFor();
-  await editedDraft.getByRole('button', { name: 'View progress' }).waitFor();
+  if (await editedApproved.count()) throw new Error('The previously approved workshop is no longer approved.');
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).waitFor({ state: 'detached' });
   // The professional audit is a separate high-activity browser scenario.
   // Avoid carrying over counters from the customer and application review paths.
   await resetDisposableRateLimits();
   await page.goto(appUrl + '/#dashboard/professionals');
+  await page.getByText('Updated Workshop', { exact: true }).waitFor();
   await page.getByText('Pending Workshop', { exact: true }).waitFor();
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).getByRole('button', { name: 'View profile' }).click();
   await page.getByRole('heading', { name: 'Pending Workshop' }).waitFor();
