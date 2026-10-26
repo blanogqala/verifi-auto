@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Siren, MapPin } from 'lucide-react';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { Card } from '../../components/ui/Card';
@@ -45,7 +46,7 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
     );
   }
   const fits =
-    section === 'rejected' ? isRejectedRequest(job) : section === 'cancelled' ? isCancelledRequest(job) : isPendingRequest(job);
+    section === 'rejected' ? isRejectedRequest(job) : section === 'cancelled' ? isCancelledRequest(job) : section === 'emergency' ? isPendingRequest(job) && job.kind === 'EMERGENCY' : isPendingRequest(job) && job.kind !== 'EMERGENCY';
   if (!fits) {
     const next = isAcceptedJob(job)
       ? `jobs/${encodeURIComponent(job.id)}`
@@ -53,7 +54,7 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
         ? `appointments/rejected/${encodeURIComponent(job.id)}`
         : isCancelledRequest(job)
           ? `appointments/cancelled/${encodeURIComponent(job.id)}`
-          : `appointments/pending/${encodeURIComponent(job.id)}`;
+          : `appointments/${job.kind === 'EMERGENCY' ? 'emergency' : 'pending'}/${encodeURIComponent(job.id)}`;
     return (
       <div className="detail-page">
         <DetailBack label="Back to appointments" onClick={() => route(back)} />
@@ -92,7 +93,7 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
   return (
     <div className="detail-page appointment-detail">
       <DetailBack
-        label={section === 'rejected' ? 'Back to Rejected' : section === 'cancelled' ? 'Back to Cancelled' : 'Back to Pending'}
+        label={section === 'emergency' ? 'Back to emergencies' : section === 'rejected' ? 'Back to Rejected' : section === 'cancelled' ? 'Back to Cancelled' : 'Back to Pending'}
         onClick={() => route(back)}
       />
       <DetailHeader
@@ -101,6 +102,7 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
         summary={<span>{customer}</span>}
         aside={<Status value={job.status} />}
       />
+      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> URGENT ROADSIDE ASSISTANCE</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span><span>Confirm location, equipment and your availability with the customer in Messages before accepting.</span></div>}
       <DetailTabs
         id="mechanic-appointment"
         label="Appointment"
@@ -160,7 +162,7 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
                       </button>
                     </div>
                   )}
-                  <p className="muted">Accepting does not approve a repair quote.</p>
+                  <p className="muted">Accepting does not approve a repair quote. Do not promise an ETA before confirming your availability.</p>
                   {error ? (
                     <p className="form-error" role="alert">
                       {error}
