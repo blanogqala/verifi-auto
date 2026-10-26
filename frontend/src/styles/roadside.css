@@ -54,6 +54,13 @@
 .roadside-overview-action small { color:var(--muted); font-size:12px; }
 .roadside-overview-button,.roadside-directory-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 14px; border-radius:10px; background:#b83247; color:#fff; font-size:13px; font-weight:800; white-space:nowrap; }
 .roadside-directory-button { margin-top:14px; }
+.directory-heading-with-action { display:flex; align-items:center; justify-content:space-between; gap:18px 24px; }
+.directory-heading-with-action .directory-heading-copy { min-width:0; }
+.directory-heading-with-action .roadside-directory-button { flex-shrink:0; margin-top:0; min-height:44px; }
+@media(max-width:700px) {
+  .directory-heading-with-action { flex-direction:column; align-items:stretch; }
+  .directory-heading-with-action .roadside-directory-button { width:100%; white-space:normal; }
+}
 .roadside-mechanic-alert { width:100%; display:flex; align-items:center; gap:13px; padding:15px 18px; margin-bottom:18px; border:1px solid rgba(210,67,86,.8); background:color-mix(in srgb,#a82743 24%,var(--surface)); color:var(--ink); text-align:left; border-radius:14px; }
 .roadside-mechanic-alert > svg:first-child { color:#ec6378; }
 .roadside-mechanic-alert > svg:last-child { margin-left:auto; }
