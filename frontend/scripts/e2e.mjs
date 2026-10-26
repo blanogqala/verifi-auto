@@ -365,18 +365,22 @@ async function connected(browser) {
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
   await page.goto(appUrl + '/#dashboard/garage');
-  await page.locator('.garage-real-photo img').waitFor();
-  await page.waitForFunction(() => {
-    const image = document.querySelector('.garage-real-photo img');
-    return image instanceof HTMLImageElement &&
-      image.src.startsWith('data:image/jpeg;base64,') && image.complete && image.naturalWidth > 0 &&
-      getComputedStyle(image).objectFit === 'contain';
-  });
+  await page.getByText('Interactive 3D body-style preview — not an exact manufacturer model').waitFor();
+  // Real owner photos are reference thumbnails, never the showroom background.
+  await page.locator('.showroom-owner-photo img').waitFor();
+  if (await page.locator('.garage-real-photo').count()) {
+    throw new Error('Uploaded 2D photos must not replace the 3D showroom.');
+  }
+  await page.waitForFunction(() =>
+    Boolean(document.querySelector('.vehicle-canvas-host canvas, .vehicle-fallback')),
+  );
   await page.reload();
-  await page.locator('.garage-real-photo img').waitFor();
+  await page.locator('.showroom-owner-photo img').waitFor();
   await page.waitForFunction(() => {
     const image = document.querySelector('.garage-card img');
-    return image instanceof HTMLImageElement && image.src.startsWith('data:image/jpeg;base64,');
+    return image instanceof HTMLImageElement &&
+      image.src.startsWith('data:image/jpeg;base64,') &&
+      document.querySelector('.vehicle-stage .model-caption')?.textContent?.includes('Interactive 3D');
   });
   await page.getByRole('button', { name: 'Sign out' }).click();
 
