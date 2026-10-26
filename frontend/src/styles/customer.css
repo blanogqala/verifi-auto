@@ -1048,3 +1048,19 @@ select {
 @media (max-width: 750px) {
   .garage-real-photo { height: clamp(220px, 40vh, 380px); }
 }
+
+
+.garage-no-photo {
+  width: min(100%, 960px);
+  min-height: clamp(220px, 44vh, 440px);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 28px;
+  border-radius: 14px;
+  text-align: center;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--purple) 13%, var(--surface2)), var(--surface2));
+}
+.garage-no-photo strong { font-size: clamp(16px, 2.4vw, 23px); }
+.garage-no-photo p { margin: 0; max-width: 450px; font-size: 13px; line-height: 1.6; }
