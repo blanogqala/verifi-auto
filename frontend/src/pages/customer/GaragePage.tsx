@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Camera, CarFront, Settings2, Sparkles } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { VehicleStage } from '../../components/garage/VehicleStage';
@@ -21,7 +21,16 @@ function storedGarageId() {
 
 export function GaragePage({ data, go, setDialog, connected }: any) {
   const vehicles = activeVehicles(data.vehicles || []);
+  const priorVehicleIds = useRef(new Set<string>(vehicles.map(vehicle => vehicle.id)));
   const [selectedId, setSelectedId] = useState(storedGarageId() || vehicles[0]?.id || '');
+  const vehicleIdKey = vehicles.map(vehicle => vehicle.id).join('|');
+  useEffect(() => {
+    // When a customer adds a vehicle from My Garage, show that vehicle's
+    // automatically matched 3D asset, not the previously selected vehicle.
+    const latest = vehicles.find(vehicle => !priorVehicleIds.current.has(vehicle.id));
+    if (latest) setSelectedId(latest.id);
+    priorVehicleIds.current = new Set(vehicles.map(vehicle => vehicle.id));
+  }, [vehicleIdKey]);
   const resolvedId = vehicles.some((vehicle) => vehicle.id === selectedId)
     ? selectedId
     : vehicles[0]?.id || '';

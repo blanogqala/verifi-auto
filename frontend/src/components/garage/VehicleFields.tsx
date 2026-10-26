@@ -14,11 +14,27 @@ export function VehicleFields({ vehicle }: { vehicle?: any }) {
       <div className="form-row">
         <label>
           Make
-          <input name="make" required autoComplete="off" defaultValue={vehicle?.make} />
+          <input name="make" required autoComplete="off" list="verifi-vehicle-makes" placeholder="e.g. Volkswagen" defaultValue={vehicle?.make} />
+          <datalist id="verifi-vehicle-makes">
+            <option value="Volkswagen" />
+            <option value="Toyota" />
+            <option value="Ford" />
+            <option value="Hyundai" />
+            <option value="BMW" />
+            <option value="Mercedes-Benz" />
+          </datalist>
         </label>
         <label>
           Model (vehicle name)
-          <input name="model" required autoComplete="off" placeholder="e.g. Polo, Corolla, Hilux" defaultValue={vehicle?.model} />
+          <input name="model" required autoComplete="off" list="verifi-vehicle-models"
+            placeholder="e.g. Polo Vivo, Polo, Corolla, Hilux" defaultValue={vehicle?.model} />
+          <datalist id="verifi-vehicle-models">
+            <option value="Polo Vivo" />
+            <option value="Polo" />
+            <option value="Golf" />
+            <option value="Corolla" />
+            <option value="Hilux" />
+          </datalist>
         </label>
       </div>
       <div className="form-row">
@@ -35,7 +51,7 @@ export function VehicleFields({ vehicle }: { vehicle?: any }) {
         </label>
         <label>
           Variant
-          <input name="variant" defaultValue={vehicle?.variant || ''} />
+          <input name="variant" placeholder="e.g. 1.6 Comfortline, GTI" defaultValue={vehicle?.variant || ''} />
         </label>
       </div>
       <PaintColourField
@@ -73,14 +89,15 @@ export function VehicleFields({ vehicle }: { vehicle?: any }) {
         </label>
       </div>
       <p className="muted garage-field-hint">
-        Model is the vehicle name (for example Polo); model year is the year of that version.
-        Mileage records kilometres travelled, not vehicle age.
+        Enter the specific make, model, year and variant to find a matching 3D vehicle.
+        For example, Polo and Polo Vivo are different models. A photo is not required
+        to search our 3D catalogue. Mileage is kilometres travelled, not vehicle age.
       </p>
       <section className="garage-photo-picker" aria-label="Photo of your vehicle">
         <div className="garage-photo-picker-header">
           <div>
-            <strong>Your vehicle's photograph</strong>
-            <p className="muted">Optional · Upload a real picture of your car. It is saved privately with this vehicle.</p>
+            <strong>Optional vehicle reference photograph</strong>
+            <p className="muted">A photograph is not needed for 3D matching. Only upload images you have permission to use; the image is not a 3D model.</p>
           </div>
           {photo && <button type="button" className="secondary" onClick={() => {
             setPhoto('');
@@ -116,7 +133,7 @@ export function VehicleFields({ vehicle }: { vehicle?: any }) {
         {photoError && <p className="form-error" role="alert">{photoError}</p>}
         {photo && <img className="garage-photo-preview" src={photo} alt="Preview of your car photograph" />}
         {!photo && <p className="muted garage-field-hint">
-          No actual vehicle photo yet. We only show a verified matching reference image when one is available.
+          No photo needed. The showroom automatically selects a published 3D asset when your vehicle details match.
         </p>}
       </section>
       <label>

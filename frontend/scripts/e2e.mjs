@@ -365,10 +365,10 @@ async function connected(browser) {
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
   await page.goto(appUrl + '/#dashboard/garage');
-  // Real car photos are primary until a matching, licensed 3D model is published.
+  // Photos remain usable where no matching, licensed 3D model is available.
   // An unrelated concept car must never be identified as this customer's Polo.
   await page.locator('.showroom-photograph img').waitFor();
-  await page.getByText('Photo of your actual vehicle').waitFor();
+  await page.getByText('Uploaded photo (not verified as your actual vehicle)').waitFor();
   if (await page.locator('.vehicle-canvas-host canvas').count()) {
     throw new Error('A generic 3D car must not silently replace the owner photo.');
   }
@@ -382,7 +382,26 @@ async function connected(browser) {
   });
   await page.reload();
   await page.locator('.showroom-photograph img').waitFor();
-  await page.getByText('Photo of your actual vehicle').waitFor();
+  await page.getByText('Uploaded photo (not verified as your actual vehicle)').waitFor();
+
+  // A real 3D catalogue reference appears from identity fields WITHOUT photo upload.
+  await page.getByRole('button', { name: 'Add vehicle' }).click();
+  await page.getByLabel('Make').fill('Volkswagen');
+  await page.getByLabel('Model (vehicle name)').fill('Polo Vivo');
+  await page.getByLabel('Model year').fill('2021');
+  await page.getByLabel('Variant').fill('1.6 Comfortline');
+  await page.getByLabel('Registration').fill('CVR2021');
+  await page.getByLabel('Body style').selectOption('hatchback');
+  await page.getByRole('button', { name: 'Save vehicle' }).click();
+  await page.locator('iframe.showroom-external-3d[src*="d0463d789e7c46039e979511ec8f5e92"]').waitFor();
+  await page.getByText('Polo Mk5 3D reference — not your exact trim').first().waitFor();
+  // The preview must not claim this is the exact owner vehicle.
+  if (await page.locator('.showroom-photograph img').count()) {
+    throw new Error('3D must appear automatically for a matching model without a photo.');
+  }
+  await page.getByRole('button', { name: 'Pause 3D' }).click();
+  await page.getByRole('button', { name: 'Explore 3D' }).click();
+  await page.locator('iframe.showroom-external-3d').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   const other = await browser.newPage();
@@ -505,9 +524,13 @@ async function connected(browser) {
   const customerRow = page.getByRole('row').filter({ hasText: 'Casey Customer' });
   await customerRow.getByRole('button', { name: /View details/ }).click();
   await page.getByRole('heading', { name: 'Casey Customer' }).waitFor();
-  await page.getByText('Customer vehicles (1)').waitFor();
+  // The same customer now has both the booked Toyota and the photo-free Polo Vivo.
+  // Keep the admin count aligned with the vehicle creation journey rather than
+  // masking the new vehicle or altering production code.
+  await page.getByText('Customer vehicles (2)').waitFor();
   await page.getByText('Customer booking history (1)').waitFor();
   await page.getByText('CA123456').first().waitFor();
+  await page.getByText('CVR2021').first().waitFor();
   await page.getByText('Brake noise from the front wheels').waitFor();
   if (await page.locator('.admin-detail-tabs').count()) {
     throw new Error('Customer admin detail must have no Overview/Bookings tabs.');

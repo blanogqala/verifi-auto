@@ -812,24 +812,25 @@ export function Workspace({
               connected={
                 live
                   ? {
-                      renderStage: (vehicle: any) => (
-                        <VehicleStage
-                          vehicle={vehicle}
-                          resolved={{
-                            status: vehicle.modelMatch === 'verified' && vehicle.modelAsset ? 'exact' : 'unavailable',
-                            modelView: vehicle.modelView,
-                            label: vehicle.modelView?.label || 'Interactive 3D body-style preview',
-                            asset: vehicle.modelAsset
-                              ? {
-                                  ...vehicle.modelAsset,
-                                  src: vehicle.modelAsset.modelUrl,
-                                  source: vehicle.modelAsset.sourceUrl || '',
-                                  attribution: vehicle.modelAsset.attribution,
-                                }
-                              : null,
-                          }}
-                        />
-                      ),
+                      renderStage: (vehicle: any) => {
+                        // GET /vehicles returns identity records without per-vehicle
+                        // modelAsset. Always resolve against the reviewed local
+                        // catalogue in this authenticated view as well as demo mode.
+                        // A verified backend asset takes priority when actually sent.
+                        const verifiedAsset = vehicle.modelMatch === 'verified' && vehicle.modelAsset;
+                        const resolved = verifiedAsset ? {
+                          status: 'exact' as const,
+                          label: 'Verified 3D model for this vehicle',
+                          reason: 'This published model was verified against the vehicle details.',
+                          asset: {
+                            ...vehicle.modelAsset,
+                            src: vehicle.modelAsset.modelUrl,
+                            source: vehicle.modelAsset.sourceUrl || '',
+                            paintMaterials: vehicle.modelAsset.paintMaterials || [],
+                          },
+                        } : resolveVehicleAsset(vehicle);
+                        return <VehicleStage vehicle={vehicle} resolved={resolved} />;
+                      },
                     }
                   : undefined
               }

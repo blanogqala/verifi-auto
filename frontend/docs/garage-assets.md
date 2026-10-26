@@ -62,3 +62,19 @@ Before a new file is added to the catalogue, a person checks:
 - the download size, texture size, and triangle count are acceptable on a phone
 
 API tokens stay on the server. The frontend keeps calling `VehicleAssetResolver` and does not embed secrets.
+
+## Automatic 3D model matching (2026-10-26)
+
+- Vehicle make/model/year/variant/body style are matched by the reviewed local catalogue in `assetResolution.ts` and, if present, a separately verified backend `VehicleAsset`. Uploading a photograph is **not required**.
+- On normal networks a published matching 3D viewer opens automatically on the showroom. On Data Saver, 2G or 3G a photo (or the empty state) is used by default and the customer can choose **Explore 3D** to load the model.
+- The vetted public Sketchfab model [Volkswagen Polo MK5 2009–2018](https://sketchfab.com/3d-models/volkswagen-polo-mk5-2009-2018-d0463d789e7c46039e979511ec8f5e92) by Merc_TV is linked as an **approximate Mk5-generation reference** for 2018–2024 Polo Vivo hatchbacks. The uploader lists CC Attribution. Attribution and source stay visible.
+- In South Africa, the second-generation Polo Vivo is based on the fifth-generation Polo; this **does not mean the hosted model precisely reproduces 2021 bumpers, paint, wheel design or trim**. The reference is never classified as exact.
+- If the customer enters `Volkswagen / Polo / 2021 / 1.6`, the UI can infer a *possible Polo Vivo* and opens the generation-level Mk5 reference with an explicit instruction to confirm the model in Edit vehicle. `Polo` without those details is **not** silently reclassified. `Polo GTI`, `Polo Sedan` and newer standard Polo are excluded.
+- This Sketchfab model is hosted by its author and displayed in an iframe, so Verifi Auto makes **no claim about the embed's download size or uptime**. Embeds are lazy-loaded and can be paused. Using an external 3D viewer shares browser network metadata with Sketchfab; replace with a locally hosted, explicitly licensed, measured/optimised GLB before promising precise data budgets.
+- Customer photos are user-provided *reference photographs* and are **not verified as actual customer vehicles**; the customer must have permission to use them.
+- The old Khronos sample is still retained for the separately labelled Demonstration Concept Car test case; it is never substituted as a Volkswagen Polo.
+- To add true exact-match production models: acquire a verified commercial licence for browser delivery; check make/model/year/body/trim; optimise GLB and textures; publish/cache a measured file; set the corresponding catalogue `assetId` or backend VehicleAsset record; test on real devices.
+
+### Verification and rollback
+
+Unit tests cover Polo vs Polo Vivo distinctions, safe inference, invalid trims, verified vs approximate status, preservation of vehicle identity/records. Playwright covers photo fallback and vehicle page/navigation. Keep changes on a branch until checks pass, and never introduce third-party live APIs/keys in the client.
