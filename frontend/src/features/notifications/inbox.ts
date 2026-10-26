@@ -116,7 +116,7 @@ export function unreadAppointmentRequestIds(data: any, jobs: any[]): string[] {
       .filter((note: any) =>
         !note.read &&
         pending.has(note.bookingId) &&
-        (note.title === 'New assessment request' ||
+        (note.title === 'New assessment request' || note.title === 'URGENT roadside assistance request' ||
           (note.type === 'request' && /^new (assessment )?request\b/i.test(note.title || ''))),
       )
       .map((note: any) => String(note.bookingId)),
@@ -165,7 +165,7 @@ export function notificationDestination(data: any, role: string, note: any) {
   if (role === 'mechanic') {
     if (jobProfessionalId(job, data) !== self) return null;
     if (!isAcceptedJob(job)) {
-      const section = isRejectedRequest(job) ? 'rejected' : isCancelledRequest(job) ? 'cancelled' : 'pending';
+      const section = isRejectedRequest(job) ? 'rejected' : isCancelledRequest(job) ? 'cancelled' : job.kind === 'EMERGENCY' ? 'emergency' : 'pending';
       const path = `dashboard/appointments/${section}/${encodeId(bookingId)}`;
       return canVisit('mechanic', path) ? path : null;
     }

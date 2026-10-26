@@ -14,6 +14,7 @@ import { bookingReference } from '../../features/jobs/jobViews';
 import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
 import { useEffect, useState } from 'react';
+import { Siren, MapPin } from 'lucide-react';
 
 function ownerId(job: any, fallback: string) {
   return typeof job?.customerId === 'string' && job.customerId ? job.customerId : fallback;
@@ -68,6 +69,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
         }
         aside={<Status value={job.status} />}
       />
+      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> YOUR ROADSIDE ASSISTANCE REQUEST</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span>{job.roadsideLatitude != null && job.roadsideLongitude != null && <a className="roadside-directions" target="_blank" rel="noopener noreferrer" href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(job.roadsideLatitude + ',' + job.roadsideLongitude)}>Open location in Maps</a>}<span>{job.status === 'Requested' ? 'Waiting for the professional to respond. This is not yet a confirmed dispatch.' : 'Use Messages to coordinate with the professional.'}</span></div>}
       <DetailCard title="Progress">
         <BookingProgress job={job} />
       </DetailCard>
@@ -85,7 +87,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
       <DetailPanel scope="booking-detail" tabId="overview" value={tab}>
       <DetailCard title="Appointment">
         <p>{job.description || 'No request description was saved.'}</p>
-        <p className="muted">A preferred time is not confirmed availability.</p>
+        <p className="muted">{job.kind === 'EMERGENCY' ? 'This urgent request has no scheduled appointment or guaranteed response time.' : 'A preferred time is not confirmed availability.'}</p>
         <DetailFields
           items={[
             { label: 'Professional', value: job.provider || 'Not linked' },
@@ -117,7 +119,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
               View vehicle
             </button>
           ) : null}
-          {job.status === 'Requested' ? (
+          {job.status === 'Requested' && job.kind !== 'EMERGENCY' ? (
             <button className="secondary" type="button" onClick={() => setDialog({ kind: 'edit-booking', job })}>
               Edit request
             </button>

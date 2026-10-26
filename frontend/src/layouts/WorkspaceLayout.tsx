@@ -11,6 +11,7 @@ import { OverviewPage } from '../pages/shared/OverviewPage';
 import { JobsPage } from '../pages/shared/JobsPage';
 import { QuotesPage } from '../pages/shared/QuotesPage';
 import { GaragePage } from '../pages/customer/GaragePage';
+import { EmergencyPage } from '../pages/customer/EmergencyPage';
 import { VehiclePage } from '../pages/customer/VehiclePage';
 import { BookingDetailPage } from '../pages/customer/BookingDetailPage';
 import { PaymentsPage } from '../pages/customer/PaymentsPage';
@@ -109,6 +110,7 @@ export type DirectoryProps = {
   book: (professional: any) => void;
   discovery: DiscoverySession;
   results: any[];
+  allProfessionals?: any[];
   service: string;
   setDiscovery: (value: DiscoverySession | ((current: DiscoverySession) => DiscoverySession)) => void;
   setService: (value: string) => void;
@@ -124,6 +126,7 @@ const emptyDirectory: DirectoryProps = {
   book: () => {},
   discovery: { ...defaultDiscovery },
   results: [],
+  allProfessionals: [],
   service: 'All services',
   setDiscovery: () => {},
   setService: () => {},
@@ -301,12 +304,12 @@ export function Workspace({
   const professionalId = detailId(tab, 'find');
   const bookingId = detailId(tab, 'bookings');
   const vehicleDetailId = detailId(tab, 'garage');
-  const mechanicJobId = role === 'mechanic' ? detailId(tab, 'jobs') : undefined;
+  const mechanicJobId = role === 'mechanic' && tab !== 'jobs/emergencies' ? detailId(tab, 'jobs') : undefined;
   const appointmentDetail = role === 'mechanic' ? appointmentTarget(tab) : undefined;
   const invalidDetail =
     professionalId === null || bookingId === null || vehicleDetailId === null || mechanicJobId === null || appointmentDetail === null;
   const hideFindCta =
-    role === 'customer' && ['profile', 'settings', 'garage', 'payments'].includes(sectionRoot);
+    role === 'customer' && ['profile', 'settings', 'garage', 'payments', 'emergency'].includes(sectionRoot);
   const accountPhoto =
     role === 'customer'
       ? data.settings?.photo || ''
@@ -328,7 +331,7 @@ export function Workspace({
     if (!unreadRequestIds.includes(bookingId)) return;
     const ids = notificationsFor(data, 'mechanic', selfId)
       .filter((note: any) => !note.read && note.bookingId === bookingId &&
-        (note.title === 'New assessment request' ||
+        (note.title === 'New assessment request' || note.title === 'URGENT roadside assistance request' ||
           (note.type === 'request' && /^new (assessment )?request\b/i.test(note.title || ''))))
       .map((note: any) => note.id);
     if (!ids.length) return;
@@ -688,6 +691,17 @@ export function Workspace({
               route={route}
             />
           )}
+          {!locked && tab === 'emergency' && role === 'customer' && (
+            <EmergencyPage
+              data={data}
+              professionals={directory.allProfessionals || directory.results}
+              live={live}
+              go={go}
+              notify={notify}
+              refresh={refresh}
+              update={update}
+            />
+          )}
           {!locked && appointmentView && (
             <AppointmentsPage
               customerName={(job: any) => job.customerName || customerNameForJob(job, customers)}
@@ -753,14 +767,16 @@ export function Workspace({
               update={update}
             />
           )}
-          {!locked && tab === 'jobs' && role === 'mechanic' && (
+          {!locked && (tab === 'jobs' || tab === 'jobs/emergencies') && role === 'mechanic' && (
             <JobsPage
               cardJobs={cardJobs}
               hint={(job: any) => customerNameForJob(job, customers)}
               emptyText="Accepted appointments appear here, including work cancelled after you accepted it."
               emptyTitle="No jobs match."
               filter={filter}
-              jobs={scopedJobs.filter(isAcceptedJob)}
+              jobs={scopedJobs.filter((job: any) => isAcceptedJob(job) && (tab !== 'jobs/emergencies' || job.kind === 'EMERGENCY'))}
+               scope={tab === 'jobs/emergencies' ? 'emergencies' : 'all'}
+               onScopeChange={(next: string) => route(next === 'emergencies' ? 'jobs/emergencies' : 'jobs')}
               query={query}
               setFilter={setFilter}
               setQuery={setQuery}

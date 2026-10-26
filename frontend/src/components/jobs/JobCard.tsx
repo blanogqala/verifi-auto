@@ -1,7 +1,7 @@
 import { bookingReference } from '../../features/jobs/jobViews';
 import { Card } from '../ui/Card';
 import { StatusBadge as Status } from '../ui/StatusBadge';
-import { ArrowRight, Car, Calendar } from 'lucide-react';
+import { ArrowRight, Car, Calendar, Siren, MapPin } from 'lucide-react';
 import { quoteTotal } from '../../features/jobs/jobWorkflow';
 import { formatDay } from '../../features/jobs/bookingProgress';
 
@@ -34,7 +34,7 @@ export function JobCard({
 
   if (audience === 'mechanic') {
     return (
-      <Card as="article" className="job-card booking-card mechanic-job-card">
+      <Card as="article" className={"job-card booking-card mechanic-job-card" + (j.kind === 'EMERGENCY' ? " roadside-alert-card" : "")}>
         <button
           type="button"
           className="booking-card-hit"
@@ -45,9 +45,11 @@ export function JobCard({
             <VehicleArt image={image} />
           </span>
           <span className="booking-card-copy">
+            {j.kind === 'EMERGENCY' && <span className="roadside-card-badge"><Siren size={15} /> EMERGENCY JOB</span>}
             <strong>{vehicleName}</strong>
             <span>{person || 'Customer not recorded'}</span>
             <span>{when}</span>
+            {j.kind === 'EMERGENCY' && <span className="roadside-card-location"><MapPin size={13}/>{j.roadsideAddress || 'Roadside location in request'}</span>}
             {registration ? <span>{registration}</span> : null}
             <span className="reference">{bookingReference(j)}</span>
             {quoteAmount ? <span className="mechanic-job-amount">Quote {quoteAmount}</span> : null}
@@ -61,12 +63,13 @@ export function JobCard({
 
   if (!quoteAction) {
     return (
-      <Card as="article" className="job-card booking-card">
+      <Card as="article" className={"job-card booking-card" + (j.kind === 'EMERGENCY' ? " roadside-alert-card" : "")}>
         <button type="button" className="booking-card-hit" onClick={onView} aria-label={`${viewLabel}, ${vehicleName}`}>
           <span className="booking-card-art">
             <VehicleArt image={image} />
           </span>
           <span className="booking-card-copy">
+            {j.kind === 'EMERGENCY' && <span className="roadside-card-badge"><Siren size={15}/> EMERGENCY</span>}
             <strong>{vehicleName}</strong>
             <span>{professional}</span>
             <span>{when}</span>

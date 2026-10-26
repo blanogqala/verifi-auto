@@ -15,6 +15,8 @@ export function JobsPage({
   setFilter,
   setQuery,
   statuses,
+  scope,
+  onScopeChange,
 }: any) {
   const options = statuses || [
     'All',
@@ -36,6 +38,7 @@ export function JobsPage({
   );
   return (
     <>
+      {onScopeChange && <div className="roadside-job-tabs" role="group" aria-label="Job category"><button type="button" aria-pressed={scope !== 'emergencies'} className={scope !== 'emergencies' ? 'selected' : ''} onClick={() => onScopeChange('all')}>All accepted jobs</button><button type="button" aria-pressed={scope === 'emergencies'} className={scope === 'emergencies' ? 'selected' : ''} onClick={() => onScopeChange('emergencies')}>Emergency jobs</button></div>}
       <div className="table-controls">
         <label className="search-input">
           <Search size={17} aria-hidden="true" />

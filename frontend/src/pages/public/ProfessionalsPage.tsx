@@ -17,7 +17,7 @@ import {
 } from '../../features/professionals/discoveryState';
 import { followDetail } from '../../features/navigation/returnPath';
 import { RoadLoader } from '../../components/ui/RoadLoader';
-import { Search } from 'lucide-react';
+import { Search, Siren, ArrowRight } from 'lucide-react';
 
 let automaticLocationAttempted = false;
 
@@ -114,6 +114,7 @@ export function ProfessionalsPage({
       <div className="directory-heading">
         <h1>Find a professional</h1>
         <p className="muted">The right help for your car, closer to home.</p>
+        {embedded && <button type="button" className="roadside-directory-button" onClick={() => go('dashboard/emergency')}><Siren size={19}/> Emergency roadside help <ArrowRight size={16}/></button>}
       </div>
       <div className="filters directory-simple-filters">
         <label>

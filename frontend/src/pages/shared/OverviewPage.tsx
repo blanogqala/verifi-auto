@@ -12,6 +12,7 @@ import {
   Upload,
   ClipboardCheck,
   AlertCircle,
+  Siren,
   Users,
 } from 'lucide-react';
 
@@ -89,6 +90,15 @@ export function OverviewPage({
           )}
         </div>
       </div>
+      {role === 'customer' && (
+        <div className="roadside-overview-action">
+          <div><Siren size={23} /><span><strong>Need help on the road?</strong><small>Tyre trouble, a stalled engine or a breakdown</small></span></div>
+          <button className="roadside-overview-button" type="button" onClick={() => route('emergency')}>Emergency roadside help <ArrowRight size={17} /></button>
+        </div>
+      )}
+      {role === 'mechanic' && jobs.some((j: any) => j.kind === 'EMERGENCY' && j.status === 'Requested') && (
+        <button className="roadside-mechanic-alert" type="button" onClick={() => route('appointments/emergency')}><Siren size={22} /><strong>Urgent roadside requests need attention</strong><ArrowRight size={19}/></button>
+      )}
       <div className="metrics">
         {role === 'customer' ? (
           <>

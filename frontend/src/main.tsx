@@ -6,3 +6,5 @@ import './styles/cards.css';
 import './styles/customer.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
+
+import './styles/roadside.css';

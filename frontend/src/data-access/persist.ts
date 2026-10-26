@@ -181,6 +181,7 @@ function profileBody(profile: any) {
     address: profile.address || '',
     about: profile.bio || profile.about || '',
     services: profile.services || [],
+    roadsideAvailable: profile.roadsideAvailable === true,
     serviceAreas: Array.isArray(profile.serviceAreas) && profile.serviceAreas.length
       ? profile.serviceAreas : profile.city ? [profile.city] : [],
     phone: profile.phone,

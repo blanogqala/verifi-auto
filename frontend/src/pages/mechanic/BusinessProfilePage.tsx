@@ -167,11 +167,15 @@ export function BusinessProfilePage({
         <TagPicker
           label="Services Offered"
           values={services}
-          suggestions={['Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical', 'Engine repairs', 'Tyres', 'Air conditioning', 'Suspension', 'Bodywork']}
+          suggestions={['Servicing', 'Diagnostics', 'Brakes', 'Batteries', 'Auto electrical', 'Engine repairs', 'Tyres', 'Air conditioning', 'Suspension', 'Bodywork', 'Roadside assistance']}
           maxItems={30}
           onChange={(next) => setProfile({ ...profile, services: next })}
         />
       </div>
+      <label className="roadside-availability-toggle">
+        <input type="checkbox" checked={profile.roadsideAvailable === true} onChange={(e) => setProfile({ ...profile, roadsideAvailable: e.target.checked })} />
+        <span><strong>Accept emergency roadside requests</strong><small>Opt in only if you offer mobile breakdown assistance. Requests need your acceptance before dispatch is confirmed.</small></span>
+      </label>
       {!connected && profile.type === 'Mobile mechanic' ? (
         <label>
           Service radius

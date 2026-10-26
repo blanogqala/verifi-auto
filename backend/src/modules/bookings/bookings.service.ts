@@ -75,11 +75,22 @@ export const bookingInput = z
   .object({
     vehicleId: id,
     professionalId: id,
-    appointmentAt: z.iso.datetime({ offset: true }),
+    appointmentAt: z.iso.datetime({ offset: true }).optional(),
     description: z.string().trim().min(3).max(4000),
+    kind: z.enum(["STANDARD", "EMERGENCY"]).default("STANDARD"),
+    emergencyType: z.string().trim().max(100).default(""),
+    roadsideAddress: z.string().trim().max(300).default(""),
+    roadsideLatitude: z.number().min(-90).max(90).nullable().default(null),
+    roadsideLongitude: z.number().min(-180).max(180).nullable().default(null),
     clientRequestId: id,
   })
-  .strict();
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.kind === "STANDARD" && !value.appointmentAt) ctx.addIssue({ code: "custom", path: ["appointmentAt"], message: "Choose an appointment date." });
+    if (value.kind === "EMERGENCY" && !value.emergencyType) ctx.addIssue({ code: "custom", path: ["emergencyType"], message: "Choose the breakdown type." });
+    if (value.kind === "EMERGENCY" && value.roadsideAddress.length < 5) ctx.addIssue({ code: "custom", path: ["roadsideAddress"], message: "Describe where help is needed." });
+    if ((value.roadsideLatitude === null) !== (value.roadsideLongitude === null)) ctx.addIssue({ code: "custom", path: ["roadsideLatitude"], message: "Provide both coordinates or neither." });
+  });
 export async function createBooking(
   input: z.infer<typeof bookingInput>,
   actor: Actor,
@@ -101,8 +112,8 @@ export async function createBooking(
       include: bookingInclude,
     });
     if (duplicate) return duplicate;
-    requireThat(
-      new Date(input.appointmentAt).getTime() > Date.now(),
+    if (input.kind === "STANDARD") requireThat(
+      new Date(input.appointmentAt || "").getTime() > Date.now(),
       422,
       "INVALID_DATE",
       "Choose a future appointment.",
@@ -125,6 +136,7 @@ export async function createBooking(
         id: input.professionalId,
         status: "APPROVED",
         user: { disabledAt: null },
+        ...(input.kind === "EMERGENCY" ? { roadsideAvailable: true } : {}),
       },
     });
     requireThat(
@@ -137,7 +149,7 @@ export async function createBooking(
       data: {
         ...input,
         customerId: actor.userId,
-        appointmentAt: new Date(input.appointmentAt),
+        appointmentAt: input.kind === "EMERGENCY" ? new Date() : new Date(input.appointmentAt!),
       },
       include: bookingInclude,
     });
@@ -146,7 +158,7 @@ export async function createBooking(
       participants(booking),
       "booking",
       booking.id,
-      "New assessment request",
+      input.kind === "EMERGENCY" ? "URGENT roadside assistance request" : "New assessment request",
     );
     await audit(tx, actor.userId, "BOOKING_CREATED", booking.id);
     return booking;

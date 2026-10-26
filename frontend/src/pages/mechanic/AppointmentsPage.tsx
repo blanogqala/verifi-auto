@@ -1,5 +1,5 @@
 import { type KeyboardEvent } from 'react';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Siren, MapPin } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { EmptyState as Empty } from '../../components/ui/EmptyState';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
@@ -15,6 +15,7 @@ import {
 } from '../../features/jobs/jobViews';
 
 const tabs: { id: AppointmentSection; label: string }[] = [
+  { id: 'emergency', label: 'Emergencies' },
   { id: 'pending', label: 'Pending' },
   { id: 'rejected', label: 'Rejected' },
   { id: 'cancelled', label: 'Cancelled' },
@@ -49,15 +50,17 @@ export function AppointmentsPage({
   live = false,
   unreadRequestIds = [],
 }: any) {
-  const pending = jobs.filter(isPendingRequest);
+  const pending = jobs.filter((job: any) => isPendingRequest(job) && job.kind !== 'EMERGENCY');
+  const emergency = jobs.filter((job: any) => isPendingRequest(job) && job.kind === 'EMERGENCY');
   const rejected = jobs.filter(isRejectedRequest);
   const cancelled = jobs.filter(isCancelledRequest);
   const counts: Record<AppointmentSection, number> = {
+    emergency: emergency.length,
     pending: pending.length,
     rejected: rejected.length,
     cancelled: cancelled.length,
   };
-  const visible = section === 'rejected' ? rejected : section === 'cancelled' ? cancelled : pending;
+  const visible = section === 'emergency' ? emergency : section === 'rejected' ? rejected : section === 'cancelled' ? cancelled : pending;
 
   function onTabsKey(event: KeyboardEvent<HTMLDivElement>) {
     const index = Math.max(
@@ -109,7 +112,7 @@ export function AppointmentsPage({
       {visible.length ? (
         <div className="appointment-grid">
           {visible.map((job: any) => {
-            const hasNewRequest = section === 'pending' && unreadRequestIds.includes(job.id);
+            const hasNewRequest = (section === 'pending' || section === 'emergency') && unreadRequestIds.includes(job.id);
             const vehicleName = job.vehicleLabel || job.vehicle || 'Vehicle not recorded';
             const when = `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}`;
             const registration =
@@ -117,7 +120,7 @@ export function AppointmentsPage({
               job.registration ||
               '';
             return (
-              <Card as="article" className="job-card booking-card appointment-card" key={job.id}>
+              <Card as="article" className={"job-card booking-card appointment-card" + (job.kind === 'EMERGENCY' ? " roadside-alert-card" : "")} key={job.id}>
                 <button
                   type="button"
                   className="booking-card-hit appointment-hit"
@@ -135,9 +138,11 @@ export function AppointmentsPage({
                     />
                   </span>
                   <span className="booking-card-copy">
+                    {job.kind === 'EMERGENCY' && <span className="roadside-card-badge"><Siren size={15} /> URGENT ROADSIDE REQUEST</span>}
                     <strong>{vehicleName}</strong>
                     <span>{job.customerName || customerName(job)}</span>
-                    <span>{when}</span>
+                    <span>{job.kind === 'EMERGENCY' ? 'Requested: ' + when : when}</span>
+                    {job.kind === 'EMERGENCY' && <span className="roadside-card-location"><MapPin size={13}/>{job.roadsideAddress || 'Roadside location in request'}</span>}
                     {registration ? <span>{registration}</span> : null}
                     <span className="reference">{bookingReference(job)}</span>
                     {job.rejectionReason ? <span>Reason: {job.rejectionReason}</span> : null}
@@ -158,14 +163,14 @@ export function AppointmentsPage({
       ) : (
         <Empty
           title={
-            section === 'rejected'
+            section === 'emergency' ? 'No emergency requests' : section === 'rejected'
               ? 'No rejected requests'
               : section === 'cancelled'
                 ? 'No cancelled requests'
                 : 'No pending requests'
           }
           text={
-            section === 'pending'
+            section === 'emergency' ? 'Urgent roadside requests appear here until you accept or reject them.' : section === 'pending'
               ? 'New assessment requests appear here until you accept or reject them.'
               : section === 'rejected'
                 ? 'Requests you reject, with the reason you gave, stay here.'

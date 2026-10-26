@@ -15,6 +15,7 @@ export const professionalPublicSelect = {
   about: true,
   services: true,
   serviceAreas: true,
+  roadsideAvailable: true,
   phone: true,
   website: true,
   latitude: true,
@@ -124,6 +125,7 @@ const profile = z
     about: z.string().trim().min(10).max(4000),
     services: z.array(z.string().trim().min(2).max(100)).min(1).max(30)
       .refine((value) => new Set(value.map((v) => v.toLowerCase())).size === value.length, "Services must be unique."),
+    roadsideAvailable: z.boolean().default(false),
     serviceAreas: z.array(z.string().trim().min(2).max(100)).min(1).max(25).optional()
       .refine((value) => !value || new Set(value.map((v) => v.toLowerCase())).size === value.length, "Service areas must be unique."),
     phone,
