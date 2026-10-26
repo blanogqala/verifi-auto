@@ -518,6 +518,39 @@ async function connected(browser) {
   await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).waitFor({ state: 'detached' });
   await page.goto(appUrl + '/#dashboard/professionals');
   await page.getByText('Pending Workshop', { exact: true }).waitFor();
+  await page.getByRole('row').filter({ hasText: 'Pending Workshop' }).getByRole('button', { name: 'View profile' }).click();
+  await page.getByRole('heading', { name: 'Pending Workshop' }).waitFor();
+  await page.getByRole('heading', { name: 'Verification documents' }).waitFor();
+  await page.getByRole('link', { name: 'View IDENTITY' }).waitFor();
+  await page.getByRole('heading', { name: 'Business information' }).waitFor();
+  await page.getByText('Recorded gross revenue', { exact: true }).waitFor();
+  await page.getByText('Active / Completed jobs', { exact: true }).waitFor();
+  if (await page.getByRole('button', { name: 'View verification record' }).count()) {
+    throw new Error('Professional overview must show documents directly.');
+  }
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Block professional' }).click();
+  await page.getByText('Blocked', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Unblock professional' }).click();
+  await page.getByRole('button', { name: 'Block professional' }).waitFor();
+  await page.getByRole('button', { name: 'Delete professional' }).click();
+  await page.getByLabel('Confirm business name').fill('Pending Workshop');
+  const [deleteProfessionalResponse] = await Promise.all([
+    page.waitForResponse(response => response.url().includes('/api/admin/professionals/') &&
+      response.request().method() === 'DELETE'),
+    page.getByRole('button', { name: 'Permanently delete' }).click(),
+  ]);
+  const deletedBody = await deleteProfessionalResponse.json();
+  if (deleteProfessionalResponse.status() !== 409 ||
+      deletedBody.error?.code !== 'PROFESSIONAL_HAS_HISTORY') {
+    throw Error('Approved professional with verification documents must not be deleted: ' +
+      JSON.stringify(deletedBody));
+  }
+  await page.getByRole('alert').filter({ hasText: /verification documents or service history/ }).waitFor();
+  await page.getByRole('tab', { name: 'Jobs' }).click();
+  await page.getByRole('heading', { name: /Booking history/ }).waitFor();
+  await page.getByRole('tab', { name: 'Reviews' }).click();
+  await page.getByRole('heading', { name: 'Customer reviews' }).waitFor();
   await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
   await page.getByRole('heading', { name: 'Professional not found' }).waitFor();
   await page.close();
