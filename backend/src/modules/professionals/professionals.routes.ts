@@ -6,6 +6,7 @@ import { actor, roles, verified } from "../../middleware/auth.js";
 import { id, phone, expectedVersion, takeQuery } from "../../lib/validation.js";
 import { requireThat } from "../../lib/errors.js";
 import { announce, audit } from "../../lib/events.js";
+import { matchRoadsideProfessionals } from "./roadsideMatching.js";
 export const professionalPublicSelect = {
   id: true,
   name: true,
@@ -70,6 +71,37 @@ directoryRoutes.get("/", async (req, res) => {
         ratings.find((r) => r.professionalId === row.id)?._count || 0,
     })),
   );
+});
+/** Dedicated discovery: not limited by the first 100 general-directory records. */
+directoryRoutes.get("/roadside", async (req, res) => {
+  const query = z.object({
+    latitude: z.coerce.number().min(-90).max(90).optional(),
+    longitude: z.coerce.number().min(-180).max(180).optional(),
+  }).strict().refine(
+    ({ latitude, longitude }) => (latitude === undefined) === (longitude === undefined),
+    "Provide both location coordinates or neither.",
+  ).parse(req.query);
+  const rows = await db.professional.findMany({
+    where: {
+      status: "APPROVED",
+      roadsideAvailable: true,
+      user: { disabledAt: null },
+    },
+    select: professionalPublicSelect,
+    orderBy: { id: "asc" },
+  });
+  const origin = query.latitude === undefined ? null : {
+    latitude: query.latitude,
+    longitude: query.longitude!,
+  };
+  const result = matchRoadsideProfessionals(rows, origin);
+  res.json({
+    ...result,
+    professionals: result.professionals.map(({ user, ...row }) => ({
+      ...row,
+      photo: user.photo,
+    })),
+  });
 });
 directoryRoutes.get("/:id", async (req, res) => {
   const row = await db.professional.findFirst({
@@ -163,13 +195,15 @@ professionalRoutes.patch("/me", async (req, res) => {
       "CONFLICT",
       "Profile changed or is suspended. Reload it.",
     );
-    // Identity/business changes require another review; approval cannot be retained by client input.
+    // Approval is a one-time onboarding decision. Ordinary profile edits do not
+    // revoke directory visibility; only admins may suspend an approved account.
+    // Pending applications still require submission after an edit.
     const updated = await tx.professional.update({
       where: { id: pro.id },
       data: {
         ...input,
         serviceAreas: input.serviceAreas?.length ? input.serviceAreas : [input.city],
-        status: "DRAFT",
+        status: pro.status === "APPROVED" ? "APPROVED" : "DRAFT",
         version: { increment: 1 },
       },
     });

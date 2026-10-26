@@ -82,3 +82,24 @@
 @media(prefers-reduced-motion:reduce){.roadside-page *{scroll-behavior:auto!important}}
 
 .roadside-directions { justify-self:start; font-weight:750; color:var(--soft); text-decoration:underline; text-underline-offset:3px; }
+
+/* Explicit workshop/dispatch-base pin: coordinates are never inferred from an address. */
+.roadside-workshop-location {
+  display:grid;
+  gap:10px;
+  padding:14px 16px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--surface2);
+}
+.roadside-workshop-location strong {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+}
+.roadside-workshop-location strong svg { color:var(--soft); }
+.roadside-workshop-location p { margin:5px 0 0; font-size:12px; }
+.roadside-workshop-location > button { justify-self:start; display:inline-flex; align-items:center; gap:7px; }
+.roadside-workshop-location small { font-size:12px; }
+@media(max-width:600px){ .roadside-workshop-location > button { justify-self:stretch; justify-content:center; } }
