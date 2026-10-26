@@ -193,6 +193,7 @@ model Booking {
   @@unique([customerId, clientRequestId])
   @@index([professionalId, status])
   @@index([customerId, createdAt])
+  @@index([kind, status])
 }
 model Quote {
   id String @id @default(uuid()) @db.Uuid
