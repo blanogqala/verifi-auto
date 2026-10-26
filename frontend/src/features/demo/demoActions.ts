@@ -349,6 +349,7 @@ export function saveVehicle(data: any, vehicle: any) {
     bodyStyle: textValue(vehicle.bodyStyle),
     paintColorName: textValue(vehicle.paintColorName).slice(0, 80),
     paintColor: /^#[0-9a-fA-F]{6}$/.test(textValue(vehicle.paintColor)) ? textValue(vehicle.paintColor).toLowerCase() : '',
+    photo: textValue(vehicle.photo),
   };
   if (!next.make || !next.model || !next.year || !next.registration) throw Error('Complete the vehicle details.');
   const vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
