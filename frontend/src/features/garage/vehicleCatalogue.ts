@@ -3,6 +3,8 @@
 export type VehicleAsset = {
   id: string;
   src: string;
+  /** Reviewed public embed. Loaded by iframe only; no Sketchfab token or GLB download required. */
+  embedUrl?: string;
   thumbnail: string;
   paintMaterials: string[];
   source: string;
@@ -65,8 +67,30 @@ export const khronosConceptAsset: VehicleAsset = {
     'A realistic concept-car sample. It is not a Volkswagen Polo and not a match for a specific production car.',
 };
 
+/**
+ * Reviewed public 3D reference: Polo Mk5 (6R/6C), the generation on which
+ * South Africa's 2018–2024 Polo Vivo is based. This is not a verified 2021
+ * Polo Vivo trim or a standard Polo Mk6. Source is embedded with attribution
+ * under its CC BY licence; do not copy third-party meshes into this repo.
+ * A Sketchfab embed controls its own network payload, so no size claim is made.
+ */
+export const poloMk5ReferenceAsset: VehicleAsset = {
+  id: 'sketchfab-polo-mk5-reference',
+  src: '',
+  embedUrl: 'https://sketchfab.com/models/d0463d789e7c46039e979511ec8f5e92/embed?autostart=1&ui_hint=2&ui_annotations=0&ui_infos=1&ui_stop=0',
+  thumbnail: '',
+  paintMaterials: [],
+  source: 'https://sketchfab.com/3d-models/volkswagen-polo-mk5-2009-2018-d0463d789e7c46039e979511ec8f5e92',
+  author: 'Merc_TV (@szymonpasterczyk)',
+  licence: 'CC BY',
+  licenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+  attribution: 'Volkswagen Polo MK5 2009–2018 by Merc_TV on Sketchfab, CC BY. Generation-level reference only.',
+  description: 'Public 3D Polo Mk5 reference. The South African Polo Vivo (2018–2024) is based on the Mk5, but its styling and trim can differ.',
+};
+
 export const vehicleAssets: Record<string, VehicleAsset> = {
   [khronosConceptAsset.id]: khronosConceptAsset,
+  [poloMk5ReferenceAsset.id]: poloMk5ReferenceAsset,
 };
 
 /**
@@ -74,6 +98,17 @@ export const vehicleAssets: Record<string, VehicleAsset> = {
  * Polo rows record the generation and body style, but no Polo file is published.
  */
 export const vehicleModelCatalogue: CatalogueEntry[] = [
+  {
+    id: 'polo-vivo-2018-2024-reference',
+    make: 'Volkswagen',
+    model: 'Polo Vivo',
+    yearFrom: 2018,
+    yearTo: 2024,
+    variant: '',
+    bodyStyle: 'hatchback',
+    assetId: poloMk5ReferenceAsset.id,
+    accuracy: 'approximate',
+  },
   {
     id: 'demo-concept-2024',
     make: 'Demonstration',

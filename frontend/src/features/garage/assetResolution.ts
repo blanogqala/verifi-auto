@@ -80,6 +80,35 @@ export function resolveVehicleAsset(vehicle: any): AssetResolution {
   const make = norm(vehicle.make);
   const model = norm(vehicle.model);
   const year = yearOf(vehicle);
+  const bodyStyle = norm(vehicle.bodyStyle);
+  const variantText = norm(vehicle.variant);
+  // SA-specific automotive identity guard: Polo Vivo (2018–24) uses a Mk5
+  // platform; the standard Polo introduced in 2018 is a different generation.
+  // A saved "Polo 1.6" is often a Vivo in SA, but this remains a *suggestion*,
+  // NEVER a verified identification or an exact physical-car representation.
+  const explicitlyVivo = ['polo vivo', 'vivo'].includes(model);
+  const likelyVivo = model === 'polo' && year >= 2018 && year <= 2024 &&
+    /(?:^|\s)1[.,]6(?:\b|\s)/.test(variantText) &&
+    !/(gti|sedan|virtus|plus|6r|mk6|aw)/.test(variantText);
+  if (make === 'volkswagen' && year >= 2018 && year <= 2024 &&
+      (explicitlyVivo || likelyVivo) &&
+      (!bodyStyle || bodyStyle === 'hatchback')) {
+    const entry = vehicleModelCatalogue.find(item => item.id === 'polo-vivo-2018-2024-reference') || null;
+    const asset = entry?.assetId ? vehicleAssets[entry.assetId] : null;
+    if (asset && entry) {
+      return {
+        status: 'approximate',
+        accuracy: 'approximate',
+        label: 'Polo Mk5 3D reference — not your exact trim',
+        reason: likelyVivo
+          ? 'A 1.6 Polo may be a Polo Vivo in South Africa. Please confirm the model in Edit vehicle. This Mk5 model is a generation-level reference, not an exact match.'
+          : 'The Polo Vivo uses Mk5 Polo architecture, but bumpers, lights, interior and wheels may differ from this reference.',
+        asset,
+        entry,
+        choices: [],
+      };
+    }
+  }
   const named = vehicleModelCatalogue.filter((entry) => norm(entry.make) === make && norm(entry.model) === model);
   if (!named.length || !Number.isFinite(year)) {
     return illustrative('No published catalogue entry matches this make and model.');

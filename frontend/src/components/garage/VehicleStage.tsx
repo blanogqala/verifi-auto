@@ -1,12 +1,12 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Box, Camera, Image as ImageIcon, ShieldCheck } from 'lucide-react';
+import { Box, Camera, ShieldCheck, WifiOff } from 'lucide-react';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
 import { RoadLoader } from '../ui/RoadLoader';
 
 const VehicleModelViewer = lazy(() => import('./VehicleModelViewer'));
 const emptyPaint: string[] = [];
 
-function webglAvailable() {
+function supportsWebGL() {
   try {
     const canvas = document.createElement('canvas');
     return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
@@ -15,10 +15,24 @@ function webglAvailable() {
   }
 }
 
+function onDataSavingConnection() {
+  try {
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    return Boolean(connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType || ''));
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Image-first showroom: the actual owner's compressed photo costs no model download.
- * Only a published, accurately labelled GLB may be launched in 3D. No fabricated
- * mesh or concept car is presented as the customer's make/model.
+ * Automatic showroom matching is asset-driven, not a geometry generator:
+ * - A reviewed matching model is displayed automatically on normal connections.
+ * - A CC BY generation-level reference is labelled approximate (never exact).
+ * - Data Saver/2G avoids automatic 3D downloads; visitors may opt in.
+ * - Unmatched vehicles show uploaded photos, or a clean no-model state.
+ * - Nothing about vehicle records, appointments or API persistence changes.
  */
 export function VehicleStage({
   vehicle,
@@ -30,41 +44,65 @@ export function VehicleStage({
   resolved?: any;
 }) {
   const resolution = resolved || resolveVehicleAsset(vehicle);
-  const asset = (resolution.status === 'exact' || resolution.status === 'approximate')
-    && typeof resolution.asset?.src === 'string' && resolution.asset.src
-      ? resolution.asset
-      : null;
-  const exact = resolution.status === 'exact' && Boolean(asset);
+  const candidate = resolution.status === 'exact' || resolution.status === 'approximate'
+    ? resolution.asset : null;
+  const asset = candidate?.embedUrl || candidate?.src ? candidate : null;
+  const exact = Boolean(asset && resolution.status === 'exact');
   const photo = typeof vehicle?.photo === 'string' ? vehicle.photo : '';
-  const [mode, setMode] = useState<'photo' | '3d'>('photo');
+  const [mode, setMode] = useState<'auto' | 'photo' | '3d'>('auto');
+  const [lowData, setLowData] = useState(onDataSavingConnection);
   const [failed, setFailed] = useState(false);
   const [canRender, setCanRender] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Switching vehicles never reuses the prior vehicle's 3D scene or photo.
-    setMode('photo');
+    setMode('auto');
     setFailed(false);
     setCanRender(null);
-  }, [vehicle?.id, asset?.src]);
+    setLowData(onDataSavingConnection());
+  }, [vehicle?.id, candidate?.src, candidate?.embedUrl]);
 
+  const requested3d = Boolean(asset && (mode === '3d' || (mode === 'auto' && !lowData)));
+  const show3d = requested3d && !failed && canRender !== false;
   const modelLabel = exact
-    ? 'Verified model for this vehicle'
-    : resolution.status === 'approximate' && asset
-      ? 'Similar 3D reference — not an exact vehicle match'
-      : 'A matching 3D model has not been published for this vehicle';
-  const show3d = mode === '3d' && Boolean(asset) && canRender !== false && !failed;
+    ? 'Verified 3D vehicle model'
+    : asset
+      ? (resolution.label || 'Generation-level 3D reference — not an exact vehicle match')
+      : 'No verified 3D model found for these vehicle details';
 
   function open3d() {
-    const supported = webglAvailable();
-    setCanRender(supported);
-    setFailed(!supported);
-    if (supported) setMode('3d');
+    setFailed(false);
+    if (!asset) return;
+    if (asset.embedUrl) {
+      setCanRender(null);
+      setMode('3d');
+      return;
+    }
+    const ready = supportsWebGL();
+    setCanRender(ready);
+    setFailed(!ready);
+    if (ready) setMode('3d');
   }
 
+  const showPhoto = Boolean(photo && !show3d);
   return (
     <div className={'vehicle-stage vehicle-stage-premium' + (compact ? ' vehicle-stage-compact' : '')}>
       <div className="showroom-display" aria-label="Vehicle showroom display">
-        {show3d && asset ? (
+        {show3d && asset?.embedUrl ? (
+          <iframe
+            key={asset.id}
+            className="showroom-external-3d"
+            src={asset.embedUrl}
+            title={modelLabel + ' - interactive 3D model by ' + asset.author}
+            loading="lazy"
+            allow="fullscreen; autoplay; xr-spatial-tracking"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            onError={() => {
+              setFailed(true);
+              setMode('photo');
+            }}
+          />
+        ) : show3d && asset?.src ? (
           <Suspense fallback={<RoadLoader label="Loading interactive vehicle showroom" />}>
             <VehicleModelViewer
               src={asset.src}
@@ -77,65 +115,70 @@ export function VehicleStage({
               }}
             />
           </Suspense>
-        ) : photo ? (
+        ) : showPhoto ? (
           <figure className="showroom-photograph">
             <img
               src={photo}
-              alt={'Actual vehicle photograph: ' + [vehicle?.make, vehicle?.model].filter(Boolean).join(' ')}
+              alt={'Uploaded photograph associated with ' + [vehicle?.make, vehicle?.model].filter(Boolean).join(' ')}
               loading="eager"
               decoding="async"
             />
-            <figcaption>YOUR ACTUAL VEHICLE</figcaption>
+            <figcaption>UPLOADED REFERENCE PHOTO</figcaption>
           </figure>
         ) : (
           <div className="showroom-no-asset">
             <span className="showroom-no-asset-icon"><Camera size={36} strokeWidth={1.4} /></span>
-            <strong>Make this garage yours</strong>
-            <p>Add a photograph of your vehicle to give your personal showroom a real-life view.</p>
-            <span>Your bookings and service history are already safe.</span>
+            <strong>{asset ? 'Your 3D showroom is ready' : '3D model not available yet'}</strong>
+            <p>{asset
+              ? 'The 3D preview is paused to save data. Choose Explore 3D to rotate the available vehicle reference.'
+              : 'Check the make, model, year and variant. We’ll show a real vehicle model when a suitable 3D asset is available.'}</p>
+            <span>{asset ? modelLabel : 'Photo upload is optional. All vehicle records stay available.'}</span>
           </div>
         )}
-        {show3d ? <div className="showroom-3d-pill"><Box size={14} /> INTERACTIVE 3D</div> : null}
+        {show3d ? <div className="showroom-3d-pill"><Box size={14} /> {exact ? 'VERIFIED 3D MODEL' : '3D GENERATION REFERENCE'}</div> : null}
       </div>
-
       <div className="showroom-display-footer">
         <div className="showroom-display-note">
-          {exact ? <ShieldCheck size={16} aria-hidden="true" /> : <Camera size={16} aria-hidden="true" />}
-          <span>
-            {mode === '3d' && asset ? modelLabel : photo ? 'Photo of your actual vehicle' : modelLabel}
-          </span>
+          {exact ? <ShieldCheck size={16} aria-hidden="true" /> : lowData && asset && !show3d
+            ? <WifiOff size={16} aria-hidden="true" /> : <Box size={16} aria-hidden="true" />}
+          <span>{show3d ? modelLabel : lowData && asset && mode !== 'photo'
+            ? 'Data Saver detected — 3D paused to protect your data'
+            : showPhoto ? 'Uploaded photo (not verified as your actual vehicle)'
+            : modelLabel}</span>
         </div>
         <div className="showroom-display-actions">
-          {mode === '3d' && photo ? (
-            <button className="showroom-mode-button" type="button" onClick={() => setMode('photo')}>
-              <ImageIcon size={16} /> Your photo
+          {asset && !show3d ? (
+            <button className="showroom-mode-button showroom-mode-primary" type="button" onClick={open3d}>
+              <Box size={16} /> Explore 3D
             </button>
           ) : null}
-          {asset && mode !== '3d' ? (
-            <button className="showroom-mode-button showroom-mode-primary" type="button" onClick={open3d}>
-              <Box size={16} /> {exact ? 'Explore in 3D' : 'View similar 3D reference'}
+          {show3d && asset ? (
+            <button className="showroom-mode-button" type="button" onClick={() => setMode('photo')}>
+              <Camera size={16} /> {photo ? 'Use photo / save data' : 'Pause 3D'}
             </button>
           ) : null}
         </div>
       </div>
-      {(failed || canRender === false) ? (
+      {failed ? (
         <p className="showroom-status" role="status">
-          The 3D preview could not open on this device. Your photo and all vehicle records remain available.
+          The 3D preview could not open here. Your vehicle details and records are safe.
           {asset ? <button className="text-link" type="button" onClick={open3d}>Try again</button> : null}
         </p>
       ) : null}
-      {!asset ? (
-        <p className="showroom-stage-disclaimer">
-          A vehicle-specific 3D model is not available yet. We won't show a different car and call it yours.
-        </p>
-      ) : (
-        <div className="showroom-stage-disclaimer">
-          {mode === '3d' ? 'Drag to rotate · Scroll or use the controls to zoom · Keyboard arrows supported' : '3D loads only when you choose to open it to save mobile data.'}
-          {asset.source ? (
-            <a href={asset.source} target="_blank" rel="noreferrer" className="model-credits" aria-label={asset.attribution || '3D model credits'}>3D model credits</a>
-          ) : null}
-        </div>
-      )}
+      <div className="showroom-stage-disclaimer">
+        <span>
+          {asset
+            ? exact
+              ? 'Rotate, zoom and inspect your matched vehicle model.'
+              : (resolution.reason || 'This real 3D reference is not an exact match to your year and trim.')
+            : 'No suitable 3D asset for this model yet. We never substitute a generic car as an exact match.'}
+          {show3d && asset?.embedUrl ? ' · Drag to rotate inside the viewer.' : ''}
+        </span>
+        {asset?.source ? <a href={asset.source} className="model-credits" target="_blank"
+          rel="noopener noreferrer" aria-label={asset.attribution || '3D model credits'}>
+          3D source and licence ({asset.licence || 'details'})
+        </a> : null}
+      </div>
     </div>
   );
 }

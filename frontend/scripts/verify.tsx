@@ -7,6 +7,7 @@ import { PaymentsPage } from '../src/pages/customer/PaymentsPage';
 import { MechanicPaymentsPage } from '../src/pages/mechanic/MechanicPaymentsPage';
 import { FinancePage } from '../src/pages/admin/FinancePage';
 import { VehicleFields } from '../src/components/garage/VehicleFields';
+import { VehicleStage } from '../src/components/garage/VehicleStage';
 import { bookingQuotations, newQuotation } from '../src/features/jobs/bookingQuotes';
 import { BookingQuotations } from '../src/components/jobs/BookingQuotations';
 import { QuoteSummary } from '../src/components/jobs/QuoteSummary';
@@ -1034,7 +1035,7 @@ assert.ok(garageHtml.includes('View details'));
 assert.ok(garageHtml.includes('aria-label="Previous vehicle"'));
 assert.ok(garageHtml.includes('aria-label="Next vehicle"'));
 assert.ok(garageHtml.includes('YOUR PERSONAL SHOWROOM'));
-assert.ok(garageHtml.includes('A vehicle-specific 3D model is not available yet.'));
+assert.ok(garageHtml.includes('No suitable 3D asset for this model yet.'));
 assert.ok(garageHtml.includes('Edit vehicle'));
 assert.ok(garageHtml.includes('THE COLLECTION'));
 assert.ok(!garageHtml.includes('Photo uploaded by vehicle owner · Actual vehicle'));
@@ -1526,6 +1527,39 @@ assert.equal(modelForVehicle(initialData.vehicles[0]).originalGeometry, false);
 const poloHatch = resolveVehicleAsset({ make: 'Volkswagen', model: 'Polo', year: '2020', bodyStyle: 'hatchback' });
 const poloLater = resolveVehicleAsset({ make: 'Volkswagen', model: 'Polo', year: '2022', bodyStyle: 'hatchback' });
 const poloAmbiguous = resolveVehicleAsset({ make: 'Volkswagen', model: 'Polo', year: '2020' });
+
+const vivo = resolveVehicleAsset({
+  make: 'Volkswagen', model: 'Polo Vivo', year: '2021',
+  bodyStyle: 'hatchback', variant: '1.6 Comfortline',
+});
+const inferredVivo = resolveVehicleAsset({
+  make: 'Volkswagen', model: 'Polo', year: '2021',
+  bodyStyle: 'hatchback', variant: '1.6',
+});
+const notVivoSedan = resolveVehicleAsset({
+  make: 'Volkswagen', model: 'Polo', year: '2021',
+  bodyStyle: 'sedan', variant: '1.6',
+});
+const notVivoGti = resolveVehicleAsset({
+  make: 'Volkswagen', model: 'Polo', year: '2021',
+  bodyStyle: 'hatchback', variant: 'GTI',
+});
+const autoShowroom = renderToString(
+  <VehicleStage vehicle={{ id: 'auto-polo', make: 'Volkswagen', model: 'Polo', year: '2021',
+    bodyStyle: 'hatchback', variant: '1.6' }} />,
+);
+assert.ok(autoShowroom.includes('showroom-external-3d'));
+assert.ok(autoShowroom.includes('sketchfab.com/models/d0463d789e7c46039e979511ec8f5e92'));
+assert.ok(autoShowroom.includes('generation-level reference') ||
+  autoShowroom.includes('not your exact trim'));
+assert.equal(vivo.status, 'approximate');
+assert.equal(inferredVivo.status, 'approximate');
+assert.equal(vivo.asset?.id, 'sketchfab-polo-mk5-reference');
+assert.ok(vivo.asset?.embedUrl?.includes('sketchfab.com/models/'));
+assert.notEqual(inferredVivo.accuracy, 'exact');
+assert.ok(inferredVivo.reason.includes('Please confirm'));
+assert.notEqual(notVivoSedan.asset?.id, 'sketchfab-polo-mk5-reference');
+assert.notEqual(notVivoGti.asset?.id, 'sketchfab-polo-mk5-reference');
 const conceptExact = resolveVehicleAsset({
   make: 'Demonstration',
   model: 'Concept Car',
