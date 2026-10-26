@@ -496,6 +496,7 @@ export default function App() {
             book,
             discovery,
             results,
+            allProfessionals: connected ? liveProfessionals : listed,
             service: discovery.service,
             setDiscovery,
             setService,
