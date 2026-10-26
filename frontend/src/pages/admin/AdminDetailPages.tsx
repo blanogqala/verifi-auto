@@ -21,7 +21,7 @@ import { bookingReference } from '../../features/jobs/jobViews';
 import { formatWhen } from '../../features/jobs/bookingProgress';
 import { eligibleCustomerReviews, ratingSummary } from '../../features/reviews/ratingSummary';
 import { providers } from '../../data/professionals';
-import { api } from '../../data-access/api';
+import { api, apiBase } from '../../data-access/api';
 
 function Tabs({ items, selected, select }: any) {
   return (
@@ -243,91 +243,237 @@ export function ApplicationDetailPage({ record, data, route, review, reviewNote,
 }
 export function ProfessionalAdminDetailPage({ record, data, route, connected }: any) {
   const [section, setSection] = useState('Overview');
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(Boolean(connected));
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [confirmName, setConfirmName] = useState('');
+  const [revision, setRevision] = useState(0);
+  const id = record?.id || '';
+  const live = Boolean(connected);
+
+  useEffect(() => {
+    if (!live || !id) { setDetail(null); setLoading(false); return; }
+    let active = true;
+    setLoading(true);
+    setError('');
+    api('/admin/professionals/' + encodeURIComponent(id))
+      .then((row) => { if (active) setDetail(row); })
+      .catch((reason: any) => { if (active) {
+        setDetail(null);
+        setError(reason?.message || 'Could not load professional details.');
+      } })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [live, id, revision]);
+
   if (!record) return <Missing route={route} back="professionals" />;
-  const id = applicationProfessionalId(data, record);
-  const profile = connected
-    ? record
-    : record.own
-      ? data.profile
-      : providers.find((p) => p.id === id) || record;
-  const jobs = connected ? connected.jobs : professionalJobs(data, record);
-  const stats = accountMetrics(jobs);
-  const rating = connected ? connected.rating : ratingSummary(data, id);
-  const reviews = connected ? connected.reviews : eligibleCustomerReviews(data, id);
-  return (
+  if (loading && !detail) return (
     <div className="admin-detail-page">
       <DetailBack label="Back to professionals" onClick={() => route('professionals')} />
-      <DetailHeader
-        title={record.name}
-        summary={`${record.type} · ${record.city}`}
-        aside={<StatusBadge value={record.status} />}
-      />
-      <Metrics jobs={jobs} />
-      <Tabs items={['Overview', 'Jobs', 'Reviews']} selected={section} select={setSection} />
-      {section === 'Overview' && (
-        <div className="admin-detail-grid">
-          <DetailCard title="Professional profile" icon={<Wrench size={20} />}>
-            <DetailFields
-              items={[
-                { label: 'Email', value: record.email || profile.email || 'Not recorded' },
-                { label: 'Telephone', value: record.phone || profile.phone || 'Not recorded' },
-                {
-                  label: 'Services',
-                  value: (profile.services || []).join(' · ') || 'Not recorded',
-                },
-              ]}
-            />
-            <p>{profile.bio || 'No description supplied.'}</p>
-            <button
-              className="secondary"
-              onClick={() => route('applications/' + encodeURIComponent(record.id))}
-            >
-              View verification record
-            </button>
-          </DetailCard>
-          <DetailCard title="Platform activity" icon={<Wallet size={20} />}>
-            <DetailFields
-              items={[
-                {
-                  label: 'Recorded customer payments',
-                  value: money(connected ? connected.paid : stats.paid),
-                },
-                {
-                  label: 'Customer rating',
-                  value: rating.count
-                    ? `${rating.average} / 5 · ${rating.count} reviews`
-                    : 'No reviews yet',
-                },
-              ]}
-            />
+      <p role="status">Loading professional profile, verification evidence and jobs…</p>
+    </div>
+  );
+  if (live && error && !detail) return (
+    <div className="admin-detail-page">
+      <DetailBack label="Back to professionals" onClick={() => route('professionals')} />
+      <DetailCard title="Professional information unavailable">
+        <p role="alert">{error}</p>
+        <button type="button" className="secondary" onClick={() => setRevision(v => v + 1)}>Try again</button>
+      </DetailCard>
+    </div>
+  );
+  const profile = live ? detail : record.own ? data.profile :
+    providers.find((p) => p.id === applicationProfessionalId(data, record)) || record;
+  const owner = live ? detail?.user || {} : record;
+  const disabled = Boolean(owner.disabledAt || record.accountDisabled);
+  const displayStatus = disabled ? 'Blocked' : live ?
+    String(profile.status === 'APPROVED' ? 'Approved' : profile.status === 'SUSPENDED' ? 'Suspended' : profile.status || 'Not recorded') :
+    record.status;
+  const jobs = live ? (detail?.recentBookings || []) : professionalJobs(data, record);
+  const fallbackStats = accountMetrics(jobs);
+  const total = live ? detail?.bookingTotal || 0 : fallbackStats.total;
+  const active = live ? detail?.bookingCounts?.active || 0 : fallbackStats.active;
+  const completed = live ? detail?.bookingCounts?.completed || 0 : fallbackStats.completed;
+  const revenueCents = live ? detail?.recordedGrossRevenueCents || 0 : Math.round(fallbackStats.paid * 100);
+  const reviews = live ? profile.reviews || [] : eligibleCustomerReviews(data, applicationProfessionalId(data, record));
+  const average = reviews.length ? (reviews.reduce((sum: number, review: any) =>
+    sum + Number(review.rating || 0), 0) / reviews.length).toFixed(1) : '';
+  const documents = live ? owner.documents || [] : record.documents || [];
+  const name = profile.name || record.name || 'Professional';
+  const photo = live ? owner.photo || '' : profile.photo || '';
+  const initials = name.trim().split(/\s+/).slice(0, 2).map((part: string) => part[0] || '').join('').toUpperCase();
+
+  async function toggleBlock() {
+    if (!live || busy || !owner.id) return;
+    if (!disabled && !window.confirm(
+      'Block this professional? Their account will be signed out and removed from customer discovery until unblocked.',
+    )) return;
+    setBusy(true); setError('');
+    try {
+      await api('/admin/users/' + encodeURIComponent(owner.id) + '/status', 'POST', { disabled: !disabled });
+      setRevision(v => v + 1);
+      connected?.refresh?.();
+    } catch (reason: any) { setError(reason?.message || 'Could not change account status.'); }
+    finally { setBusy(false); }
+  }
+  async function deleteProfessional() {
+    if (!live || busy || confirmName !== name) return;
+    setBusy(true); setError('');
+    try {
+      await api('/admin/professionals/' + encodeURIComponent(id), 'DELETE', {});
+      connected?.refresh?.();
+      route('professionals');
+    } catch (reason: any) { setError(reason?.message || 'This professional could not be deleted.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div className="admin-detail-page admin-professional-detail">
+      <DetailBack label="Back to professionals" onClick={() => route('professionals')} />
+      <section className="admin-customer-hero" aria-label="Professional account summary">
+        <div className="admin-customer-identity">
+          <div className="admin-customer-avatar admin-professional-avatar" aria-hidden="true">
+            {photo ? <img src={photo} alt="" /> : initials}
+          </div>
+          <div className="admin-customer-identity-copy">
+            <div className="admin-customer-name-row">
+              <h1>{name}</h1>
+              <span className={'admin-customer-state' + (disabled ? ' blocked' : '')}>{displayStatus}</span>
+            </div>
             <p className="muted">
-              {connected
-                ? 'Confirmed gross payments on recent linked jobs. This is not a bank payout or net earnings.'
-                : 'Gross demo payments on linked jobs. This is not a bank payout or net earnings.'}
+              {profile.type || 'Professional'} · {profile.city || 'Location not recorded'}
+              {owner.createdAt ? ' · Registered ' + customerDate(owner.createdAt) : ''}
             </p>
-          </DetailCard>
+            <div className="admin-customer-contact">
+              <span><Mail size={15} aria-hidden="true" />{owner.email || record.email || 'Email not recorded'}</span>
+              <span><Phone size={15} aria-hidden="true" />{profile.phone || 'Phone not recorded'}</span>
+              <span><ShieldCheck size={15} aria-hidden="true" />
+                {profile.credentialId || 'Credential not recorded'}</span>
+              {profile.address ? <span><CarFront size={15} aria-hidden="true" />{profile.address}</span> : null}
+              {profile.website ? <span><Wallet size={15} aria-hidden="true" />{profile.website}</span> : null}
+            </div>
+          </div>
         </div>
-      )}
-      {section === 'Jobs' && (
-        <DetailCard title="Booking history">
-          <AdminJobsList jobs={jobs} route={route} />
+        {live && <div className="admin-customer-actions">
+          <button type="button" className="secondary" disabled={busy}
+            onClick={() => void toggleBlock()}>
+            {disabled ? <ShieldCheck size={16} /> : <Ban size={16} />}
+            {disabled ? 'Unblock professional' : 'Block professional'}
+          </button>
+          <button type="button" className="secondary admin-delete-trigger" disabled={busy}
+            onClick={() => { setShowDelete(v => !v); setConfirmName(''); }}>
+            <Trash2 size={16} /> Delete professional
+          </button>
+        </div>}
+      </section>
+      {live && showDelete && <section className="admin-customer-delete-confirm" aria-label="Confirm professional deletion">
+        <strong>Confirm permanent professional account deletion</strong>
+        <p>This is only available when no bookings, verification documents, reviews or other service
+          history exist. For verified businesses with records, block the account instead.
+          Type the exact business name to confirm.</p>
+        <div className="admin-customer-confirm-controls">
+          <input type="text" aria-label="Confirm business name" autoComplete="off"
+            value={confirmName} onChange={event => setConfirmName(event.target.value)} />
+          <button type="button" disabled={busy || confirmName !== name}
+            onClick={() => void deleteProfessional()}>Permanently delete</button>
+          <button type="button" className="secondary" onClick={() => setShowDelete(false)}>Cancel</button>
+        </div>
+      </section>}
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="admin-professional-metrics" aria-label="Professional booking and revenue statistics">
+        <div><strong>{total}</strong><span>Total bookings</span></div>
+        <div><strong>{active} / {completed}</strong><span>Active / Completed jobs</span></div>
+        <div><strong>{zar(revenueCents)}</strong><span>Recorded gross revenue</span></div>
+      </div>
+      <p className="muted admin-professional-revenue-note">
+        Gross confirmed customer payments (excluding test payments). Not the mechanic's net earnings
+        or payout balance; live payouts are not connected yet.
+      </p>
+      <Tabs items={['Overview', 'Jobs', 'Reviews']} selected={section} select={setSection} />
+      {section === 'Overview' && <>
+        <DetailCard title="Business information" icon={<Wrench size={20} />}>
+          <DetailFields items={[
+            { label: 'Business name', value: name },
+            { label: 'Professional type', value: profile.type || 'Not recorded' },
+            { label: 'Business address', value: profile.address || 'Not recorded' },
+            { label: 'Website', value: profile.website || 'Not recorded' },
+            { label: 'Coverage areas', value: (profile.serviceAreas || []).join(' · ') || profile.city || 'Not recorded' },
+            { label: 'Services offered', value: (profile.services || []).join(' · ') || 'Not recorded' },
+          ]} />
+          <h3>About the professional</h3>
+          <p>{profile.about || profile.bio || 'No description supplied.'}</p>
         </DetailCard>
-      )}
-      {section === 'Reviews' && (
-        <DetailCard title="Customer reviews" icon={<Star size={20} />}>
-          {reviews.length ? (
-            reviews.map((r: any) => (
-              <article className="admin-review" key={r.id}>
-                <b>{r.rating} / 5</b>
-                <p>{r.text}</p>
-                <small>{r.createdAt ? formatWhen(r.createdAt) : 'Date not recorded'}</small>
-              </article>
-            ))
-          ) : (
-            <p>No customer reviews yet.</p>
-          )}
+        <DetailCard title="Verification documents" icon={<FileText size={20} />}>
+          {documents.length ? documents.map((doc: any) => (
+            <div className="document-row" key={doc.id || doc.name}>
+              <FileText size={20} aria-hidden="true" />
+              <div>
+                <b>{doc.kind === 'IDENTITY' ? 'Identity evidence' :
+                  doc.kind === 'QUALIFICATION' ? 'Qualifications / experience' :
+                  doc.kind === 'BUSINESS' ? 'Business registration' : doc.kind || 'Document'}</b>
+                <small>{doc.name || 'Document name not recorded'}</small>
+                <small>Review: {doc.reviewStatus === 'APPROVED' ? 'Approved' :
+                  doc.reviewStatus === 'CHANGES_REQUESTED' ? 'Changes requested' : 'Pending review'}</small>
+                {doc.reviewNote && <small>Review note: {doc.reviewNote}</small>}
+              </div>
+              {live ? <a className="icon-action" href={`${apiBase}/api/documents/${encodeURIComponent(doc.id)}/preview`}
+                aria-label={'View ' + (doc.kind || 'document')} title="View private document"
+                target="_blank" rel="noopener noreferrer">
+                <Eye size={17} />
+              </a> : <small>Demo metadata only</small>}
+            </div>
+          )) : <p className="muted">No verification documents recorded.</p>}
+          <p className="muted">Documents are private and only accessible to authorised reviewers
+            and the account owner. This screen is read-only after approval.</p>
         </DetailCard>
-      )}
+        <DetailCard title="Customer feedback and activity" icon={<Star size={20} />}>
+          <DetailFields items={[
+            { label: 'Customer rating (recent reviews)', value: reviews.length ?
+              average + ' / 5 · ' + reviews.length + ' shown' : 'No reviews yet' },
+            { label: 'Cancelled / rejected bookings',
+              value: live ? detail?.bookingCounts?.stopped || 0 : fallbackStats.stopped },
+            { label: 'Verification status', value: displayStatus },
+          ]} />
+          <p className="muted">Jobs and customer reviews have their own sections above.
+            This activity summary is for oversight, not a bank payout statement.</p>
+        </DetailCard>
+      </>}
+      {section === 'Jobs' && <DetailCard title={`Booking history (${total})`}>
+        {jobs.length ? <div className="admin-customer-booking-list">
+          {jobs.map((job: any) => (
+            <article className="admin-customer-booking" key={job.id}>
+              <div className="admin-customer-booking-main">
+                <strong>{live
+                  ? [job.vehicle?.year, job.vehicle?.make, job.vehicle?.model].filter(Boolean).join(' ') || 'Vehicle not recorded'
+                  : job.vehicle || 'Vehicle not recorded'}</strong>
+                <span>{customerDate(job.appointmentAt || job.createdAt || job.date)}</span>
+                {job.description && <p>{job.description}</p>}
+              </div>
+              <div className="admin-customer-booking-side">
+                <StatusBadge value={customerBookingStatus[job.status] || job.status} />
+                {(data.jobs || []).some((x: any) => x.id === job.id) &&
+                  <button type="button" className="text-link"
+                    onClick={() => route('jobs/' + encodeURIComponent(job.id))}>
+                    View job <ArrowUpRight size={14} />
+                  </button>}
+              </div>
+            </article>
+          ))}
+        </div> : <p className="muted">No linked bookings yet.</p>}
+        {live && total > jobs.length &&
+          <p className="muted">Showing the latest {jobs.length} of {total} bookings.</p>}
+      </DetailCard>}
+      {section === 'Reviews' && <DetailCard title="Customer reviews" icon={<Star size={20} />}>
+        {reviews.length ? reviews.map((review: any) =>
+          <article className="admin-review" key={review.id}>
+            <b>{review.rating} / 5</b>
+            <p>{review.body || review.text || 'No written review.'}</p>
+            <small>{review.createdAt ? formatWhen(review.createdAt) : 'Date not recorded'}</small>
+          </article>,
+        ) : <p>No customer reviews yet.</p>}
+      </DetailCard>}
     </div>
   );
 }
