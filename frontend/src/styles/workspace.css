@@ -3078,6 +3078,21 @@ td .text-link {
 .admin-professional-detail .detail-card-body > h3 {
   margin-top: 18px; margin-bottom: 8px; font-size: 15px;
 }
+/* The approved professional's banner already contains the business details.
+   Keep verification and customer feedback as equal-width overview cards. */
+.admin-professional-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 20px;
+  min-width: 0;
+}
+.admin-professional-overview-grid > * { min-width: 0; height: 100%; }
+@media (max-width: 1050px) {
+  .admin-professional-overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .admin-professional-detail .document-row { min-width: 0; }
 .admin-professional-detail .document-row > div { min-width: 0; overflow-wrap: anywhere; }
 .admin-professional-detail .document-row .icon-action { flex: 0 0 auto; }
