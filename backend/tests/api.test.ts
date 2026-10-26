@@ -563,6 +563,37 @@ test(
       assert.equal(mechanicBooking.body.customer.phone, "0821234567");
       assert.equal(mechanicBooking.body.vehicle.make, "Volkswagen");
       assert.ok(!JSON.stringify(mechanicBooking.body).includes("passwordHash"));
+      // Admin reads this customer's own vehicles and booking history rather
+      // than inferring them from the global dashboard list.
+      const adminDetail = await send("get", `/api/admin/customers/${alice.user.id}`, undefined, admin);
+      assert.equal(adminDetail.status, 200, JSON.stringify(adminDetail.body));
+      assert.equal(adminDetail.body.customer.email, "alice@example.test");
+      assert.equal(adminDetail.body.customer.passwordHash, undefined);
+      assert.equal(adminDetail.body.bookingTotal, 1);
+      assert.equal(adminDetail.body.bookingCounts.active, 1);
+      assert.ok(adminDetail.body.vehicles.some((v: any) => v.registration === car.body.registration));
+      assert.equal(adminDetail.body.bookings[0].id, bookingId);
+      assert.equal(adminDetail.body.bookings[0].vehicle.registration, car.body.registration);
+      assert.equal((await send("get", `/api/admin/customers/${alice.user.id}`, undefined, bob)).status, 403);
+      assert.equal((await send("delete", `/api/admin/customers/${alice.user.id}`, {}, admin)).status, 409);
+
+      const emptyCustomer = await db.user.create({
+        data: {
+          role: "CUSTOMER", name: "Unused Customer",
+          email: "unused-customer@example.test", passwordHash: "not-a-login",
+        },
+      });
+      assert.equal((await send("post", `/api/admin/users/${emptyCustomer.id}/status`,
+        { disabled: true }, admin)).status, 200);
+      const blockedCustomer = await send("get", `/api/admin/customers/${emptyCustomer.id}`, undefined, admin);
+      assert.equal(blockedCustomer.status, 200);
+      assert.ok(blockedCustomer.body.customer.disabledAt);
+      assert.equal(blockedCustomer.body.vehicleTotal, 0);
+      assert.equal(blockedCustomer.body.bookingTotal, 0);
+      assert.equal((await send("delete", `/api/admin/customers/${emptyCustomer.id}`, {}, bob)).status, 403);
+      assert.equal((await send("delete", `/api/admin/customers/${emptyCustomer.id}`, {}, admin)).status, 200);
+      assert.equal((await send("get", `/api/admin/customers/${emptyCustomer.id}`, undefined, admin)).status, 404);
+
       const overview = (
         await send("get", "/api/customer/overview", undefined, alice)
       ).body;

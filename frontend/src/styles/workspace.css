@@ -2938,3 +2938,109 @@ td .text-link {
   box-shadow: 0 0 0 4px rgb(243 155 56 / 20%);
   pointer-events: none;
 }
+
+
+/* EloFix-inspired admin customer summary, using Verifi Auto's own purple tokens. */
+.admin-customer-detail { gap: 16px; }
+.admin-customer-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 25px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--purple) 14%, var(--surface)), var(--surface));
+  border: 1px solid var(--purple);
+  border-radius: 15px;
+}
+.admin-customer-identity { display: flex; align-items: center; gap: 18px; flex: 1 1 420px; min-width: 0; }
+.admin-customer-avatar {
+  width: 78px; height: 78px; flex: 0 0 78px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--purple) 45%, transparent);
+  background: color-mix(in srgb, var(--purple) 25%, var(--surface));
+  font-size: 25px; font-weight: 700; color: var(--soft);
+}
+.admin-customer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.admin-customer-identity-copy { display: grid; gap: 8px; min-width: 0; }
+.admin-customer-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.admin-customer-name-row h1 { font-size: clamp(21px, 2.2vw, 28px); margin: 0; }
+.admin-customer-identity-copy p { margin: 0; font-size: 12px; }
+.admin-customer-state {
+  display: inline-flex; align-items: center; padding: 5px 10px; border-radius: 999px;
+  color: #18754c; background: #def6e9; font-size: 11px; font-weight: 700;
+}
+.admin-customer-state.blocked { color: #a83e27; background: #ffebde; }
+.admin-customer-contact { display: flex; flex-wrap: wrap; gap: 9px 18px; }
+.admin-customer-contact > span {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--muted); font-size: 12px; overflow-wrap: anywhere; min-width: 0;
+}
+.admin-customer-contact svg { color: var(--soft); flex: 0 0 auto; }
+.admin-customer-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.admin-customer-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; min-height: 42px; font-weight: 600; }
+.admin-customer-actions .admin-delete-trigger { border-color: #c87c88; color: #b44f60; }
+.admin-customer-actions .admin-delete-trigger:hover { background: color-mix(in srgb, #e55d75 12%, var(--surface)); }
+.admin-customer-delete-confirm {
+  display: grid; gap: 12px; padding: 18px;
+  border: 1px solid #c87c88; border-radius: 12px;
+  background: color-mix(in srgb, #e55d75 6%, var(--surface));
+}
+.admin-customer-delete-confirm p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.admin-customer-confirm-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.admin-customer-confirm-controls input { min-width: 180px; flex: 1 1 250px; padding: 11px; border: 1px solid var(--purple); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.admin-customer-confirm-controls button { padding: 10px 15px; border-radius: 8px; min-height: 42px; background: var(--purple); color: white; }
+.admin-customer-confirm-controls button:disabled { opacity: .45; cursor: not-allowed; }
+.admin-customer-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.admin-customer-metrics > div {
+  display: grid; gap: 9px; padding: 19px;
+  border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--line));
+  border-radius: 12px; background: color-mix(in srgb, var(--purple) 9%, var(--surface));
+}
+.admin-customer-metrics strong { font-size: clamp(21px, 2vw, 27px); color: var(--purple); }
+.admin-customer-metrics span { font-size: 12px; color: var(--muted); }
+.admin-customer-activity-note { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.admin-customer-activity-note svg { color: var(--soft); }
+.admin-customer-activity-note strong { color: var(--ink); }
+.admin-customer-activity-note small { margin-left: auto; }
+.admin-customer-vehicles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.admin-customer-vehicle {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px; border: 1px solid var(--line); border-radius: 12px;
+  background: color-mix(in srgb, var(--purple) 5%, var(--surface));
+  min-width: 0;
+}
+.admin-customer-vehicle-symbol { display: grid; place-items: center; flex: 0 0 47px; width: 47px; height: 47px; border-radius: 12px; color: var(--soft); background: var(--tint); }
+.admin-customer-vehicle > div:last-child { display: grid; gap: 6px; min-width: 0; font-size: 12px; }
+.admin-customer-vehicle strong { font-size: 15px; overflow-wrap: anywhere; }
+.admin-customer-vehicle small { color: var(--muted); }
+.admin-customer-vehicle em { color: var(--soft); font-size: 11px; font-style: normal; }
+.admin-customer-booking-list { display: grid; gap: 12px; }
+.admin-customer-booking {
+  display: flex; justify-content: space-between; gap: 16px; align-items: flex-start;
+  border: 1px solid var(--line); border-radius: 12px; padding: 15px;
+  background: color-mix(in srgb, var(--purple) 4%, var(--surface));
+}
+.admin-customer-booking-main { display: grid; gap: 6px; min-width: 0; }
+.admin-customer-booking-main strong { font-size: 14px; }
+.admin-customer-booking-main span, .admin-customer-booking-main small { color: var(--muted); font-size: 12px; }
+.admin-customer-booking-main p { margin: 4px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+.admin-customer-booking-side { display: grid; gap: 8px; justify-items: end; text-align: right; flex: 0 0 auto; }
+.admin-customer-booking-side small { color: var(--muted); font-size: 11px; }
+.admin-customer-booking-side button { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 800px) {
+  .admin-customer-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-customer-booking { flex-direction: column; }
+  .admin-customer-booking-side { width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+}
+@media (max-width: 520px) {
+  .admin-customer-hero { padding: 16px; }
+  .admin-customer-identity { align-items: flex-start; }
+  .admin-customer-avatar { width: 57px; height: 57px; flex-basis: 57px; font-size: 18px; }
+  .admin-customer-actions { width: 100%; }
+  .admin-customer-actions button { flex: 1; }
+  .admin-customer-contact { display: grid; }
+  .admin-customer-metrics > div { padding: 13px; }
+}

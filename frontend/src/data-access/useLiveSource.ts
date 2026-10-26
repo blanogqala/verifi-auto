@@ -167,9 +167,11 @@ export function useLiveSource(enabled: boolean, page: string) {
         name: customer.name,
         email: customer.email,
         phone: customer.phone || '',
+        photo: customer.photo || '',
+        createdAt: customer.createdAt || null,
+        disabledAt: customer.disabledAt || null,
         city: '',
         sample: false,
-        disabledAt: customer.disabledAt,
       }));
       next.adminActivity = (Array.isArray(activity) ? activity : []).map((event: any) => ({
         id: event.id,

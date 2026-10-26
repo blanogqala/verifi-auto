@@ -669,38 +669,7 @@ export function Workspace({
               customer={customers.find((c: any) => c.id === adminDetailId)}
               data={data}
               route={route}
-              connected={
-                live
-                  ? {
-                      jobs: bookingsForCustomer(data.jobs, adminDetailId),
-                      paid: paymentRecordTotal(
-                        recordedCustomerPayments(bookingsForCustomer(data.jobs, adminDetailId)),
-                      ),
-                      accountAction: (
-                        <button
-                          className="secondary"
-                          type="button"
-                          onClick={() => {
-                            const customer = customers.find((item: any) => item.id === adminDetailId);
-                            if (!customer) return;
-                            void api(`/admin/users/${customer.id}/status`, 'POST', {
-                              disabled: !customer.disabledAt,
-                            })
-                              .then(() => {
-                                refresh();
-                                notify(customer.disabledAt ? 'Account enabled.' : 'Account disabled.');
-                              })
-                              .catch((reason: any) => notify(reason.message));
-                          }}
-                        >
-                          {customers.find((item: any) => item.id === adminDetailId)?.disabledAt
-                            ? 'Enable account'
-                            : 'Disable account'}
-                        </button>
-                      ),
-                    }
-                  : undefined
-              }
+              connected={live ? { refresh } : undefined}
             />
           )}
           {adminDetailKind === 'jobs' && <AdminJobDetailPage key={adminDetailId} job={jobs.find((j: any) => j.id === adminDetailId)} data={data} route={route} />}
