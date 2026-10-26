@@ -112,7 +112,7 @@ export function AppointmentsPage({
       {visible.length ? (
         <div className="appointment-grid">
           {visible.map((job: any) => {
-            const hasNewRequest = section === 'pending' && unreadRequestIds.includes(job.id);
+            const hasNewRequest = (section === 'pending' || section === 'emergency') && unreadRequestIds.includes(job.id);
             const vehicleName = job.vehicleLabel || job.vehicle || 'Vehicle not recorded';
             const when = `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}`;
             const registration =
