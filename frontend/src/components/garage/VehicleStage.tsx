@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Box, Camera, Image as ImageIcon, ShieldCheck, WifiOff } from 'lucide-react';
+import { Box, Camera, ShieldCheck, WifiOff } from 'lucide-react';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
 import { RoadLoader } from '../ui/RoadLoader';
 
@@ -20,7 +20,7 @@ function onDataSavingConnection() {
     const connection = (navigator as Navigator & {
       connection?: { saveData?: boolean; effectiveType?: string };
     }).connection;
-    return Boolean(connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType || ''));
+    return Boolean(connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType || ''));
   } catch {
     return false;
   }
@@ -50,7 +50,7 @@ export function VehicleStage({
   const exact = Boolean(asset && resolution.status === 'exact');
   const photo = typeof vehicle?.photo === 'string' ? vehicle.photo : '';
   const [mode, setMode] = useState<'auto' | 'photo' | '3d'>('auto');
-  const [lowData, setLowData] = useState(false);
+  const [lowData, setLowData] = useState(onDataSavingConnection);
   const [failed, setFailed] = useState(false);
   const [canRender, setCanRender] = useState<boolean | null>(null);
 
@@ -145,11 +145,6 @@ export function VehicleStage({
             : modelLabel}</span>
         </div>
         <div className="showroom-display-actions">
-          {show3d && photo ? (
-            <button className="showroom-mode-button" type="button" onClick={() => setMode('photo')}>
-              <ImageIcon size={16} /> Photo
-            </button>
-          ) : null}
           {asset && !show3d ? (
             <button className="showroom-mode-button showroom-mode-primary" type="button" onClick={open3d}>
               <Box size={16} /> Explore 3D
