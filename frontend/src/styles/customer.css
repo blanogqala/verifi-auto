@@ -1064,3 +1064,43 @@ select {
 }
 .garage-no-photo strong { font-size: clamp(16px, 2.4vw, 23px); }
 .garage-no-photo p { margin: 0; max-width: 450px; font-size: 13px; line-height: 1.6; }
+
+
+/* The interactive 3D scene is the primary My Garage experience.
+   Owner photographs remain optional reference images, never the backdrop. */
+.showroom-owner-photo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 11px;
+  margin-top: 7px;
+  border: 1px solid color-mix(in srgb, var(--purple) 28%, var(--line));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--purple) 5%, var(--surface));
+  font-size: 12px;
+  color: var(--muted);
+}
+.showroom-owner-photo img {
+  display: block;
+  width: 68px;
+  height: 52px;
+  border-radius: 7px;
+  object-fit: contain;
+  background: var(--surface);
+}
+.vehicle-showroom-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+.garage-photo-fallback {
+  display: block;
+  width: min(100%, 480px);
+  max-height: 240px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+@media (max-width: 650px) {
+  .showroom-owner-photo { padding: 6px; }
+  .showroom-owner-photo img { width: 55px; height: 42px; }
+}

@@ -7,6 +7,7 @@ import { id, expectedVersion } from "../../lib/validation.js";
 import { announce } from "../../lib/events.js";
 import { calendarDate, dateOnly } from "../../lib/calendarDate.js";
 import type { Tx } from "../../lib/db.js";
+import { selectVerified3dAsset, vehicle3dPlan } from "./vehicleAppearance.js";
 const bodyStyles = [
   "",
   "hatchback",
@@ -165,17 +166,20 @@ vehicleRoutes.get("/:id", async (req, res) => {
     where: {
       make: { equals: vehicle.make, mode: "insensitive" },
       model: { equals: vehicle.model, mode: "insensitive" },
-      variant: { equals: vehicle.variant, mode: "insensitive" },
       yearFrom: { lte: vehicle.year },
       yearTo: { gte: vehicle.year },
     },
-    take: 2,
+    take: 24,
   });
+  // Match reviewed, licensed geometry before returning it. Don't silently
+  // select a different trim or an ambiguous model just because the make matches.
+  const modelAsset = selectVerified3dAsset(vehicle, assets);
   res.json({
     ...present(vehicle),
     history,
-    modelAsset: assets.length === 1 ? assets[0] : null,
-    modelMatch: assets.length === 1 ? "verified" : "unavailable",
+    modelAsset,
+    modelMatch: modelAsset ? "verified" : "unavailable",
+    modelView: vehicle3dPlan(vehicle, Boolean(modelAsset)),
   });
 });
 vehicleRoutes.patch("/:id", async (req, res) => {

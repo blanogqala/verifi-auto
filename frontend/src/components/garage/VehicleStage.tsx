@@ -14,21 +14,24 @@ function webglAvailable() {
   }
 }
 
-function FallbackArt({ onRetry }: { onRetry?: () => void }) {
+function FallbackArt({ photo, onRetry }: { photo?: string; onRetry?: () => void }) {
   return (
-    <div className="vehicle-fallback" aria-label="Still illustration of a vehicle">
-      <svg viewBox="0 0 220 90" className="vehicle-fallback-art" aria-hidden="true">
-        <path d="M20 62h180" />
-        <path d="M38 62l18-24h78l28 24" />
-        <rect x="78" y="34" width="52" height="16" />
-        <circle cx="70" cy="64" r="12" />
-        <circle cx="160" cy="64" r="12" />
-      </svg>
-      <p className="muted">Still illustration. This view does not rotate.</p>
+    <div className="vehicle-fallback" aria-label="3D showroom unavailable in this browser">
+      {photo ? (
+        <img className="garage-photo-fallback" src={photo}
+          alt="Photo supplied by vehicle owner; not a rotatable 3D model" />
+      ) : (
+        <svg viewBox="0 0 220 90" className="vehicle-fallback-art" aria-hidden="true">
+          <path d="M20 62h180" />
+          <path d="M38 62l18-24h78l28 24" />
+          <rect x="78" y="34" width="52" height="16" />
+          <circle cx="70" cy="64" r="12" />
+          <circle cx="160" cy="64" r="12" />
+        </svg>
+      )}
+      <p className="muted">3D is unavailable here. This fallback does not rotate.</p>
       {onRetry ? (
-        <button className="secondary" type="button" onClick={onRetry}>
-          Try the 3D view again
-        </button>
+        <button className="secondary" type="button" onClick={onRetry}>Try the 3D view again</button>
       ) : null}
     </div>
   );
@@ -46,62 +49,35 @@ export function VehicleStage({
   const resolution = resolved || resolveVehicleAsset(vehicle);
   const [failed, setFailed] = useState(false);
   const [webgl, setWebgl] = useState<boolean | null>(null);
-  const asset = resolution.asset;
+  const asset = resolution.status === 'exact' || resolution.status === 'approximate'
+    ? resolution.asset : null;
   useEffect(() => {
     setFailed(false);
     setWebgl(webglAvailable());
-  }, [vehicle?.id, asset?.id]);
+  }, [vehicle?.id, asset?.id, asset?.src]);
   const paintColor = typeof vehicle?.paintColor === 'string' ? vehicle.paintColor : '';
-  // An owner-supplied real photograph takes precedence over all 3D previews
-  // and approximate demonstration models. Do not pretend a concept car is theirs.
-  if (vehicle?.photo) return (
-    <div className={'vehicle-stage' + (compact ? ' vehicle-stage-compact' : '')}>
-      <div className="garage-real-photo">
-        <img src={vehicle.photo} alt={`Photograph of ${[vehicle.make, vehicle.model].filter(Boolean).join(' ')}`} />
-      </div>
-      <div className="vehicle-stage-meta">
-        <p className="model-caption">Photo uploaded by vehicle owner · Actual vehicle</p>
-      </div>
-    </div>
-  );
-  let view = <RoadLoader label="Loading vehicle model" />;
-  if (resolution.status === 'unavailable' && !asset?.src) {
-    // A made-up car shape must never be labelled as an actual make/model match.
+  const previewStyle = resolution.modelView?.bodyStyle || vehicle?.bodyStyle || 'other';
+  const verified = Boolean(asset?.src && resolution.status === 'exact');
+  const sceneLabel = verified
+    ? 'Verified 3D model for this vehicle'
+    : 'Interactive 3D body-style preview — not an exact manufacturer model';
+  let view = <RoadLoader label="Loading 3D garage" />;
+  if (webgl === false || failed) {
     view = (
-      <div className="garage-no-photo" role="status">
-        <strong>No photograph for this vehicle yet</strong>
-        <p>Open Vehicle Details and choose Edit to upload a photo of your actual car.</p>
-        <p className="muted">A licensed exact-model image can also be shown when one has been approved for this model.</p>
-      </div>
+      <FallbackArt photo={vehicle?.photo} onRetry={() => {
+        setFailed(false);
+        setWebgl(webglAvailable());
+      }} />
     );
-  } else if (resolution.status === 'ambiguous') {
+  } else if (webgl) {
     view = (
-      <div className="vehicle-choice">
-        <FallbackArt />
-        <p className="model-caption">Choose a body style when you edit this vehicle.</p>
-      </div>
-    );
-  } else if (webgl === false || failed || !asset?.src) {
-    view = (
-      <FallbackArt
-        onRetry={
-          asset?.src
-            ? () => {
-                setFailed(false);
-                setWebgl(webglAvailable());
-              }
-            : undefined
-        }
-      />
-    );
-  } else if (webgl && asset) {
-    view = (
-      <Suspense fallback={<RoadLoader label="Loading vehicle model" />}>
+      <Suspense fallback={<RoadLoader label="Loading 3D garage" />}>
         <VehicleModelViewer
-          src={asset.src}
+          src={asset?.src}
+          previewStyle={previewStyle}
           paintColor={paintColor}
-          paintMaterials={asset.paintMaterials || emptyPaint}
-          label={resolution.label || `${vehicle?.make || ''} ${vehicle?.model || 'Vehicle'}`.trim()}
+          paintMaterials={asset?.paintMaterials || emptyPaint}
+          label={sceneLabel}
           onFail={() => setFailed(true)}
         />
       </Suspense>
@@ -112,18 +88,20 @@ export function VehicleStage({
     <div className={'vehicle-stage' + (compact ? ' vehicle-stage-compact' : '')}>
       {view}
       <div className="vehicle-stage-meta">
-        {resolution.label ? <p className="model-caption">{resolution.label}</p> : null}
-        {asset ? (
-          <a
-            className="model-credits"
-            href={asset.source}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={asset.attribution}
-          >
-            Credits
-          </a>
-        ) : null}
+        <p className="model-caption">{sceneLabel}</p>
+        <p className="model-caption vehicle-showroom-hint">
+          Drag left or right to rotate · Use the left and right arrow keys
+        </p>
+        {asset?.source && (
+          <a className="model-credits" href={asset.source} target="_blank"
+            rel="noreferrer" aria-label={asset.attribution || '3D model source'}>3D model credits</a>
+        )}
+        {vehicle?.photo && (
+          <div className="showroom-owner-photo">
+            <img src={vehicle.photo} alt="Photo of the owner's actual vehicle" />
+            <span>Actual vehicle photograph</span>
+          </div>
+        )}
       </div>
     </div>
   );
