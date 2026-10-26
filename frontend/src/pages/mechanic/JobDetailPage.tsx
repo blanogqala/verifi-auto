@@ -81,7 +81,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         }
         aside={<Status value={job.status} />}
       />
-      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> EMERGENCY ROADSIDE JOB</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span><span>Use Messages to coordinate roadside arrival, tools and next steps.</span></div>}
+      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> EMERGENCY ROADSIDE JOB</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span>{job.roadsideLatitude != null && job.roadsideLongitude != null && <a className="roadside-directions" target="_blank" rel="noopener noreferrer" href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(job.roadsideLatitude + ',' + job.roadsideLongitude)}>Open location in Maps</a>}<span>Use Messages to coordinate roadside arrival, tools and next steps.</span></div>}
       <DetailCard title="Progress">
         <BookingProgress job={job} />
       </DetailCard>
