@@ -31,8 +31,9 @@ export function selectVerified3dAsset<T extends RecordAsset>(
     ? safe.filter(asset => normalized(asset.variant) === wanted)
     : safe.filter(asset => !normalized(asset.variant));
   if (exact.length === 1) return exact[0];
-  if (exact.length > 1) return null;
-  return safe.length === 1 && !normalized(safe[0].variant) ? safe[0] : null;
+  // A missing or different trim may require different bodywork. Never
+  // promote a generic/other variant asset to an "exact" 3D match.
+  return null;
 }
 export function vehicle3dPlan(identity: Identity, verified: boolean) {
   const style = normalized(identity.bodyStyle || '');
