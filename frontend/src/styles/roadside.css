@@ -73,3 +73,5 @@
 @media(max-width:960px){.roadside-layout{grid-template-columns:1fr}.roadside-match{position:static}.roadside-providers{max-height:none}}
 @media(max-width:600px){.roadside-hero{grid-template-columns:1fr;padding:23px}.roadside-hero-icon{display:none}.roadside-issues,.roadside-vehicle-fields{grid-template-columns:1fr}.roadside-overview-action{align-items:stretch;flex-direction:column}.roadside-overview-button{width:100%}.roadside-step{padding:16px!important}.roadside-hero h2{font-size:28px}}
 @media(prefers-reduced-motion:reduce){.roadside-page *{scroll-behavior:auto!important}}
+
+.roadside-directions { justify-self:start; font-weight:750; color:var(--soft); text-decoration:underline; text-underline-offset:3px; }
