@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowRight, CarFront, CheckCircle2, Clock3, MapPin, Navigation, PhoneCall, ShieldCheck, Wrench } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { api } from '../../data-access/api';
@@ -26,19 +26,63 @@ export function EmergencyPage({ data, professionals, live, go, notify, refresh, 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
-  const [radius, setRadius] = useState(25);
+  const [liveResult, setLiveResult] = useState<any>(null);
+  const [matchingLoading, setMatchingLoading] = useState(live);
+  const [matchingError, setMatchingError] = useState('');
 
-  const matched = useMemo(() => {
-    return (professionals || [])
-      .filter((pro: any) => pro.roadsideAvailable === true || (!live && (pro.services || []).includes('Roadside assistance')))
+  // This dedicated API scans opted-in approved professionals, not the first
+  // 100 rows of the general directory. Search automatically expands 50/100/200 km.
+  useEffect(() => {
+    if (!live) return;
+    let active = true;
+    setMatchingLoading(true);
+    setMatchingError('');
+    const params = coordinates
+      ? '?latitude=' + encodeURIComponent(coordinates.latitude) +
+        '&longitude=' + encodeURIComponent(coordinates.longitude)
+      : '';
+    api('/professionals/roadside' + params)
+      .then((result) => {
+        if (!active) return;
+        setLiveResult(result);
+        setMatchingLoading(false);
+      })
+      .catch((reason: any) => {
+        if (!active) return;
+        setLiveResult(null);
+        setMatchingLoading(false);
+        setMatchingError(reason?.message || 'Could not load roadside professionals. Please try again.');
+      });
+    return () => { active = false; };
+  }, [live, coordinates?.latitude, coordinates?.longitude]);
+
+  const demoMatches = useMemo(() => {
+    if (live) return { professionals: [] as any[], radiusKm: null as number | null, fallbackUnlocated: false };
+    const ranked = (professionals || [])
+      .filter((pro: any) =>
+        pro.roadsideAvailable === true || (pro.services || []).includes('Roadside assistance'))
       .map((pro: any) => {
         const point = coordinatesOf(pro.location?.latitude ?? pro.latitude, pro.location?.longitude ?? pro.longitude);
         const km = coordinates && point ? haversineKm(coordinates, point) : null;
         return { ...pro, km };
       })
-      .filter((pro: any) => !coordinates || pro.km === null || pro.km <= radius)
       .sort((a: any, b: any) => (a.km ?? Infinity) - (b.km ?? Infinity));
-  }, [professionals, coordinates, radius, live]);
+    if (!coordinates) return { professionals: ranked.slice(0, 12), radiusKm: null, fallbackUnlocated: false };
+    for (const radiusKm of [50, 100, 200]) {
+      const nearby = ranked.filter((pro: any) => pro.km != null && pro.km <= radiusKm);
+      if (nearby.length) return { professionals: nearby.slice(0, 12), radiusKm, fallbackUnlocated: false };
+    }
+    const unlocated = ranked.filter((pro: any) => pro.km == null);
+    return { professionals: unlocated.slice(0, 12), radiusKm: 200, fallbackUnlocated: unlocated.length > 0 };
+  }, [professionals, coordinates, live]);
+
+  const roadsideResult = live ? liveResult : demoMatches;
+  const matched = ((roadsideResult?.professionals || []) as any[]).map((pro: any) => ({
+    ...pro,
+    km: pro.km ?? pro.distanceKm ?? null,
+  }));
+  const matchingRadius = roadsideResult?.radiusKm ?? null;
+  const fallbackUnlocated = Boolean(roadsideResult?.fallbackUnlocated);
   const selected = matched.find((pro: any) => pro.id === selectedId);
   const vehicles = (data.vehicles || []).filter((v: any) => !v.archived && !v.archivedAt);
 
@@ -164,7 +208,7 @@ export function EmergencyPage({ data, professionals, live, go, notify, refresh, 
             <label className="roadside-field">Roadside address or landmark
               <input required minLength={5} maxLength={300} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Road name, direction, nearest exit, landmark…" />
             </label>
-            {coordinates && <label className="roadside-field">Search radius <select value={radius} onChange={(e) => setRadius(Number(e.target.value))}><option value={10}>Within 10 km</option><option value={25}>Within 25 km</option><option value={50}>Within 50 km</option></select></label>}
+            {coordinates && <p className="roadside-match-note"><MapPin size={16} /> Search automatically starts within 50 km, then expands to 100 km and 200 km if no nearby professionals are found.</p>}
           </Card>
           <Card as="section" className="dash-panel roadside-step">
             <div className="roadside-step-title"><span>03</span><div><h3>Which vehicle?</h3><p>Choose a vehicle or quickly provide its details.</p></div></div>
@@ -184,19 +228,26 @@ export function EmergencyPage({ data, professionals, live, go, notify, refresh, 
         </div>
         <aside className="roadside-match">
           <Card as="section" className="dash-panel roadside-step">
-            <div className="roadside-step-title"><span>04</span><div><h3>Choose roadside help</h3><p>{matched.length} professional{matched.length === 1 ? '' : 's'} offering roadside assistance.</p></div></div>
-            {!coordinates && <p className="roadside-match-note"><MapPin size={16} /> Share your location to sort by distance. Without GPS, these results are not confirmed to be nearby.</p>}
+            <div className="roadside-step-title"><span>04</span><div><h3>Choose roadside help</h3><p>{matchingLoading ? 'Searching for available roadside professionals…' : matched.length + ' professional' + (matched.length === 1 ? '' : 's') + ' offering roadside assistance.'}</p></div></div>
+            {!coordinates && <p className="roadside-match-note"><MapPin size={16} /> Share your location to find the closest opted-in providers. Without GPS, listed workshops are not confirmed nearby.</p>}
+            {coordinates && matchingRadius && !fallbackUnlocated && !matchingLoading && matched.length > 0 && (
+              <p className="roadside-match-note"><MapPin size={16} /> {matchingRadius === 50 ? 'Found providers within 50 km.' : 'No providers within ' + (matchingRadius === 100 ? 50 : 100) + ' km — expanded search to ' + matchingRadius + ' km.'} Distances are straight-line estimates.</p>
+            )}
+            {coordinates && fallbackUnlocated && !matchingLoading && (
+              <p className="roadside-match-note" role="status"><AlertTriangle size={16} /> No distance-verified matches within 200 km. Showing opted-in workshops without saved coordinates; these are NOT confirmed nearby. Check coverage before relying on assistance.</p>
+            )}
+            {matchingError && <p className="form-error" role="alert">{matchingError}</p>}
             <div className="roadside-providers">
-              {matched.map((pro: any) => <button type="button" key={pro.id} className={'roadside-provider' + (selectedId === pro.id ? ' selected' : '')} onClick={() => setSelectedId(pro.id)} aria-pressed={selectedId === pro.id}>
+              {!matchingLoading && matched.map((pro: any) => <button type="button" key={pro.id} className={'roadside-provider' + (selectedId === pro.id ? ' selected' : '')} onClick={() => setSelectedId(pro.id)} aria-pressed={selectedId === pro.id}>
                 <span className="roadside-provider-icon"><Wrench size={20}/></span>
                 <span className="roadside-provider-copy"><strong>{pro.name}</strong><small>{pro.type} · {pro.area || pro.city || 'Service area not listed'}</small><small>{pro.km != null ? '≈ ' + pro.km.toFixed(1) + ' km straight-line' : 'Distance not available'}</small></span>
                 {selectedId === pro.id ? <CheckCircle2 size={21} className="roadside-check" /> : <ArrowRight size={18}/>}
               </button>)}
-              {!matched.length && <div className="roadside-empty"><Wrench size={28}/><strong>No opted-in roadside professionals found.</strong><p>Try a wider search radius, or contact a roadside assistance provider directly. Do not rely on an unacknowledged request.</p></div>}
+              {!matchingLoading && !matchingError && !matched.length && <div className="roadside-empty"><Wrench size={28}/><strong>No roadside professionals found within 200 km.</strong><p>No eligible provider is currently listed for this location. Please contact a roadside assistance provider directly; do not rely on an unacknowledged request.</p></div>}
             </div>
             <p className="muted roadside-disclaimer">Distance is not an ETA. Professionals must accept before assistance is confirmed.</p>
             {error && <p className="form-error" role="alert">{error}</p>}
-            <button className="primary roadside-submit" disabled={!selected || submitting} type="submit"><PhoneCall size={18}/>{submitting ? 'Sending urgent request…' : 'Request urgent help'}</button>
+            <button className="primary roadside-submit" disabled={!selected || submitting || matchingLoading || !!matchingError} type="submit"><PhoneCall size={18}/>{submitting ? 'Sending urgent request…' : 'Request urgent help'}</button>
             <p className="roadside-after">After sending, open My Bookings to chat, share further details and see whether the professional accepts.</p>
           </Card>
         </aside>
