@@ -105,6 +105,7 @@ model Professional {
   about String @default("") @db.VarChar(4000)
   services String[] @default([])
   serviceAreas String[] @default([])
+  roadsideAvailable Boolean @default(false)
   phone String @default("")
   website String @default("")
   latitude Float?
@@ -171,6 +172,11 @@ model Booking {
   vehicleId String @db.Uuid
   vehicle Vehicle @relation(fields: [vehicleId, customerId], references: [id, customerId], onDelete: Restrict)
   description String @db.VarChar(4000)
+  kind String @default("STANDARD") @db.VarChar(16)
+  emergencyType String @default("") @db.VarChar(100)
+  roadsideAddress String @default("") @db.VarChar(300)
+  roadsideLatitude Float?
+  roadsideLongitude Float?
   appointmentAt DateTime
   status BookingStatus @default(REQUESTED)
   rejectionReason String @default("")
