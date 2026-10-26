@@ -1407,3 +1407,36 @@ select {
 @media (prefers-reduced-motion: reduce) {
   .showroom-edit-button, .showroom-mode-button, .garage-cards .garage-card { transition: none; }
 }
+
+/* Embedded, reviewed real-car reference: contained within the existing studio. */
+.showroom-external-3d {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: inherit;
+  background: #1a1425;
+}
+.showroom-display:has(.showroom-external-3d)::before {
+  display: none; /* No veil over the third-party interactive 3D controls. */
+}
+.showroom-display:has(.showroom-external-3d)::after {
+  display: none;
+}
+.showroom-stage-disclaimer > span {
+  flex: 1 1 250px;
+  max-width: 750px;
+  line-height: 1.65;
+}
+.showroom-stage-disclaimer .model-credits {
+  margin-left: 0;
+  flex: 0 0 auto;
+  color: var(--purple);
+  font-weight: 600;
+}
+.showroom-display:has(.showroom-external-3d) .showroom-3d-pill {
+  pointer-events: none;
+  top: 9px;
+  left: 10px;
+}
