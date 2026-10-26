@@ -1997,7 +1997,7 @@ assert.equal(canVisit('admin', 'dashboard/jobs/a/b'), false);
 assert.ok(screen('admin', 'applications/app-02').includes('Business details'));
 assert.ok(screen('admin', 'applications/app-02').includes('Urban Auto Care'));
 assert.ok(!screen('admin', 'applications/app-02').includes('role="dialog"'));
-assert.ok(screen('admin', 'professionals/app-03').includes('Platform activity'));
+assert.ok(screen('admin', 'professionals/app-03').includes('Verification documents'));
 assert.ok(screen('admin', 'customers/cust-01').includes('Customer account'));
 assert.ok(screen('admin', 'jobs/VA-2026-1042').includes('Job progress'));
 assert.ok(screen('admin', 'jobs/missing').includes('Record not found'));
