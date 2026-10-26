@@ -102,7 +102,7 @@ export function AppointmentDetailPage({ data, job, notify, onAccept, onReject, r
         summary={<span>{customer}</span>}
         aside={<Status value={job.status} />}
       />
-      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> URGENT ROADSIDE ASSISTANCE</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span><span>Confirm location, equipment and your availability with the customer in Messages before accepting.</span></div>}
+      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> URGENT ROADSIDE ASSISTANCE</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span>{job.roadsideLatitude != null && job.roadsideLongitude != null && <a className="roadside-directions" target="_blank" rel="noopener noreferrer" href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(job.roadsideLatitude + ',' + job.roadsideLongitude)}>Open location in Maps</a>}<span>Confirm location, equipment and your availability with the customer in Messages before accepting.</span></div>}
       <DetailTabs
         id="mechanic-appointment"
         label="Appointment"
