@@ -54,11 +54,12 @@ const legacyMerchantSections: Record<string, MerchantProfileSection> = {
   application: 'verification',
 };
 
-export const appointmentSections = ['pending', 'rejected', 'cancelled'] as const;
+export const appointmentSections = ['emergency', 'pending', 'rejected', 'cancelled'] as const;
 export type AppointmentSection = (typeof appointmentSections)[number];
 
 export function appointmentSection(tab: string): AppointmentSection | null {
   if (tab === 'appointments' || tab === 'appointments/pending') return 'pending';
+  if (tab === 'appointments/emergency') return 'emergency';
   if (tab === 'appointments/rejected') return 'rejected';
   if (tab === 'appointments/cancelled') return 'cancelled';
   return null;
@@ -108,6 +109,7 @@ export const allowedDashboardPages: Record<Role, string[]> = {
   customer: [
     'overview',
     'find',
+    'emergency',
     'bookings',
     'garage',
     'payments',
@@ -118,9 +120,11 @@ export const allowedDashboardPages: Record<Role, string[]> = {
   mechanic: [
     'overview',
     'appointments/pending',
+    'appointments/emergency',
     'appointments/rejected',
     'appointments/cancelled',
     'jobs',
+    'jobs/emergencies',
     'payments',
     'quotes',
     'notifications',
@@ -202,6 +206,7 @@ export function pageTitle(role: Role, tab: string) {
   const visible = navLeaves(role).find(([id]) => id === tab);
   if (visible) return visible[1];
   if (role === 'mechanic' && (tab.startsWith('profile/') || tab === 'profile')) return 'Profile';
+  if (role === 'mechanic' && tab === 'jobs/emergencies') return 'Emergency jobs';
   if (role === 'mechanic' && tab.startsWith('jobs/')) return 'Job';
   if (role === 'mechanic' && tab.startsWith('appointments')) return 'Appointments';
   if (role === 'admin' && (tab === 'profile' || tab.startsWith('profile/') || tab === 'settings'))
@@ -214,6 +219,7 @@ export function pageTitle(role: Role, tab: string) {
   if (role === 'admin' && tab.startsWith('disputes/')) return 'Dispute';
   if (role === 'admin' && tab.startsWith('jobs/')) return 'Job';
   if (role === 'admin' && tab.startsWith('applications')) return 'Applications';
+  if (role === 'customer' && tab === 'emergency') return 'Emergency roadside help';
   if (role === 'customer' && tab.startsWith('find/')) return 'Professional';
   if (role === 'customer' && tab.startsWith('bookings/')) return 'Booking';
   if (role === 'customer' && tab.startsWith('garage/')) return 'Vehicle';
