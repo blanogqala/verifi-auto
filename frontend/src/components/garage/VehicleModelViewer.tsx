@@ -5,6 +5,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoadLoader } from '../ui/RoadLoader';
 import { createLoadGeneration } from '../../features/garage/assetResolution';
 import { isBodyPaintMaterial } from '../../features/garage/vehicleCatalogue';
+import { buildRepresentativeVehicle } from '../../features/garage/representative3d';
 
 const lookTarget = new THREE.Vector3(0, 0.72, 0);
 const baseOffset = new THREE.Vector3(3.35, 1.28, 4.05);
@@ -139,9 +140,11 @@ export default function VehicleModelViewer({
   paintColor,
   paintMaterials,
   label,
+  previewStyle = 'other',
   onFail,
 }: {
-  src: string;
+  src?: string;
+  previewStyle?: string;
   paintColor: string;
   paintMaterials: string[];
   label: string;
@@ -161,7 +164,7 @@ export default function VehicleModelViewer({
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || !src) return;
+    if (!host) return;
     const coarse = window.matchMedia('(pointer: coarse)').matches;
     setReady(false);
     let renderer: THREE.WebGLRenderer;
@@ -221,34 +224,42 @@ export default function VehicleModelViewer({
     };
     const gate = createLoadGeneration();
     const request = gate.begin();
-    const loader = new GLTFLoader();
-    loader.load(
-      src,
-      (gltf) => {
+    const addModel = (sceneModel: THREE.Object3D, allowed: string[]) => {
+      if (disposed || !gate.isCurrent(request)) {
+        disposeObject(sceneModel);
+        return;
+      }
+      frameVehicle(sceneModel);
+      sceneModel.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (mesh.isMesh) mesh.castShadow = true;
+      });
+      pivot.add(sceneModel);
+      paintRef.current = (color) => {
+        paintVehicle(pivot, color, allowed);
+        render();
+      };
+      paintRef.current(paintColor);
+      setReady(true);
+      render();
+    };
+    if (src) {
+      const loader = new GLTFLoader();
+      loader.load(src, (gltf) => {
         if (disposed || !gate.isCurrent(request)) {
           disposeObject(gltf.scene);
           return;
         }
         clonePaintMaterials(gltf.scene, paintMaterials);
-        frameVehicle(gltf.scene);
-        gltf.scene.traverse((object) => {
-          const mesh = object as THREE.Mesh;
-          if (mesh.isMesh) mesh.castShadow = true;
-        });
-        pivot.add(gltf.scene);
-        paintRef.current = (color) => {
-          paintVehicle(pivot, color, paintMaterials);
-          render();
-        };
-        paintRef.current(paintColor);
-        setReady(true);
-        render();
-      },
-      undefined,
-      () => {
+        addModel(gltf.scene, paintMaterials);
+      }, undefined, () => {
         if (!disposed && gate.isCurrent(request)) fail();
-      },
-    );
+      });
+    } else {
+      // A lightweight, interactive shape is rendered immediately, even when
+      // the user uploaded a photo. No manufacturer-specific accuracy is implied.
+      addModel(buildRepresentativeVehicle(previewStyle), ['body']);
+    }
     const resize = () => {
       const width = Math.max(host.clientWidth, 280);
       const height = Math.max(host.clientHeight, 220);
@@ -355,7 +366,7 @@ export default function VehicleModelViewer({
       renderer.forceContextLoss();
       canvas.remove();
     };
-  }, [src, paintMaterials]);
+  }, [src, previewStyle, paintMaterials]);
 
   useEffect(() => {
     if (ready) paintRef.current(paintColor);
