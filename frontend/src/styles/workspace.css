@@ -3045,3 +3045,42 @@ td .text-link {
   .admin-customer-contact { display: grid; }
   .admin-customer-metrics > div { padding: 13px; }
 }
+
+
+/* Professional account oversight follows the customer admin banner design. */
+.admin-professional-detail { gap: 17px; min-width: 0; }
+.admin-professional-avatar img {
+  object-fit: contain;
+  object-position: center;
+  padding: 4px;
+}
+.admin-professional-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.admin-professional-metrics > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--purple) 45%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--purple) 9%, var(--surface));
+}
+.admin-professional-metrics strong {
+  color: var(--purple);
+  font-size: clamp(19px, 2.2vw, 27px);
+  overflow-wrap: anywhere;
+}
+.admin-professional-metrics span { color: var(--muted); font-size: 12px; }
+.admin-professional-revenue-note { margin: -7px 0 0; font-size: 12px; line-height: 1.6; }
+.admin-professional-detail .detail-card-body > h3 {
+  margin-top: 18px; margin-bottom: 8px; font-size: 15px;
+}
+.admin-professional-detail .document-row { min-width: 0; }
+.admin-professional-detail .document-row > div { min-width: 0; overflow-wrap: anywhere; }
+.admin-professional-detail .document-row .icon-action { flex: 0 0 auto; }
+@media (max-width: 750px) {
+  .admin-professional-metrics { grid-template-columns: minmax(0, 1fr); }
+}

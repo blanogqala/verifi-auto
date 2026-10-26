@@ -213,7 +213,7 @@ adminRoutes.get("/professionals/:id", async (req, res) => {
       },
       user: {
         select: {
-          ...publicUser,
+          ...publicUser, disabledAt: true, createdAt: true,
           documents: {
             select: {
               id: true,
@@ -225,13 +225,73 @@ adminRoutes.get("/professionals/:id", async (req, res) => {
               reviewedAt: true,
               createdAt: true,
             },
+            orderBy: { createdAt: "desc" },
           },
         },
       },
     },
   });
   requireThat(pro, 404, "NOT_FOUND", "Professional not found.");
-  res.json(pro);
+  const [bookingTotal, statuses, paid, recentBookings] = await Promise.all([
+    db.booking.count({ where: { professionalId: pro.id } }),
+    db.booking.groupBy({
+      by: ["status"], where: { professionalId: pro.id }, _count: { _all: true },
+    }),
+    db.payment.aggregate({
+      where: { provider: { not: "TEST" }, quote: { booking: { professionalId: pro.id } } },
+      _sum: { amountCents: true },
+    }),
+    db.booking.findMany({
+      where: { professionalId: pro.id },
+      select: {
+        id: true, status: true, appointmentAt: true, description: true,
+        vehicle: { select: { year: true, make: true, model: true, registration: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
+  const count = Object.fromEntries(statuses.map(x => [x.status, x._count._all]));
+  res.json({
+    ...pro,
+    bookingTotal,
+    bookingCounts: {
+      active: bookingTotal - (count.COMPLETED || 0) - (count.CANCELLED || 0) - (count.REJECTED || 0),
+      completed: count.COMPLETED || 0,
+      stopped: (count.CANCELLED || 0) + (count.REJECTED || 0),
+    },
+    // Customer money received; not mechanic payout or net take-home earnings.
+    recordedGrossRevenueCents: paid._sum.amountCents || 0,
+    recentBookings,
+  });
+});
+
+// Delete only an unencumbered mechanic account. Never cascade into verified
+// evidence, transactions, jobs, messages, reviews, or service history.
+adminRoutes.delete("/professionals/:id", async (req, res) => {
+  const professionalId = id.parse(req.params.id);
+  await transaction(async (tx) => {
+    const pro = await tx.professional.findUnique({
+      where: { id: professionalId },
+      select: { id: true, userId: true, user: { select: { role: true } } },
+    });
+    requireThat(pro && pro.user.role === "MECHANIC", 404, "NOT_FOUND", "Professional not found.");
+    const [bookings, reviews, documents, messages] = await Promise.all([
+      tx.booking.count({ where: { professionalId } }),
+      tx.review.count({ where: { professionalId } }),
+      tx.document.count({ where: { userId: pro.userId } }),
+      tx.message.count({ where: { authorId: pro.userId } }),
+    ]);
+    requireThat(
+      bookings + reviews + documents + messages === 0,
+      409, "PROFESSIONAL_HAS_HISTORY",
+      "This professional has bookings, verification documents or service history. Block the account instead of deleting it.",
+    );
+    await tx.professional.delete({ where: { id: professionalId } });
+    await tx.user.delete({ where: { id: pro.userId } });
+    await audit(tx, actor(req).userId, "PROFESSIONAL_DELETED", professionalId);
+  });
+  res.json({ message: "Professional account deleted." });
 });
 // Each piece of evidence is reviewed individually and audited.
 adminRoutes.post("/documents/:id/review", async (req, res) => {
