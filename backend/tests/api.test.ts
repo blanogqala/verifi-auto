@@ -266,7 +266,7 @@ test(
       ]) {
         assert.equal((await send("post", "/api/vehicles", {
           ...carInput, registration: "BADPHO", photo: badPhoto,
-        }, alice)).status, 400);
+        }, alice)).status, 422);
       }
       assert.equal(
         (await send("get", "/api/vehicles/" + car.body.id, undefined, bob))
