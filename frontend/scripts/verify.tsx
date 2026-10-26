@@ -2346,7 +2346,7 @@ assert.ok(professionalRecordHtml.includes('admin-detail-grid'));
 assert.ok(professionalRecordHtml.includes('No reviews yet'));
 assert.ok(!professionalRecordHtml.includes('Gross demo payments'));
 const customerRecordHtml = renderToString(<CustomerAdminDetailPage customer={{ id: 'real-customer', name: 'Real Customer' }} data={{}} route={() => {}} connected={{ ...connectedAdminRecord, accountAction: <button>Disable account</button> }} />);
-assert.ok(customerRecordHtml.includes('Disable account'));
+assert.ok(customerRecordHtml.includes('Loading customer account, vehicles and bookings'));
 assert.ok(!customerRecordHtml.includes('Read-only demo account'));
 console.log('Connected mechanic profile and admin records retain shared demo surfaces without demo account data.');
 

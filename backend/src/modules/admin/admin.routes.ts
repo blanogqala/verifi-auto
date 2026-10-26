@@ -100,6 +100,108 @@ adminRoutes.get("/users/:id", async (req, res) => {
   );
   res.json(user);
 });
+// Admin-only customer details: read from the customer's own records, not the
+// global 100-booking dashboard snapshot. Historical counts are unbounded;
+// individual lists are bounded and clearly labelled in the UI.
+adminRoutes.get("/customers/:id", async (req, res) => {
+  const customerId = id.parse(req.params.id);
+  const customer = await db.user.findFirst({
+    where: { id: customerId, role: "CUSTOMER" },
+    select: {
+      id: true, name: true, email: true, phone: true, photo: true,
+      verifiedAt: true, disabledAt: true, createdAt: true,
+    },
+  });
+  requireThat(customer, 404, "NOT_FOUND", "Customer not found.");
+  const [vehicles, bookingStatuses, bookingTotal, vehicleTotal, bookings, payments] =
+    await Promise.all([
+      db.vehicle.findMany({
+        where: { customerId },
+        select: {
+          id: true, make: true, model: true, year: true, variant: true,
+          registration: true, mileage: true, paintColorName: true, bodyStyle: true,
+          archivedAt: true, createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      db.booking.groupBy({
+        by: ["status"], where: { customerId }, _count: { _all: true },
+      }),
+      db.booking.count({ where: { customerId } }),
+      db.vehicle.count({ where: { customerId } }),
+      db.booking.findMany({
+        where: { customerId },
+        select: {
+          id: true, status: true, description: true, appointmentAt: true,
+          createdAt: true,
+          professional: { select: { name: true } },
+          vehicle: { select: { make: true, model: true, year: true, registration: true } },
+          quotes: { select: { payment: { select: { amountCents: true, provider: true } } } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
+      db.payment.aggregate({
+        where: { provider: { not: "TEST" }, quote: { booking: { customerId } } },
+        _sum: { amountCents: true },
+      }),
+    ]);
+  const counts = Object.fromEntries(bookingStatuses.map((item) => [item.status, item._count._all]));
+  res.json({
+    customer,
+    vehicleTotal,
+    vehicles,
+    bookingTotal,
+    bookingCounts: {
+      completed: counts.COMPLETED || 0,
+      active: bookingTotal - (counts.COMPLETED || 0) - (counts.CANCELLED || 0) - (counts.REJECTED || 0),
+      stopped: (counts.CANCELLED || 0) + (counts.REJECTED || 0),
+    },
+    confirmedPaidCents: payments._sum.amountCents || 0,
+    bookings: bookings.map((row) => ({
+      id: row.id,
+      status: row.status,
+      description: row.description,
+      appointmentAt: row.appointmentAt,
+      createdAt: row.createdAt,
+      professional: row.professional.name,
+      vehicle: row.vehicle,
+      confirmedPaidCents: row.quotes.reduce(
+        (sum, q) => sum + (q.payment && q.payment.provider !== "TEST" ? q.payment.amountCents : 0), 0,
+      ),
+    })),
+  });
+});
+
+// Deliberately non-cascading deletion. Vehicle records, messages, bookings and
+// service/review history must not disappear with an admin click.
+adminRoutes.delete("/customers/:id", async (req, res) => {
+  const customerId = id.parse(req.params.id);
+  await transaction(async (tx) => {
+    const customer = await tx.user.findFirst({
+      where: { id: customerId, role: "CUSTOMER" },
+      select: { id: true },
+    });
+    requireThat(customer, 404, "NOT_FOUND", "Customer not found.");
+    const [vehicles, bookings, messages, reviews, documents] = await Promise.all([
+      tx.vehicle.count({ where: { customerId } }),
+      tx.booking.count({ where: { customerId } }),
+      tx.message.count({ where: { authorId: customerId } }),
+      tx.review.count({ where: { customerId } }),
+      tx.document.count({ where: { userId: customerId } }),
+    ]);
+    requireThat(
+      vehicles + bookings + messages + reviews + documents === 0,
+      409, "CUSTOMER_HAS_HISTORY",
+      "This customer has linked vehicles, bookings or historical records. Disable the account instead of deleting it.",
+    );
+    // Session, reset tokens and notifications have explicit onDelete: Cascade.
+    await tx.user.delete({ where: { id: customerId } });
+    await audit(tx, actor(req).userId, "CUSTOMER_DELETED", customerId);
+  });
+  res.json({ message: "Customer account deleted." });
+});
 adminRoutes.get("/professionals/:id", async (req, res) => {
   const pro = await db.professional.findUnique({
     where: { id: id.parse(req.params.id) },

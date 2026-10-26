@@ -454,6 +454,38 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, 'admin@example.test');
+  await page.goto(appUrl + '/#dashboard/customers');
+  const customerRow = page.getByRole('row').filter({ hasText: 'Casey Customer' });
+  await customerRow.getByRole('button', { name: /View details/ }).click();
+  await page.getByRole('heading', { name: 'Casey Customer' }).waitFor();
+  await page.getByText('Customer vehicles (1)').waitFor();
+  await page.getByText('Customer booking history (1)').waitFor();
+  await page.getByText('CA123456').first().waitFor();
+  await page.getByText('Brake noise from the front wheels').waitFor();
+  if (await page.locator('.admin-detail-tabs').count()) {
+    throw new Error('Customer admin detail must have no Overview/Bookings tabs.');
+  }
+  // Disabling revokes customer sessions; account remains readable to the admin.
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Block customer' }).click();
+  await page.getByText('Blocked', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Unblock customer' }).click();
+  await page.getByText('Active', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Delete customer' }).click();
+  await page.getByLabel('Confirm customer email').fill(customerEmail);
+  const [deleteResponse] = await Promise.all([
+    page.waitForResponse(response =>
+      response.url().includes('/api/admin/customers/') &&
+      response.request().method() === 'DELETE', { timeout: 15000 }),
+    page.getByRole('button', { name: 'Permanently delete' }).click(),
+  ]);
+  const deleteBody = await deleteResponse.json();
+  console.log('Guarded delete result:', deleteResponse.status(), JSON.stringify(deleteBody));
+  if (deleteResponse.status() !== 409 || deleteBody.error?.code !== 'CUSTOMER_HAS_HISTORY')
+    throw new Error('Customer deletion must refuse accounts with service history: ' +
+      deleteResponse.status() + ' ' + JSON.stringify(deleteBody));
+  await page.getByRole('alert').filter({ hasText: /linked vehicles, bookings or historical records/ }).waitFor();
+  await page.getByRole('heading', { name: 'Casey Customer' }).waitFor();
   await page.goto(appUrl + '/#dashboard/applications');
   // All registered mechanics must be visible, including drafts not yet ready for approval.
   const freshDraft = page.getByRole('row').filter({ hasText: 'Incomplete Workshop' });

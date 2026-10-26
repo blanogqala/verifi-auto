@@ -23,6 +23,9 @@ export function customerRecords(data: any) {
         email,
         city,
         phone,
+        photo: typeof item.photo === 'string' ? item.photo : '',
+        disabledAt: item.disabledAt || null,
+        createdAt: item.createdAt || null,
         sample: item.sample !== false,
       };
     })
