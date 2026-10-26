@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Siren, MapPin } from 'lucide-react';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { Card } from '../../components/ui/Card';
@@ -80,6 +81,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         }
         aside={<Status value={job.status} />}
       />
+      {job.kind === 'EMERGENCY' && <div className="roadside-detail-banner"><strong><Siren size={19}/> EMERGENCY ROADSIDE JOB</strong><span>{job.emergencyType || 'Breakdown'} · <MapPin size={13} style={{ display: 'inline' }} /> {job.roadsideAddress || 'Location not provided'}</span><span>Use Messages to coordinate roadside arrival, tools and next steps.</span></div>}
       <DetailCard title="Progress">
         <BookingProgress job={job} />
       </DetailCard>
