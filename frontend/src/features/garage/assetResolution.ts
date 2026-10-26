@@ -88,7 +88,7 @@ export function resolveVehicleAsset(vehicle: any): AssetResolution {
   // NEVER a verified identification or an exact physical-car representation.
   const explicitlyVivo = ['polo vivo', 'vivo'].includes(model);
   const likelyVivo = model === 'polo' && year >= 2018 && year <= 2024 &&
-    /(?:^|\\s)1[.,]6(?:\\b|\\s)/.test(variantText) &&
+    /(?:^|\s)1[.,]6(?:\b|\s)/.test(variantText) &&
     !/(gti|sedan|virtus|plus|6r|mk6|aw)/.test(variantText);
   if (make === 'volkswagen' && year >= 2018 && year <= 2024 &&
       (explicitlyVivo || likelyVivo) &&
