@@ -1,6 +1,6 @@
 import { allApprovedQuotesPaid } from '../../features/jobs/bookingQuotes';
-import { useState } from 'react';
-import { ClipboardCheck, FileText, Star, Users, Wallet, Wrench, Eye, CheckCircle2, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CalendarDays, CarFront, ClipboardCheck, FileText, Star, Users, Wallet, Wrench, Eye, CheckCircle2, Trash2, Ban, Mail, Phone, ShieldCheck, Clock3, ArrowUpRight } from 'lucide-react';
 import {
   DetailBack,
   DetailHeader,
@@ -21,6 +21,7 @@ import { bookingReference } from '../../features/jobs/jobViews';
 import { formatWhen } from '../../features/jobs/bookingProgress';
 import { eligibleCustomerReviews, ratingSummary } from '../../features/reviews/ratingSummary';
 import { providers } from '../../data/professionals';
+import { api } from '../../data-access/api';
 
 function Tabs({ items, selected, select }: any) {
   return (
@@ -330,42 +331,236 @@ export function ProfessionalAdminDetailPage({ record, data, route, connected }: 
     </div>
   );
 }
+const customerBookingStatus: Record<string, string> = {
+  REQUESTED: 'Requested', CONFIRMED: 'Confirmed', APPROVED: 'Approved',
+  IN_PROGRESS: 'In progress', AWAITING_PAYMENT: 'Awaiting payment',
+  COMPLETED: 'Completed', CANCELLED: 'Cancelled', REJECTED: 'Rejected',
+};
+function customerDate(value: any) {
+  if (!value) return 'Not recorded';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Not recorded' :
+    date.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+const zar = (cents: number) => new Intl.NumberFormat('en-ZA', {
+  style: 'currency', currency: 'ZAR',
+}).format((cents || 0) / 100);
+
 export function CustomerAdminDetailPage({ customer, data, route, connected }: any) {
-  const [section, setSection] = useState('Overview');
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(!!connected);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [revision, setRevision] = useState(0);
+  const id = customer?.id || '';
+  const live = Boolean(connected);
+
+  useEffect(() => {
+    if (!live || !id) { setDetail(null); setLoading(false); return; }
+    let active = true;
+    setLoading(true);
+    setError('');
+    api('/admin/customers/' + encodeURIComponent(id))
+      .then((record) => { if (active) setDetail(record); })
+      .catch((reason: any) => { if (active) {
+        setDetail(null);
+        setError(reason?.message || 'Could not load customer details.');
+      } })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [live, id, revision]);
+
   if (!customer) return <Missing route={route} back="customers" />;
-  const jobs = connected ? connected.jobs : bookingsForCustomer(data.jobs, customer.id);
-  const stats = accountMetrics(jobs);
-  return (
+  if (loading && !detail) return (
     <div className="admin-detail-page">
       <DetailBack label="Back to customers" onClick={() => route('customers')} />
-      <DetailHeader
-        title={customer.name || 'Customer'}
-        summary={customer.city || 'Location not recorded'}
-      />
-      <Metrics jobs={jobs} />
-      <Tabs items={['Overview', 'Bookings']} selected={section} select={setSection} />
-      {section === 'Overview' ? (
-        <DetailCard title="Customer account" icon={<Users size={20} />}>
-          <DetailFields
-            items={[
-              { label: 'Email', value: customer.email || 'Not recorded' },
-              { label: 'Telephone', value: customer.phone || 'Not recorded' },
-              { label: 'Customer ID', value: customer.id },
-              { label: 'Recorded payments', value: money(connected ? connected.paid : stats.paid) },
-            ]}
-          />
-          <p className="muted">
-            {connected
-              ? 'Payment totals include confirmed payments on recent linked bookings only.'
-              : 'Read-only demo account. Payment totals include recorded payments only.'}
+      <p role="status">Loading customer account, vehicles and bookings…</p>
+    </div>
+  );
+  if (live && error && !detail) return (
+    <div className="admin-detail-page">
+      <DetailBack label="Back to customers" onClick={() => route('customers')} />
+      <DetailCard title="Customer information unavailable">
+        <p role="alert">{error}</p>
+        <button className="secondary" type="button" onClick={() => setRevision(v => v + 1)}>
+          Try again
+        </button>
+      </DetailCard>
+    </div>
+  );
+  const account = live ? detail?.customer || customer : customer;
+  const demoJobs = bookingsForCustomer(data.jobs, customer.id);
+  const jobs = live ? detail?.bookings || [] : demoJobs.map((job: any) => ({
+    id: job.id, status: job.status, appointmentAt: job.date,
+    description: job.description, professional: job.provider,
+    vehicle: { make: job.vehicle || '', model: '', registration: job.registration || '' },
+    confirmedPaidCents: 0,
+  }));
+  const vehicles = live
+    ? detail?.vehicles || []
+    : (data.vehicles || []).filter((vehicle: any) => vehicle.customerId === customer.id);
+  const stats = accountMetrics(demoJobs);
+  const counts = live ? {
+    total: detail?.bookingTotal || 0,
+    completed: detail?.bookingCounts?.completed || 0,
+    active: detail?.bookingCounts?.active || 0,
+    stopped: detail?.bookingCounts?.stopped || 0,
+  } : stats;
+  const vehicleTotal = live ? detail?.vehicleTotal || 0 : vehicles.length;
+  const disabled = Boolean(account.disabledAt);
+  const initials = String(account.name || 'Customer').trim().split(/\s+/).slice(0, 2)
+    .map((part: string) => part[0] || '').join('').toUpperCase();
+  const paymentLabel = live ? zar(detail?.confirmedPaidCents || 0) : money(stats.paid);
+
+  async function toggleBlock() {
+    if (!live || saving) return;
+    if (!disabled && !window.confirm(
+      'Block this customer? They will be signed out and cannot access their account until unblocked.',
+    )) return;
+    setSaving(true); setError('');
+    try {
+      await api('/admin/users/' + encodeURIComponent(id) + '/status', 'POST', { disabled: !disabled });
+      setRevision(v => v + 1);
+      connected?.refresh?.();
+    } catch (reason: any) {
+      setError(reason?.message || 'Could not update this account.');
+    } finally { setSaving(false); }
+  }
+  async function deleteCustomer() {
+    if (!live || saving || confirmEmail !== account.email) return;
+    setSaving(true); setError('');
+    try {
+      await api('/admin/customers/' + encodeURIComponent(id), 'DELETE');
+      connected?.refresh?.();
+      route('customers');
+    } catch (reason: any) {
+      setError(reason?.message || 'This account could not be deleted.');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="admin-detail-page admin-customer-detail">
+      <DetailBack label="Back to customers" onClick={() => route('customers')} />
+      <section className="admin-customer-hero" aria-label="Customer account summary">
+        <div className="admin-customer-identity">
+          <div className="admin-customer-avatar" aria-hidden="true">
+            {account.photo ? <img src={account.photo} alt="" /> : initials}
+          </div>
+          <div className="admin-customer-identity-copy">
+            <div className="admin-customer-name-row">
+              <h1>{account.name || 'Customer'}</h1>
+              <span className={'admin-customer-state' + (disabled ? ' blocked' : '')}>
+                {disabled ? 'Blocked' : 'Active'}
+              </span>
+            </div>
+            <p className="muted">Customer · Registered {customerDate(account.createdAt)}</p>
+            <div className="admin-customer-contact">
+              <span><Mail size={15} aria-hidden="true" />{account.email || 'Email not recorded'}</span>
+              <span><Phone size={15} aria-hidden="true" />{account.phone || 'Phone not recorded'}</span>
+              <span><CarFront size={15} aria-hidden="true" />{vehicleTotal} vehicles</span>
+              <span><CalendarDays size={15} aria-hidden="true" />{counts.total} bookings</span>
+            </div>
+          </div>
+        </div>
+        {live && (
+          <div className="admin-customer-actions">
+            <button type="button" className="secondary" onClick={() => void toggleBlock()} disabled={saving}>
+              {disabled ? <ShieldCheck size={16} /> : <Ban size={16} />}
+              {disabled ? 'Unblock customer' : 'Block customer'}
+            </button>
+            <button type="button" className="secondary admin-delete-trigger"
+              onClick={() => { setShowDelete(v => !v); setConfirmEmail(''); }} disabled={saving}>
+              <Trash2 size={16} /> Delete customer
+            </button>
+          </div>
+        )}
+      </section>
+      {live && showDelete && (
+        <section className="admin-customer-delete-confirm" aria-label="Confirm customer deletion">
+          <strong>Confirm permanent account deletion</strong>
+          <p>
+            Only accounts without vehicles, bookings or historical records can be deleted.
+            Otherwise block the account to preserve service records. Type the customer's
+            email address to confirm.
           </p>
-          {connected?.accountAction}
-        </DetailCard>
-      ) : (
-        <DetailCard title="Customer bookings">
-          <AdminJobsList jobs={jobs} route={route} />
-        </DetailCard>
+          <div className="admin-customer-confirm-controls">
+            <input aria-label="Confirm customer email" type="text" value={confirmEmail}
+              onChange={event => setConfirmEmail(event.target.value)} autoComplete="off" />
+            <button type="button" onClick={() => void deleteCustomer()} disabled={saving || confirmEmail !== account.email}>
+              Permanently delete
+            </button>
+            <button type="button" className="secondary" onClick={() => setShowDelete(false)}>Cancel</button>
+          </div>
+        </section>
       )}
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <div className="admin-customer-metrics" aria-label="Customer booking statistics">
+        {[
+          ['Total bookings', counts.total],
+          ['Completed', counts.completed],
+          ['Active', counts.active],
+          ['Cancelled / rejected', counts.stopped],
+        ].map(([label, number]) => (
+          <div key={label}><strong>{number}</strong><span>{label}</span></div>
+        ))}
+      </div>
+      <div className="admin-customer-activity-note">
+        <Wallet size={17} aria-hidden="true" />
+        <span>Confirmed recorded payments: <strong>{paymentLabel}</strong></span>
+        <small>{live ? 'Excludes test payments.' : 'Demo payment totals.'}</small>
+      </div>
+      <DetailCard title={`Customer vehicles (${vehicleTotal})`} icon={<CarFront size={20} />}>
+        {vehicles.length ? (
+          <div className="admin-customer-vehicles">
+            {vehicles.map((car: any) => (
+              <div key={car.id} className="admin-customer-vehicle">
+                <div className="admin-customer-vehicle-symbol"><CarFront size={26} aria-hidden="true" /></div>
+                <div>
+                  <strong>{[car.year, car.make, car.model].filter(Boolean).join(' ') || 'Vehicle'}</strong>
+                  <small>{car.variant || car.bodyStyle || 'Vehicle record'}</small>
+                  <span>Registration: {car.registration || 'Not recorded'}</span>
+                  <span>Mileage: {car.mileage == null ? 'Not recorded' : Number(car.mileage).toLocaleString('en-ZA') + ' km'}</span>
+                  {car.archivedAt || car.archived ? <em>Archived</em> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : <p className="muted">No vehicles registered by this customer.</p>}
+        {live && vehicleTotal > vehicles.length ?
+          <p className="muted">Showing the latest {vehicles.length} of {vehicleTotal} vehicles.</p> : null}
+      </DetailCard>
+      <DetailCard title={`Customer booking history (${counts.total})`} icon={<CalendarDays size={20} />}>
+        {jobs.length ? (
+          <div className="admin-customer-booking-list">
+            {jobs.map((job: any) => (
+              <article className="admin-customer-booking" key={job.id}>
+                <div className="admin-customer-booking-main">
+                  <strong>{[job.vehicle?.year, job.vehicle?.make, job.vehicle?.model].filter(Boolean).join(' ') ||
+                    (typeof job.vehicle === 'string' ? job.vehicle : 'Vehicle not recorded')}</strong>
+                  <span>{job.professional || job.provider || 'Workshop not recorded'}</span>
+                  <small>{customerDate(job.appointmentAt || job.createdAt)}
+                    {job.vehicle?.registration ? ' · ' + job.vehicle.registration : ''}
+                  </small>
+                  {job.description && <p>{job.description}</p>}
+                </div>
+                <div className="admin-customer-booking-side">
+                  <StatusBadge value={customerBookingStatus[job.status] || job.status} />
+                  {live && <small>{zar(job.confirmedPaidCents || 0)} confirmed</small>}
+                  {(data.jobs || []).some((loaded: any) => loaded.id === job.id) && (
+                    <button className="text-link" type="button" onClick={() => route('jobs/' + encodeURIComponent(job.id))}>
+                      View job <ArrowUpRight size={14} />
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : <p className="muted">No bookings recorded for this customer.</p>}
+        {live && counts.total > jobs.length ?
+          <p className="muted">Showing the latest {jobs.length} of {counts.total} bookings.</p> : null}
+      </DetailCard>
     </div>
   );
 }
