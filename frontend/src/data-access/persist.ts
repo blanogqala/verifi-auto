@@ -23,6 +23,7 @@ function vehicleBody(vehicle: any) {
     bodyStyle: vehicle.bodyStyle || '',
     paintColorName: vehicle.paintColorName || '',
     paintColor: vehicle.paintColor || '',
+    photo: vehicle.photo || '',
     licenceDiscExpiry: vehicle.licenceDiscExpiry || null,
     nextServiceDate: vehicle.nextServiceDate || null,
     nextServiceMileage:
