@@ -662,7 +662,7 @@ export function Workspace({
               notify('Document removed. The mechanic must submit a replacement.');
             },
           } : undefined} />}
-          {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} />}
+          {adminDetailKind === 'professionals' && <ProfessionalAdminDetailPage key={adminDetailId} record={apps.filter(isManagedProfessional).find((a: any) => a.id === adminDetailId)} data={data} route={route} connected={live ? { refresh } : undefined} />}
           {adminDetailKind === 'customers' && (
             <CustomerAdminDetailPage
               key={adminDetailId}
