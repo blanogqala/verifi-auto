@@ -816,10 +816,9 @@ export function Workspace({
                         <VehicleStage
                           vehicle={vehicle}
                           resolved={{
-                            status: vehicle.modelAsset ? 'exact' : 'unavailable',
-                            label: vehicle.modelAsset
-                              ? 'Verified vehicle model'
-                              : 'No exact vehicle image on file yet.',
+                            status: vehicle.modelMatch === 'verified' && vehicle.modelAsset ? 'exact' : 'unavailable',
+                            modelView: vehicle.modelView,
+                            label: vehicle.modelView?.label || 'Interactive 3D body-style preview',
                             asset: vehicle.modelAsset
                               ? {
                                   ...vehicle.modelAsset,
