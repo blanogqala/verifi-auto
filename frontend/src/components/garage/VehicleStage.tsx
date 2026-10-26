@@ -128,9 +128,11 @@ export function VehicleStage({
         ) : (
           <div className="showroom-no-asset">
             <span className="showroom-no-asset-icon"><Camera size={36} strokeWidth={1.4} /></span>
-            <strong>3D model not available yet</strong>
-            <p>Check the make, model, year and variant. We'll show a real vehicle model whenever a suitable 3D asset is available.</p>
-            <span>Photo upload is optional. All vehicle records stay available.</span>
+            <strong>{asset ? 'Your 3D showroom is ready' : '3D model not available yet'}</strong>
+            <p>{asset
+              ? 'The 3D preview is paused to save data. Choose Explore 3D to rotate the available vehicle reference.'
+              : 'Check the make, model, year and variant. We’ll show a real vehicle model when a suitable 3D asset is available.'}</p>
+            <span>{asset ? modelLabel : 'Photo upload is optional. All vehicle records stay available.'}</span>
           </div>
         )}
         {show3d ? <div className="showroom-3d-pill"><Box size={14} /> {exact ? 'VERIFIED 3D MODEL' : '3D GENERATION REFERENCE'}</div> : null}
