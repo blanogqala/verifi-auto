@@ -530,7 +530,7 @@ async function connected(browser) {
   }
   page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: 'Block professional' }).click();
-  await page.getByText('Blocked', { exact: true }).waitFor();
+  await page.getByRole('region', { name: 'Professional account summary' }).getByText('Blocked', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Unblock professional' }).click();
   await page.getByRole('button', { name: 'Block professional' }).waitFor();
   await page.getByRole('button', { name: 'Delete professional' }).click();
@@ -547,9 +547,9 @@ async function connected(browser) {
       JSON.stringify(deletedBody));
   }
   await page.getByRole('alert').filter({ hasText: /verification documents or service history/ }).waitFor();
-  await page.getByRole('tab', { name: 'Jobs' }).click();
+  await page.locator('.admin-detail-tabs').getByRole('button', { name: 'Jobs', exact: true }).click();
   await page.getByRole('heading', { name: /Booking history/ }).waitFor();
-  await page.getByRole('tab', { name: 'Reviews' }).click();
+  await page.locator('.admin-detail-tabs').getByRole('button', { name: 'Reviews', exact: true }).click();
   await page.getByRole('heading', { name: 'Customer reviews' }).waitFor();
   await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
   await page.getByRole('heading', { name: 'Professional not found' }).waitFor();
