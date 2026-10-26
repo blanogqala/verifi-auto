@@ -2,6 +2,22 @@
 
 Separate Node.js 22.12+ / Express 5 / strict TypeScript API using Prisma 7 and PostgreSQL. No browser-local demo data is imported or trusted. Roles come from the authenticated database account, never the browser's role picker.
 
+
+## After pulling a schema-changing feature (local development)
+A running API process does not automatically reload the generated Prisma Client.
+If the browser reports `GET /api/professionals 500` and the API logs `PrismaClientValidationError` after adding fields such as `Professional.roadsideAvailable`, stop the API and run these commands **inside `backend/`**:
+
+```sh
+npm run db:generate
+npm run db:migrate
+npm run typecheck
+npm run dev
+```
+
+`db:generate` updates the ignored `src/generated/prisma/` directory. `db:migrate` safely applies committed pending migrations to the database configured by `DATABASE_URL`; it does not reset existing data. For verification use `npx prisma migrate status`, and then request `http://localhost:3001/api/professionals?take=100` to confirm an HTTP 200 JSON response.
+
+If Prisma reports `P2022` (missing database column), confirm the local API points to the intended database and that `db:migrate` completed there. Do not use `prisma migrate reset` to troubleshoot an existing database. A generic `PrismaClientValidationError` can have other causes: check the safe `hint` in development API logs before changing any schema.
+
 ## Run locally
 
 1. Install dependencies: `npm ci` inside `backend/`.
