@@ -365,10 +365,10 @@ async function connected(browser) {
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
   await page.goto(appUrl + '/#dashboard/garage');
-  // Real car photos are primary until a matching, licensed 3D model is published.
+  // Photos remain usable where no matching, licensed 3D model is available.
   // An unrelated concept car must never be identified as this customer's Polo.
   await page.locator('.showroom-photograph img').waitFor();
-  await page.getByText('Photo of your actual vehicle').waitFor();
+  await page.getByText('Uploaded photo (not verified as your actual vehicle)').waitFor();
   if (await page.locator('.vehicle-canvas-host canvas').count()) {
     throw new Error('A generic 3D car must not silently replace the owner photo.');
   }
@@ -382,7 +382,7 @@ async function connected(browser) {
   });
   await page.reload();
   await page.locator('.showroom-photograph img').waitFor();
-  await page.getByText('Photo of your actual vehicle').waitFor();
+  await page.getByText('Uploaded photo (not verified as your actual vehicle)').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   const other = await browser.newPage();
