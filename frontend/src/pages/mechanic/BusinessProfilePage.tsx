@@ -33,11 +33,11 @@ export function BusinessProfilePage({
     setBaseLocationNote('');
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setProfile((current: any) => ({
-          ...current,
+        setProfile({
+          ...profile,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-        }));
+        });
         setBaseLocationNote('Location ready. Save your business profile to publish it for nearby searches.');
         setLocatingBase(false);
       },
