@@ -100,9 +100,9 @@ export function GaragePage({ data, go, setDialog, connected }: any) {
           <div className="garage-cards" aria-label="Your vehicles">
             {vehicles.map((vehicle) => {
               const selectedCard = vehicle.id === selected.id;
-              const image = connected
+              const image = vehicle.photo || (connected
                 ? vehicle.modelAsset?.previewUrl || ''
-                : vehicleCardImage(resolveVehicleAsset(vehicle));
+                : vehicleCardImage(resolveVehicleAsset(vehicle)));
               const name = [vehicle.make, vehicle.model].filter(Boolean).join(' ');
               return (
                 <button
