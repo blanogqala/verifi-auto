@@ -15,6 +15,7 @@ export const bookingInclude = {
       phone: true,
       city: true,
       type: true,
+      user: { select: { email: true } },
     },
   },
   // Booking participants can see the customer's contact details for this appointment.
