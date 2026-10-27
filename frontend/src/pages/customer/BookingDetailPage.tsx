@@ -1,4 +1,5 @@
 import { JobConversation } from '../../components/jobs/JobConversation';
+import { BookingRequestCard, ProfessionalDetailsCard } from '../../components/jobs/BookingInfoCards';
 import { BookingQuotations } from '../../components/jobs/BookingQuotations';
 import { customerIdentityLabel } from '../../features/account/customerIdentity';
 import { unreadMessageCount } from '../../features/messages/conversation';
@@ -20,7 +21,7 @@ function ownerId(job: any, fallback: string) {
   return typeof job?.customerId === 'string' && job.customerId ? job.customerId : fallback;
 }
 
-export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview', setDialog, update, bookingId }: any) {
+export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview', setDialog, update, bookingId, professionals = [] }: any) {
   const customerId = data?.settings?.id || demoCustomerId;
   const job = (data.jobs || []).find((item: any) => item.id === bookingId);
   const [tab, setTab] = useState(panel || 'overview');
@@ -49,6 +50,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
     );
   }
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
+  const professional = (professionals || []).find((item: any) => item.id === job.professionalId);
   const records = (data.records || []).filter((record: any) => record.vehicleId === job.vehicleId);
   const grant = activeGrantForBooking(data, job.id);
   const events = Array.isArray(job.events) ? job.events : [];
@@ -85,52 +87,28 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
         ]}
       />
       <DetailPanel scope="booking-detail" tabId="overview" value={tab}>
-      <DetailCard title="Appointment">
-        <p>{job.description || 'No request description was saved.'}</p>
-        <p className="muted">{job.kind === 'EMERGENCY' ? 'This urgent request has no scheduled appointment or guaranteed response time.' : 'A preferred time is not confirmed availability.'}</p>
-        <DetailFields
-          items={[
-            { label: 'Professional', value: job.provider || 'Not linked' },
-            {
-              label: 'Vehicle',
-              value: vehicle
-                ? `${vehicle.year || ''} ${vehicle.make || ''} ${vehicle.model || ''}`.trim()
-                : job.vehicle || 'Not linked',
-            },
-            { label: 'Registration', value: vehicle?.registration || 'Not recorded' },
-          ]}
-        />
-        <div className="button-row">
-          {job.professionalId ? (
-            <button
-              className="secondary"
-              type="button"
-              onClick={() => followDetail(go, here, 'dashboard/find/' + encodeURIComponent(job.professionalId))}
-            >
-              View professional
-            </button>
-          ) : null}
-          {vehicle ? (
-            <button
-              className="secondary"
-              type="button"
-              onClick={() => followDetail(go, here, 'dashboard/garage/' + encodeURIComponent(vehicle.id))}
-            >
-              View vehicle
-            </button>
-          ) : null}
-          {job.status === 'Requested' && job.kind !== 'EMERGENCY' ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'edit-booking', job })}>
-              Edit request
-            </button>
-          ) : null}
-          {['Requested', 'Confirmed'].includes(job.status) ? (
-            <button className="secondary" type="button" onClick={() => setDialog({ kind: 'cancel', job })}>
-              Cancel request
-            </button>
-          ) : null}
+        <div className="booking-overview-grid">
+          <BookingRequestCard
+            job={job}
+            vehicle={vehicle}
+            showVehicle
+            onViewVehicle={vehicle ? () => followDetail(go, here, 'dashboard/garage/' + encodeURIComponent(vehicle.id)) : undefined}
+          >
+            {job.status === 'Requested' && job.kind !== 'EMERGENCY' || ['Requested', 'Confirmed'].includes(job.status) ? (
+              <div className="booking-detail-actions">
+                {job.status === 'Requested' && job.kind !== 'EMERGENCY' &&
+                  <button className="secondary" type="button" onClick={() => setDialog({ kind: 'edit-booking', job })}>Edit request</button>}
+                {['Requested', 'Confirmed'].includes(job.status) &&
+                  <button className="secondary" type="button" onClick={() => setDialog({ kind: 'cancel', job })}>Cancel request</button>}
+              </div>
+            ) : null}
+          </BookingRequestCard>
+          <ProfessionalDetailsCard
+            job={job}
+            professional={professional}
+            onView={job.professionalId ? () => followDetail(go, here, 'dashboard/find/' + encodeURIComponent(job.professionalId)) : undefined}
+          />
         </div>
-      </DetailCard>
       <details className="fold">
         <summary>History sharing</summary>
         <p className="muted">Choose which service records this professional can see for this booking.</p>
