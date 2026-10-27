@@ -744,6 +744,7 @@ export function Workspace({
             <BookingDetailPage
               bookingId={bookingId}
               data={data}
+              professionals={directory.allProfessionals || directory.results}
               go={go}
               notify={notify}
               onPanel={(next: string) =>
