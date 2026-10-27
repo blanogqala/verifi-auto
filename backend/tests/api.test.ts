@@ -618,6 +618,9 @@ test(
       const bookingId = booked.body.id;
       assert.equal(booked.body.customer.name, "Alice Customer");
       assert.equal(booked.body.customer.email, "alice@example.test");
+      // Scoped bookings include the selected workshop's contact email.
+      assert.equal(booked.body.professional.user.email, "mechanic@example.test");
+      assert.equal(booked.body.professional.phone, "0712345679");
       const withBooking = await send("get", `/api/admin/professionals/${pro.id}`, undefined, admin);
       assert.equal(withBooking.status, 200);
       assert.equal(withBooking.body.bookingTotal, 1);
@@ -627,6 +630,11 @@ test(
       assert.equal(mechanicBooking.status, 200);
       assert.equal(mechanicBooking.body.customer.email, "alice@example.test");
       assert.equal(mechanicBooking.body.customer.phone, "0821234567");
+      assert.equal(mechanicBooking.body.professional.user.email, "mechanic@example.test");
+      const adminBooking = await send("get", `/api/bookings/${bookingId}`, undefined, admin);
+      assert.equal(adminBooking.status, 200);
+      assert.equal(adminBooking.body.customer.email, "alice@example.test");
+      assert.equal(adminBooking.body.professional.user.email, "mechanic@example.test");
       assert.equal(mechanicBooking.body.vehicle.make, "Volkswagen");
       assert.ok(!JSON.stringify(mechanicBooking.body).includes("passwordHash"));
       // Admin reads this customer's own vehicles and booking history rather
