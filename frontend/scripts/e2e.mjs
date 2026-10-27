@@ -309,6 +309,10 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'View my bookings' }).click();
   await page.getByRole('button', { name: /View booking/ }).first().click();
   await page.getByText('Brake noise from the front wheels').waitFor();
+  await page.getByRole('heading', { name: 'Your professional' }).waitFor();
+  await page.getByRole('link', { name: 'mechanic@example.test' }).waitFor();
+  await page.getByRole('button', { name: /View professional/ }).waitFor();
+  await page.getByRole('button', { name: /View vehicle/ }).waitFor();
   const bookingUrl = page.url();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
@@ -349,6 +353,9 @@ async function connected(browser) {
   await signIn(page, 'mechanic@example.test');
   await page.goto(appUrl + '/#dashboard/jobs');
   await page.getByRole('button', { name: /Open job/ }).click();
+  await page.getByRole('heading', { name: 'Customer details' }).waitFor();
+  await page.getByRole('heading', { name: 'Vehicle info' }).waitFor();
+  await page.getByText('customer@example.test').waitFor();
   await page.getByRole('button', { name: 'Start work' }).click();
   await page.getByLabel('Completed work').waitFor();
   await page.getByLabel('Completed work').fill('Replaced the front brake pads.');
@@ -520,6 +527,18 @@ async function connected(browser) {
 
   await resetDisposableRateLimits();
   await signIn(page, 'admin@example.test');
+  const bookingId = bookingUrl.split('/').pop();
+  await page.goto(appUrl + '/#dashboard/jobs/' + encodeURIComponent(bookingId));
+  await page.getByRole('heading', { name: 'Customer details' }).waitFor();
+  await page.getByRole('heading', { name: 'Your professional' }).waitFor();
+  await page.getByRole('tab', { name: 'Quotes & payments' }).click();
+  await page.getByText('Repairs and charges').waitFor();
+  if (await page.getByRole('button', { name: /Approve selected repairs|Send quotation/ }).count())
+    throw new Error('Admin job quotation view must be read-only.');
+  await page.getByRole('tab', { name: 'Messages' }).click();
+  await page.getByText('Read-only conversation').waitFor();
+  if (await page.getByRole('button', { name: 'Send', exact: true }).count())
+    throw new Error('Admin must not send messages as a booking participant.');
   await page.goto(appUrl + '/#dashboard/customers');
   const customerRow = page.getByRole('row').filter({ hasText: 'Casey Customer' });
   await customerRow.getByRole('button', { name: /View details/ }).click();
