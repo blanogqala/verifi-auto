@@ -1,3 +1,5 @@
+import { BookingRequestCard, CustomerDetailsCard, ProfessionalDetailsCard, VehicleDetailsCard, AdminBookingQuotations, ReadOnlyBookingMessages } from '../../components/jobs/BookingInfoCards';
+import { DetailTabs, DetailPanel } from '../../components/ui/DetailTabs';
 import { allApprovedQuotesPaid } from '../../features/jobs/bookingQuotes';
 import { useEffect, useState } from 'react';
 import { CalendarDays, CarFront, ClipboardCheck, FileText, Star, Users, Wallet, Wrench, Eye, CheckCircle2, Trash2, Ban, Mail, Phone, ShieldCheck, Clock3, ArrowUpRight, Globe2 } from 'lucide-react';
@@ -699,72 +701,88 @@ export function CustomerAdminDetailPage({ customer, data, route, connected }: an
   );
 }
 export function AdminJobDetailPage({ job, data, route }: any) {
-  const [section, setSection] = useState('Overview');
+  const [section, setSection] = useState('overview');
+  useEffect(() => { setSection('overview'); }, [job?.id]);
   if (!job) return <Missing route={route} back="jobs" />;
-  const customer = (data.customers || []).find((c: any) => c.id === job.customerId);
+  const customer = (data.customers || []).find((item: any) => item.id === job.customerId);
+  const professional = (data.reviews || []).find((item: any) => item.id === job.professionalId);
+  const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
   return (
-    <div className="admin-detail-page">
+    <div className="admin-detail-page detail-page admin-booking-detail">
       <DetailBack label="Back to jobs & activity" onClick={() => route('jobs')} />
       <DetailHeader
-        title={job.vehicle || 'Job details'}
-        summary={bookingReference(job)}
+        kicker={bookingReference(job)}
+        title={job.vehicleLabel || job.vehicle || 'Job details'}
+        summary={<span>{job.provider || 'Professional not recorded'} · {job.date ? formatWhen(job.createdAt || '') || job.date : 'Date not recorded'}</span>}
         aside={<StatusBadge value={job.status} />}
       />
-      <DetailCard title="Job progress">
+      {job.kind === 'EMERGENCY' && (
+        <div className="roadside-detail-banner">
+          <strong>Emergency roadside assistance</strong>
+          <span>{job.emergencyType || 'Breakdown'} · {job.roadsideAddress || 'Location not recorded'}</span>
+        </div>
+      )}
+      <DetailCard title="Job progress" icon={<ClipboardCheck size={22} aria-hidden="true" />}>
         <BookingProgress job={job} />
       </DetailCard>
-      <Tabs items={['Overview', 'Quotation', 'Activity']} selected={section} select={setSection} />
-      {section === 'Overview' && (
-        <DetailCard title="Booking details">
-          <DetailFields
-            items={[
-              { label: 'Customer', value: customer?.name || 'Not recorded' },
-              { label: 'Professional', value: job.provider || 'Not recorded' },
-              {
-                label: 'Appointment',
-                value: [job.date, job.time].filter(Boolean).join(' · ') || 'Not recorded',
-              },
-              { label: 'Vehicle ID', value: job.vehicleId || 'Not linked' },
-              {
-                label: 'Payment',
-                value:
-                  job.quoteApproved && allApprovedQuotesPaid(job)
-                    ? 'Approved quotes paid (demo)'
-                    : 'Not fully paid',
-              },
-            ]}
+      <DetailTabs
+        id="admin-booking"
+        label="Job details"
+        value={section}
+        onChange={setSection}
+        tabs={[
+          { id: 'overview', label: 'Overview' },
+          { id: 'quotes', label: 'Quotes & payments' },
+          { id: 'messages', label: 'Messages' },
+          { id: 'activity', label: 'Activity history' },
+        ]}
+      />
+      <DetailPanel scope="admin-booking" tabId="overview" value={section}>
+        <div className="booking-overview-grid booking-admin-overview">
+          <BookingRequestCard job={job} title="Customer request" vehicle={vehicle} showVehicle />
+          <ProfessionalDetailsCard
+            job={job}
+            professional={professional}
+            onView={job.professionalId ? () => route('professionals/' + encodeURIComponent(job.professionalId)) : undefined}
           />
-          <p>{job.description || 'No description supplied.'}</p>
-          {job.completionNotes && <p>Work performed: {job.completionNotes}</p>}
-          {job.rejectionReason && <p>Rejection reason: {job.rejectionReason}</p>}
-        </DetailCard>
-      )}
-      {section === 'Quotation' && (
-        <DetailCard title="Submitted quotation">
-          <QuoteSummary job={job} />
-          <p className="muted">
-            Read-only. Customer approvals and mechanic workflow remain with their respective
-            accounts.
-          </p>
-        </DetailCard>
-      )}
-      {section === 'Activity' && (
-        <DetailCard title="Job activity">
+          <CustomerDetailsCard job={job} customer={customer} />
+          <VehicleDetailsCard job={job} vehicle={vehicle} />
+        </div>
+        {customer?.id && (
+          <div className="booking-detail-actions">
+            <button type="button" className="secondary" onClick={() => route('customers/' + encodeURIComponent(customer.id))}>
+              View customer account <ArrowUpRight size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+        {(job.completionNotes || job.rejectionReason) && (
+          <DetailCard title="Work and decision notes">
+            {job.completionNotes && <p>Work performed: {job.completionNotes}</p>}
+            {job.rejectionReason && <p>Rejection reason: {job.rejectionReason}</p>}
+          </DetailCard>
+        )}
+      </DetailPanel>
+      <DetailPanel scope="admin-booking" tabId="quotes" value={section}>
+        <AdminBookingQuotations job={job} />
+      </DetailPanel>
+      <DetailPanel scope="admin-booking" tabId="messages" value={section}>
+        <ReadOnlyBookingMessages data={data} job={job} />
+      </DetailPanel>
+      <DetailPanel scope="admin-booking" tabId="activity" value={section}>
+        <DetailCard title="Job activity" icon={<Clock3 size={21} aria-hidden="true" />}>
           {job.events?.length ? (
             <ol className="activity-list">
-              {job.events.map((e: any, i: number) => (
-                <li key={e.id || i}>
-                  <b>{e.label || e.type || e.action || e.status || 'Job update'}</b>
-                  <span>{e.at ? formatWhen(e.at) : 'Date not recorded'}</span>
-                  {e.note && <span>{e.note}</span>}
+              {job.events.map((event: any, index: number) => (
+                <li key={event.id || index}>
+                  <b>{event.label || event.type || event.action || event.status || 'Job update'}</b>
+                  <span>{event.at ? formatWhen(event.at) : 'Date not recorded'}</span>
+                  {event.note && <span>{event.note}</span>}
                 </li>
               ))}
             </ol>
-          ) : (
-            <p>No recorded events for this job.</p>
-          )}
+          ) : <p className="muted">No dated activity entries have been stored for this job. The progress bar shows the latest booking status.</p>}
         </DetailCard>
-      )}
+      </DetailPanel>
     </div>
   );
 }
