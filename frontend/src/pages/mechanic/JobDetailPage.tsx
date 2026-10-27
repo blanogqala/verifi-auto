@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { BookingProgress } from '../../components/jobs/BookingProgress';
 import { JobConversation } from '../../components/jobs/JobConversation';
+import { BookingRequestCard, CustomerDetailsCard, VehicleDetailsCard } from '../../components/jobs/BookingInfoCards';
 import { BookingQuotations } from '../../components/jobs/BookingQuotations';
 import { merchantIdentityLabel } from '../../features/account/customerIdentity';
 import { customerNameForJob, customerRecords } from '../../features/admin/customerRecords';
@@ -44,7 +45,9 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
     );
   }
   const professionalId = activeMechanicProfessionalId(data);
-  const customer = customerNameForJob(job, customerRecords(data));
+  const people = customerRecords(data);
+  const customer = job.customerName || customerNameForJob(job, people);
+  const customerRecord = people.find((item: any) => item.id === job.customerId);
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
   const registration = vehicle?.registration || job.registration || 'Not recorded';
   const history = sharedRecordsForProfessional(data, job, professionalId);
@@ -99,14 +102,8 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
       <DetailPanel scope="mechanic-job" tabId="overview" value={tab}>
         <div className="split-detail">
           <div className="split-main">
-            <DetailCard title="Customer request">
-              <p>{job.description || 'No request description was saved.'}</p>
-              <DetailFields
-                items={[
-                  { label: 'Requested', value: `${job.date ? formatDay(job.date) : 'Date not recorded'}${job.time ? ` at ${job.time}` : ''}` },
-                ]}
-              />
-              <p className="muted">{pricingNote(job)}</p>
+            <BookingRequestCard job={job} title="Customer request">
+              <p className="booking-detail-hint">{pricingNote(job)}</p>
               {job.status === 'Confirmed' ? (
                 <button className="primary" type="button" onClick={() => choose('quote')}>
                   Prepare quotation
@@ -168,7 +165,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                   {error}
                 </p>
               ) : null}
-            </DetailCard>
+            </BookingRequestCard>
             <details className="fold">
               <summary>Activity history</summary>
               {events.length ? (
@@ -186,16 +183,8 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
             </details>
           </div>
           <div className="split-side">
-            <DetailCard quiet title="Booking">
-              <DetailFields
-                items={[
-                  { label: 'Customer', value: customer },
-                  { label: 'Vehicle', value: job.vehicleLabel || job.vehicle || 'Not recorded' },
-                  { label: 'Registration', value: registration },
-                  { label: 'Mileage', value: vehicle?.mileage ? `${vehicle.mileage} km` : 'Not recorded' },
-                ]}
-              />
-            </DetailCard>
+            <CustomerDetailsCard job={{ ...job, customerName: customer }} customer={customerRecord} />
+            <VehicleDetailsCard job={job} vehicle={vehicle} />
             {history.length ? (
               <DetailCard quiet title="Service history">
                 {history.map((record: any) => (
