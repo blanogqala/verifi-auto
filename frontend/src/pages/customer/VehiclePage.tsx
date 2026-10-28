@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { WorkReportViewer, VarHistoryViewer } from '../../components/jobs/VehicleActivityRecord';
+import { Trash2 } from 'lucide-react';
+import { GarageVarGallery, GarageBookingHistory } from '../../components/garage/VehicleHistorySections';
 import { Card } from '../../components/ui/Card';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { DetailBack, DetailCard, DetailFields } from '../../components/ui/DetailChrome';
@@ -7,8 +8,6 @@ import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { historyCouldBelongTo } from '../../features/demo/links';
 import { resolveVehicleAsset } from '../../features/garage/assetResolution';
 import { vehicleCardImage } from '../../features/garage/garageSelection';
-import { grantsOf } from '../../features/garage/historyAccess';
-import { bookingReference } from '../../features/jobs/jobViews';
 import { formatDay } from '../../features/jobs/bookingProgress';
 import {
   careSourceLabel,
@@ -16,7 +15,7 @@ import {
   dateCareState,
   mileageCareState,
 } from '../../features/garage/vehicleCare';
-import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
+import { backTarget, returnLabel } from '../../features/navigation/returnPath';
 
 function bookingsFor(data: any, vehicle: any) {
   return (data.vehicles && data.jobs ? data.jobs : []).filter(
@@ -78,15 +77,11 @@ function urgentCare(label: string, state: string) {
 
 export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: any) {
   const [tab, setTab] = useState('overview');
-  const [reportView, setReportView] = useState<any>(null);
-  const [serviceView, setServiceView] = useState<any>(null);
   const vehicle = (data.vehicles || []).find((item: any) => item.id === vehicleId);
   const here = 'dashboard/garage/' + encodeURIComponent(vehicleId || '');
   const back = backTarget(here, 'dashboard/garage');
   useEffect(() => {
     setTab('overview');
-    setReportView(null);
-    setServiceView(null);
   }, [vehicleId]);
   useEffect(() => {
     if (!vehicle?.id) return;
@@ -121,9 +116,6 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
   const image = vehicle.photo || (live
     ? vehicle.modelAsset?.previewUrl || ''
     : vehicleCardImage(resolveVehicleAsset(vehicle)));
-  const shared = grantsOf(data).filter(
-    (grant: any) => grant?.vehicleId === vehicle.id && grant?.status === 'active',
-  );
   const urgent = [
     urgentCare('Next service', serviceDate),
     urgentCare('Next service mileage', serviceMileage),
@@ -150,7 +142,11 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
             type="button"
             onClick={() => setDialog({ kind: 'vehicle', vehicle })}
           >
-            Edit
+            Edit vehicle
+          </button>
+          <button className="secondary garage-delete-action" type="button"
+            onClick={() => setDialog({ kind: 'archive-vehicle', vehicle, linked })}>
+            <Trash2 size={16} aria-hidden="true"/> Delete vehicle
           </button>
         </div>
       </header>
@@ -170,6 +166,32 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
         </p>
       ) : null}
       <DetailPanel scope="vehicle-detail" tabId="overview" value={tab}>
+        <div className="garage-detail-grid">
+        <DetailCard title="Vehicle facts">
+          <DetailFields
+            items={[
+              { label: 'Make', value: recorded(vehicle.make) || 'Not recorded' },
+              { label: 'Model', value: recorded(vehicle.model) || 'Not recorded' },
+              { label: 'Year', value: recorded(vehicle.year) || 'Not recorded' },
+              { label: 'Body style', value: recorded(vehicle.bodyStyle) || 'Not recorded' },
+              { label: 'Variant', value: recorded(vehicle.variant) || 'Not recorded' },
+              {
+                label: 'Paint colour',
+                value: recorded(vehicle.paintColorName || vehicle.paintColor) ? (
+                  <span className="paint-value">
+                    <i style={{ background: vehicle.paintColor }} />
+                    {vehicle.paintColorName || vehicle.paintColor}
+                  </span>
+                ) : (
+                  'Not recorded'
+                ),
+              },
+              { label: 'Registration', value: recorded(vehicle.registration) || 'Not recorded' },
+              { label: 'Mileage', value: mileageText(vehicle.mileage) },
+            ]}
+          />
+          <p className="muted">Service plans are not available yet.</p>
+        </DetailCard>
         <DetailCard
           title="Care reminders"
           action={
@@ -208,152 +230,12 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
           />
           <p className="muted">Only saved dates are shown.</p>
         </DetailCard>
-        <DetailCard title="Vehicle facts">
-          <DetailFields
-            items={[
-              { label: 'Make', value: recorded(vehicle.make) || 'Not recorded' },
-              { label: 'Model', value: recorded(vehicle.model) || 'Not recorded' },
-              { label: 'Year', value: recorded(vehicle.year) || 'Not recorded' },
-              { label: 'Body style', value: recorded(vehicle.bodyStyle) || 'Not recorded' },
-              { label: 'Variant', value: recorded(vehicle.variant) || 'Not recorded' },
-              {
-                label: 'Paint colour',
-                value: recorded(vehicle.paintColorName || vehicle.paintColor) ? (
-                  <span className="paint-value">
-                    <i style={{ background: vehicle.paintColor }} />
-                    {vehicle.paintColorName || vehicle.paintColor}
-                  </span>
-                ) : (
-                  'Not recorded'
-                ),
-              },
-              { label: 'Registration', value: recorded(vehicle.registration) || 'Not recorded' },
-              { label: 'Mileage', value: mileageText(vehicle.mileage) },
-            ]}
-          />
-          <p className="muted">Service plans are not available yet.</p>
-        </DetailCard>
-        <DetailCard title={linked ? 'Archive vehicle' : 'Remove vehicle'}>
-          <p>
-            {linked
-              ? live
-                ? 'Bookings and service records are kept securely. Archiving removes the vehicle from the showroom.'
-                : 'Bookings and service records stay in this browser. Archiving removes the vehicle from the showroom.'
-              : 'This vehicle has no linked history. Removing it deletes only this vehicle record.'}
-          </p>
-          <button
-            className="secondary"
-            type="button"
-            onClick={() => setDialog({ kind: 'archive-vehicle', vehicle, linked })}
-          >
-            {linked ? 'Archive vehicle' : 'Remove vehicle'}
-          </button>
-        </DetailCard>
+        </div>
+        <GarageVarGallery bookings={bookings} records={records}/>
       </DetailPanel>
       <DetailPanel scope="vehicle-detail" tabId="history" value={tab}>
-        {records.length > 3 ? (
-          <details className="fold">
-            <summary>Service history ({records.length})</summary>
-            <HistoryList records={records} onOpen={setServiceView} />
-          </details>
-        ) : (
-          <DetailCard title="Service history">
-            <HistoryList records={records} onOpen={setServiceView} />
-          </DetailCard>
-        )}
-        {bookings.length > 3 ? (
-          <details className="fold">
-            <summary>Related bookings ({bookings.length})</summary>
-            <BookingList bookings={bookings} go={go} here={here} onOpenReport={setReportView} />
-          </details>
-        ) : (
-          <DetailCard title="Related bookings">
-            <BookingList bookings={bookings} go={go} here={here} onOpenReport={setReportView} />
-          </DetailCard>
-        )}
-        <details className="fold">
-          <summary>History sharing</summary>
-          {shared.length ? (
-            <ul className="history-list">
-              {shared.map((grant: any) => (
-                <li key={grant.id}>
-                  <b>Shared for booking {grant.bookingId}</b>
-                  <span>
-                    {Array.isArray(grant.recordIds)
-                      ? `${grant.recordIds.length} record(s)`
-                      : 'Records selected'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>
-              {live
-                ? 'Manage access to selected service records inside each accepted booking.'
-                : 'No service history is shared for this vehicle.'}
-            </p>
-          )}
-        </details>
+        <GarageBookingHistory bookings={bookings} go={go} from={here}/>
       </DetailPanel>
-      {reportView?.workReport && <WorkReportViewer report={reportView.workReport} workshop={reportView.provider} final={reportView.status === 'Completed'} onClose={() => setReportView(null)} />}
-      {serviceView && <VarHistoryViewer records={[serviceView]} onClose={() => setServiceView(null)} />}
-    </div>
-  );
-}
-
-function HistoryList({ records, onOpen }: { records: any[]; onOpen: (record: any) => void }) {
-  if (!records.length) return <p>No service records are linked to this vehicle.</p>;
-  return (
-    <ol className="history-list">
-      {records.map((record: any) => (
-        <li key={record.id}>
-          <time dateTime={record.date || undefined}>{formatDay(record.date)}</time>
-          <b>{record.title || 'Service record'}</b>
-          <span>{record.provider || 'Professional not recorded'}</span>
-          <span>{mileageText(record.mileage)}</span>
-          {record.notes ? <p>{record.notes}</p> : null}
-          <button className="secondary var-history-open" type="button" onClick={() => onOpen(record)}>View service details</button>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function BookingList({
-  bookings,
-  go,
-  here,
-  onOpenReport,
-}: {
-  bookings: any[];
-  go: (path: string) => void;
-  here: string;
-  onOpenReport: (job: any) => void;
-}) {
-  if (!bookings.length) return <p>No bookings are linked to this vehicle.</p>;
-  return (
-    <div className="related-bookings">
-      {bookings.map((job: any) => (
-        <article key={job.id} className="related-booking">
-          <div>
-            <b>{bookingReference(job)}</b>
-            <span>
-              {job.date ? formatDay(job.date) : 'Date not recorded'}
-              {job.time ? ` at ${job.time}` : ''}
-            </span>
-            <Status value={job.status} />
-          </div>
-          <div className="var-booking-actions">
-            <button className="secondary" type="button"
-              onClick={() => followDetail(go, here, 'dashboard/bookings/' + encodeURIComponent(job.id))}>
-              Open booking
-            </button>
-            {job.workReport && <button className="secondary" type="button" onClick={() => onOpenReport(job)}>
-              View work report
-            </button>}
-          </div>
-        </article>
-      ))}
     </div>
   );
 }
