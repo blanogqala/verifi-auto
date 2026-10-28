@@ -438,8 +438,27 @@ async function connected(browser) {
   // same workshop's public rating system.
   await resetDisposableRateLimits();
   await page.goto(bookingUrl);
+  const confirmationResponses = [];
+  page.on('response', async (response) => {
+    if (response.url().includes('/bookings/') && response.url().includes('/actions') && response.request().method() === 'POST') {
+      confirmationResponses.push({ status: response.status(), body: await response.text().catch(() => '') });
+    }
+  });
   await page.getByRole('button', { name: 'Confirm work done' }).click();
-  await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Completed').waitFor();
+  try {
+    await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Completed').waitFor({ timeout: 14000 });
+  } catch (reason) {
+    const debug = await page.evaluate(async (id) => {
+      const response = await fetch('http://127.0.0.1:3099/api/bookings/' + id, { credentials: 'include' });
+      const booking = await response.json();
+      return {
+        status: response.status, bookingStatus: booking?.status, version: booking?.version,
+        error: document.querySelector('.service-confirmation-card [role="alert"]')?.textContent,
+        visibleButtons: [...document.querySelectorAll('.service-confirmation-card button')].map((btn) => btn.textContent?.trim()),
+      };
+    }, bookingUrl.split('/').pop());
+    throw new Error('Customer work confirmation did not advance: ' + JSON.stringify({ debug, confirmationResponses }) + ' / ' + String(reason));
+  }
   const reviewDialog = page.getByRole('dialog', { name: 'Rate your workshop' });
   await reviewDialog.waitFor();
   await reviewDialog.getByRole('radio', { name: '5 stars' }).check();
