@@ -348,23 +348,15 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Review and approve' }).click();
   await page.getByRole('button', { name: 'Approve selected repairs' }).click();
   await page.getByText('Approved').first().waitFor();
-  // Production checkout is disabled. This disposable backend has test-only
-  // payments enabled to verify the payment-before-work permission boundary.
+  // The browser uses the same Pay popup and authenticated TEST-only route as a customer.
   await resetDisposableRateLimits();
-  const paidResult = await page.evaluate(async (id) => {
-    const base = 'http://127.0.0.1:3099/api';
-    const session = await (await fetch(base + '/auth/session', { credentials: 'include' })).json();
-    const booking = await (await fetch(base + '/bookings/' + id, { credentials: 'include' })).json();
-    const quote = booking.quotes?.[0];
-    if (!quote) return { status: 0, message: 'Quotation missing' };
-    const response = await fetch(base + '/bookings/' + id + '/quotes/' + quote.id + '/test-payment', {
-      credentials: 'include', method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf || '' },
-      body: JSON.stringify({ version: quote.version }),
-    });
-    return { status: response.status, body: await response.json() };
-  }, bookingUrl.split('/').pop());
-  if (paidResult.status !== 200) throw new Error('Disposable test payment failed: ' + JSON.stringify(paidResult));
+  await page.getByRole('button', { name: 'Pay', exact: true }).click();
+  await page.getByRole('heading', { name: 'Test checkout.' }).waitFor();
+  await page.getByText('No real payment processor is connected.').waitFor();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByRole('button', { name: 'Simulate payment' }).click();
+  await page.getByText('TEST payment recorded').waitFor();
+  await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('In progress').waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, 'mechanic@example.test');
