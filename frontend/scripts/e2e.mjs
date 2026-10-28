@@ -891,7 +891,7 @@ async function connected(browser) {
   await page.getByRole('heading', { name: /Booking history/ }).waitFor();
   await page.locator('.admin-detail-tabs').getByRole('button', { name: 'Reviews', exact: true }).click();
   await page.getByRole('heading', { name: 'Customer reviews' }).waitFor();
-  await page.getByText('Approved Workshop · Casey Customer').waitFor();
+  await page.getByText('Updated Workshop · Casey Customer').waitFor();
   await page.locator('.admin-review .review-rating-inline').first().waitFor();
   await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
   await page.getByRole('heading', { name: 'Professional not found' }).waitFor();
