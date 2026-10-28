@@ -1882,8 +1882,8 @@ const started = applyJobTransition(paid.data, paid.job, 'start', {}, mechanicAct
 const finished = applyJobTransition(started.data, started.job, 'complete', { completionNotes: 'Pads replaced.', completedMileage: '69000' }, mechanicActor);
 assert.equal(finished.job.status, 'Awaiting confirmation');
 assert.throws(() => applyJobTransition(finished.data, finished.job, 'pay', {}, mechanicActor));
-const accepted = applyJobTransition(finished.data, finished.job, 'confirm-work', {}, customerActor);
-assert.equal(accepted.job.status, 'Completed');
+const acceptedWork = applyJobTransition(finished.data, finished.job, 'confirm-work', {}, customerActor);
+assert.equal(acceptedWork.job.status, 'Completed');
 assert.ok(notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks').some((note: any) => note.type === 'payment'));
 assert.ok(!notificationDestination(paid.data, 'customer', notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks')[0]));
 const customerQuote = notificationsFor(quoted.data, 'customer', 'cust-01').find((note: any) => note.type === 'quote');
