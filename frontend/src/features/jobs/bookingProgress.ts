@@ -7,66 +7,56 @@ export type ProgressStep = {
   note: string;
 };
 
+const labels = ['Requested', 'Quotation', 'Awaiting payment', 'In progress', 'Awaiting confirmation', 'Completed'];
 const notes = [
-  'The request has been sent. It is not confirmed yet.',
-  'The professional has accepted the request.',
-  'The quotation lists every charge for approval, including any assessment or diagnostics. Repairs stay waiting until the customer approves it.',
-  'The customer approved the quotation. Work can start only after that approval.',
-  'The approved work is underway.',
-  'The approved work is finished. Payment applies to this quotation, not a new charge.',
-  'A demo payment was recorded. This booking is complete.',
+  'Waiting for the workshop to accept the request. No quotation has been issued yet.',
+  'The workshop has accepted the request and is preparing a quotation. Review and approve the proposed repairs.',
+  'The approved quotation must be paid before the workshop can begin work. Online payments are not configured yet.',
+  'Payment has been recorded. The workshop may begin the approved repairs, or is currently working.',
+  'The workshop submitted its report. Confirm the work or open a dispute; funds cannot be released during a dispute.',
+  'The customer accepted the completed service. A rating and review can now be submitted.',
 ];
-
-const labels = ['Requested', 'Confirmed', 'Quotation', 'Approved', 'In progress', 'Awaiting payment', 'Completed'];
-
 const indexByStatus: Record<string, number> = {
   Requested: 0,
   Confirmed: 1,
-  'Awaiting approval': 2,
-  'Changes requested': 2,
-  Approved: 3,
-  'In progress': 4,
-  'Awaiting payment': 5,
-  Completed: 6,
+  'Awaiting approval': 1,
+  'Changes requested': 1,
+  Approved: 2,
+  'Awaiting payment': 2, // Historical unpaid jobs remain visible without falsely marking payment complete.
+  'Ready to start': 3,
+  'In progress': 3,
+  'Awaiting confirmation': 4,
+  Disputed: 4,
+  Completed: 5,
 };
-
-export function bookingProgress(job: { status?: string; accepted?: boolean; rejectionReason?: string; live?: boolean }) {
+export function bookingProgress(job: { status?: string; accepted?: boolean; rejectionReason?: string; live?: boolean; disputeReason?: string }) {
   const status = typeof job?.status === 'string' ? job.status : '';
-  let terminal: '' | 'rejected' | 'cancelled' = '';
-  let index = indexByStatus[status] ?? 0;
-  if (status === 'Rejected') {
-    terminal = 'rejected';
-    index = 0;
-  } else if (status === 'Cancelled') {
-    terminal = 'cancelled';
-    index = job?.accepted ? 1 : 0;
-  }
-  const complete = status === 'Completed';
+  const terminal = status === 'Rejected' ? 'rejected' : status === 'Cancelled' ? 'cancelled' : status === 'Disputed' ? 'disputed' : '';
+  const index = status === 'Cancelled' ? (job.accepted ? 1 : 0) : indexByStatus[status] ?? 0;
   const steps: ProgressStep[] = labels.map((label, step) => {
-    let state: ProgressState = 'upcoming';
-    if (terminal) state = step < index ? 'complete' : step === index ? 'stopped' : 'upcoming';
-    else if (complete || step < index) state = 'complete';
-    else if (step === index) state = 'current';
-    let note = job.live && step === 6 ? 'This booking is complete. Its service and payment records remain available.' : notes[step];
-    if (status === 'Changes requested' && step === 2) note = 'Changes were requested. This quotation is not approved.';
-    if (terminal === 'rejected' && step === index) note = job?.rejectionReason ? `Rejected: ${job.rejectionReason}` : 'This request was rejected. It is not complete.';
-    if (terminal === 'cancelled' && step === index) note = 'This request was cancelled. It is not complete.';
-    return { id: label.toLowerCase().replace(/\s+/g, '-'), label: terminal && step === index ? (terminal === 'rejected' ? 'Rejected' : 'Cancelled') : label, state, note };
+    const state: ProgressState = terminal && step === index ? 'stopped'
+      : terminal && step > index ? 'upcoming'
+      : status === 'Completed' || step < index ? 'complete'
+      : step === index ? 'current' : 'upcoming';
+    let note = notes[step];
+    if (status === 'Confirmed' && step === 1) note = 'Request accepted. The workshop will inspect the vehicle and send a quotation.';
+    if (status === 'Awaiting approval' && step === 1) note = 'Quotation received. Waiting for the customer to approve the repairs.';
+    if (status === 'Changes requested' && step === 1) note = 'Customer requested changes to the quotation.';
+    if (status === 'Ready to start' && step === 3) note = 'Test payment recorded. The workshop can start; no real money has been held in escrow.';
+    if (status === 'Awaiting confirmation' && step === 4) note = 'Workshop marked work done. Customer must confirm or dispute the completed service.';
+    if (status === 'Disputed' && step === 4) note = job.disputeReason ? 'Disputed: ' + job.disputeReason : 'Customer opened a dispute. Admin review required; release is blocked.';
+    if (status === 'Rejected' && step === 0) note = job.rejectionReason ? 'Rejected: ' + job.rejectionReason : 'Professional rejected this request.';
+    if (status === 'Cancelled' && step === index) note = 'This booking was cancelled.';
+    return { id: label.toLowerCase().replace(/\s+/g, '-'),
+      label: terminal && step === index ? (status === 'Disputed' ? 'Disputed' : status) : label, state, note };
   });
-  const copy: Record<string, { summary: string; next: string }> = {
-    Requested: { summary: 'Waiting for the professional to respond.', next: 'You can still edit or cancel this request.' },
-    Confirmed: { summary: 'The request is accepted. A quotation has not been approved.', next: 'You can cancel until a quotation is in review.' },
-    'Awaiting approval': { summary: 'A quotation is ready for review.', next: 'Approve it, or request changes. Repairs cannot start before approval.' },
-    'Changes requested': { summary: 'Changes were requested on the quotation.', next: 'The professional needs to send an updated quotation.' },
-    Approved: { summary: 'The selected repairs are approved.', next: 'You can pay for the approved repairs. The professional can start the authorised work.' },
-    'In progress': { summary: 'Approved work is in progress.', next: 'Payment is available for the approved repairs.' },
-    'Awaiting payment': { summary: 'The approved work is finished and waiting for payment.', next: 'Review and pay this invoice once.' },
-    Completed: { summary: 'This booking is complete.', next: 'The recorded payment stays on this booking.' },
-    Rejected: { summary: 'This request was rejected. It is not complete.', next: 'No repair or payment step follows a rejected request.' },
-    Cancelled: { summary: 'This request was cancelled. It is not complete.', next: 'No further repair step is available.' },
+  return {
+    steps, current: index, terminal,
+    summary: steps[index]?.note || '',
+    next: status === 'Disputed' ? 'An administrator must review the evidence and record a resolution.'
+      : status === 'Completed' ? 'The customer can now rate the workshop.'
+      : steps[index]?.note || '',
   };
-  const text = copy[status] || { summary: 'This booking has no recognised status.', next: 'Open the activity history for anything that was recorded.' };
-  return { steps, current: index, terminal, summary: text.summary, next: text.next };
 }
 
 export function formatWhen(value: unknown) {
