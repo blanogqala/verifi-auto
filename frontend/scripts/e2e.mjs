@@ -371,19 +371,26 @@ async function connected(browser) {
 
   await signIn(page, customerEmail);
   await page.reload();
+  await page.goto(appUrl + '/#dashboard/bookings');
+  await page.locator('.sidebar .nav-item').filter({ hasText: 'My bookings' }).locator('.nav-attention-dot').waitFor();
+  await page.locator('.booking-card .booking-attention-dot').first().waitFor();
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
+  await page.locator('.var-activity-section .var-attention-dot').waitFor();
+  await page.locator('.var-customer-panel').first().locator('.var-attention-dot').waitFor();
   if (await page.getByRole('button', { name: /Review workshop work report/ }).count()) {
     throw new Error('The customer overview should not open work reports in a popup.');
   }
   const activity = page.locator('details.var-activity-section');
   await activity.locator('summary').click();
+  await activity.locator('.var-attention-dot').waitFor({ state: 'detached' });
   await activity.getByText(/68.000 km/).waitFor();
   await activity.getByText('Replaced the front brake pads and checked the braking system.').waitFor();
   // A VAR request for a vehicle without earlier completed records must explain
   // the disabled grant action and allow the customer to notify the workshop.
   const varPanel = page.locator('details.var-customer-panel').first();
   await varPanel.locator('summary').click();
+  await varPanel.locator('.var-attention-dot').waitFor({ state: 'detached' });
   await varPanel.getByText('This vehicle has no previous completed service records yet.').waitFor();
   await varPanel.getByRole('button', { name: 'Grant selected VAR access' }).isDisabled().then((disabled) => {
     if (!disabled) throw new Error('An empty VAR must not permit an access grant.');
