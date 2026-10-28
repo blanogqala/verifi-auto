@@ -71,6 +71,13 @@ export function WorkReportEditor({ job, onSave, onClose }: {
   const done = checked.length;
   return (
     <ReportDialog title={report ? 'Edit work report' : 'Add completed work'} subtitle="Mark the approved quotation items you have actually completed. You can edit this report while the job is in progress." onClose={onClose}>
+      <div className="var-editor-content">
+      {report && (
+        <details className="var-editor-saved">
+          <summary><ClipboardCheck size={17} aria-hidden="true"/> View last saved work report</summary>
+          <InlineWorkReport report={report} workshop={job.provider} />
+        </details>
+      )}
       <form className="var-work-form" onSubmit={async (event) => {
         event.preventDefault();
         const n = Number(mileage);
@@ -107,6 +114,7 @@ export function WorkReportEditor({ job, onSave, onClose }: {
         <div className="var-modal-actions"><button className="secondary" type="button" onClick={onClose}>Cancel</button>
           <button className="primary" type="submit" disabled={busy || !items.length}>{busy ? 'Saving…' : report ? 'Save changes' : 'Save work report'}</button></div>
       </form>
+      </div>
     </ReportDialog>
   );
 }
