@@ -823,7 +823,7 @@ assert.ok(!payHtml.includes('Review &amp; pay'));
 assert.ok(!payHtml.includes('Simulate payment'));
 assert.ok(!payHtml.includes('Paid to your bank'));
 const customerPay = screen('customer', 'payments', payData);
-assert.ok(customerPay.includes('Review &amp; pay'));
+assert.ok(customerPay.includes('>Pay</button>'));
 assert.ok(!customerPay.includes('does not confirm a bank payout'));
 assert.ok(customerOverview.includes('class="workspace-crumb"'));
 assert.ok(mechanicOverview.includes('class="workspace-crumb"'));
@@ -2310,7 +2310,7 @@ assert.ok(customerMultiHtml.indexOf('quotation-totals') < customerMultiHtml.inde
 assert.ok(customerMultiHtml.includes('Quotation 1'));
 assert.ok(customerMultiHtml.includes('Quotation 2'));
 assert.ok(customerMultiHtml.includes('Edit repair selection'));
-assert.ok(customerMultiHtml.includes('Review and pay'));
+assert.ok(customerMultiHtml.includes('>Pay</button>'));
 assert.ok(customerMultiHtml.includes('View invoice'));
 const withdrawnExtra = applyJobTransition(withExtra.data, secondQuote, 'withdraw-quote', {}, mechanicActor);
 assert.equal(bookingQuotations(withdrawnExtra.job)[1].status, 'Withdrawn');

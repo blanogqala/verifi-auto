@@ -789,6 +789,12 @@ test(
         ).status,
         503,
       );
+      const capability = await send("get", "/api/bookings/sandbox-payment-capability", undefined, alice);
+      assert.equal(capability.status, 200);
+      assert.deepEqual(capability.body, { enabled: true, mode: "TEST_ONLY" });
+      assert.equal((await send("get", "/api/bookings/sandbox-payment-capability", undefined, mechanic)).status, 403);
+      assert.equal((await send("post", `/api/bookings/${bookingId}/quotes/${qid}/test-payment`,
+        { version: approved.body.version }, mechanic)).status, 403);
       const payment = await send(
         "post",
         `/api/bookings/${bookingId}/quotes/${qid}/test-payment`,
@@ -797,6 +803,7 @@ test(
       );
       assert.equal(payment.status, 200, JSON.stringify(payment.body));
       assert.equal(payment.body.amountCents, 70000);
+      assert.equal(payment.body.provider, "TEST");
       assert.equal(
         (
           await send(

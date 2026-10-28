@@ -155,7 +155,7 @@ function PaymentRow({ job, go, setDialog, live = false }: any) {
         </button>
       ) : paid ? null : (
         <button className="primary" type="button" onClick={() => setDialog({ kind: 'pay', job })}>
-          Review & pay
+          Pay
         </button>
       )}
     </div>

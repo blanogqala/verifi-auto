@@ -171,6 +171,20 @@ export function Workspace({
   const [drawer, setDrawer] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [dialog, setDialog] = useState<any>(null);
+  const [sandboxPaymentsEnabled, setSandboxPaymentsEnabled] = useState(!live);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const paymentBusyRef = useRef(false);
+  useEffect(() => {
+    if (!live || role !== 'customer') {
+      setSandboxPaymentsEnabled(!live);
+      return;
+    }
+    let mounted = true;
+    api<{ enabled: boolean }>('/bookings/sandbox-payment-capability')
+      .then((state) => { if (mounted) setSandboxPaymentsEnabled(state.enabled === true); })
+      .catch(() => { if (mounted) setSandboxPaymentsEnabled(false); });
+    return () => { mounted = false; };
+  }, [live, role]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('All');
   const [uploadError, setUploadError] = useState('');
@@ -394,8 +408,36 @@ export function Workspace({
   }
   function jobAction(job: any, action: string, extra: any = {}) {
     if (live && action === 'pay') {
-      notify('Online card payments are not available until a payment provider is connected.');
-      return false;
+      if (!sandboxPaymentsEnabled) {
+        notify('Test payments are not enabled for this account. No money was taken.');
+        return false;
+      }
+      if (paymentBusyRef.current) return false;
+      const bookingId = job.bookingId || job.id;
+      const quoteId = job.serverQuoteId;
+      if (!bookingId || !quoteId || !Number.isInteger(job.quoteVersion) || job.quoteVersion <= 0) {
+        notify('This quotation is not ready for a test payment. Refresh and try again.');
+        return false;
+      }
+      paymentBusyRef.current = true;
+      setPaymentBusy(true);
+      void api('/bookings/' + encodeURIComponent(bookingId) + '/quotes/' +
+        encodeURIComponent(quoteId) + '/test-payment', 'POST',
+        { version: job.quoteVersion })
+        .then(() => {
+          setDialog(null);
+          notify('TEST payment recorded — no money was charged. The workshop can now proceed.');
+          refresh();
+        })
+        .catch((reason: any) => {
+          notify(reason?.message || 'Could not simulate this payment. No money was charged.');
+          refresh();
+        })
+        .finally(() => {
+          paymentBusyRef.current = false;
+          setPaymentBusy(false);
+        });
+      return true;
     }
     let status = '';
     let duplicate = false;
@@ -1170,6 +1212,8 @@ export function Workspace({
           filter={filter}
           jobAction={jobAction}
           live={live}
+          sandboxPaymentsEnabled={sandboxPaymentsEnabled}
+          paymentBusy={paymentBusy}
           name={name}
           note={note}
           notify={notify}

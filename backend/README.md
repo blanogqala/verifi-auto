@@ -31,6 +31,13 @@ If Prisma reports `P2022` (missing database column), confirm the local API point
 
 Use a local SMTP inbox such as Mailpit during development. Never log verification or recovery tokens. Development test payments require an explicit `ENABLE_TEST_PAYMENTS=true`; the server refuses this setting in production.
 
+### Temporary sandbox payment testing
+
+On a disposable local/testing server, use `ENABLE_TEST_PAYMENTS=true`. A signed-in customer can select **Pay → Simulate payment** on an approved quote. This creates a server-calculated `provider: TEST` receipt, advances the booking to **Ready to start**, and notifies the workshop; no card or real money is involved. Duplicate clicks return the same TEST receipt.
+
+For a **restricted deployed pilot**, leave `ENABLE_TEST_PAYMENTS=false` and configure `SANDBOX_PAYMENT_TESTER_EMAILS=tester@example.com` in the backend environment. Only listed **email-verified customer accounts** can make test payments. Everyone else sees sandbox checkout unavailable, and the test endpoint rejects their request. **Use only disposable pilot bookings and never enable this for a genuine paying customer.** Remove the allowlist before enabling real bookings. `/api/bookings/sandbox-payment-capability` reports eligibility for the signed-in customer without revealing the allowlist. Real checkout remains disabled and there is no escrow, refund or payout transfer.
+
+
 ## Structure
 
 - `src/app.ts`: HTTP composition, CORS, origin checks, security headers and error handling.

@@ -127,7 +127,7 @@ export function BookingQuotations({
                   type="button"
                   onClick={() => setDialog({ kind: 'pay', job: quote })}
                 >
-                  Review and pay
+                  Pay
                 </button>
               ) : null}
               {!mechanic && quote.paid ? (
