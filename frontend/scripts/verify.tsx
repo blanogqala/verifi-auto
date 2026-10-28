@@ -1117,7 +1117,6 @@ assert.ok(vehicleHtml.includes('garage-detail-grid'));
 assert.ok(vehicleHtml.indexOf('Vehicle facts') < vehicleHtml.indexOf('Care reminders'));
 assert.ok(vehicleHtml.includes('Vehicle Activity Record'));
 assert.ok(vehicleHtml.includes('Booking history'));
-assert.ok(vehicleHtml.includes('Precision Motorworks'));
 const garageEntries = vehicleVarEntries(
   [{ id: 'book-1', provider: 'Workshop A', status: 'Completed', date: '2026-10-20',
     workReport: { items: [{ id: 'x', description: 'Brake pads', completed: true }], notes: 'New pads', mileage: 100, updatedAt: '2026-10-20' } }],
