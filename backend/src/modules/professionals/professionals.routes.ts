@@ -176,6 +176,41 @@ const profile = z
   );
 export const professionalRoutes = Router();
 professionalRoutes.use(roles("MECHANIC"), verified);
+// Private review feed: full customer names are visible only to the assigned
+// workshop and administrators. Public directory reviews keep first names only.
+professionalRoutes.get("/me/reviews", async (req, res) => {
+  const pro = await db.professional.findFirst({
+    where: { userId: actor(req).userId },
+    select: { id: true, name: true },
+  });
+  requireThat(pro, 404, "NOT_FOUND", "Professional profile not found.");
+  const [summary, reviews] = await Promise.all([
+    db.review.aggregate({
+      where: { professionalId: pro.id },
+      _avg: { rating: true },
+      _count: { _all: true },
+    }),
+    db.review.findMany({
+      where: { professionalId: pro.id },
+      include: {
+        customer: { select: { name: true } },
+        booking: { select: { id: true, vehicle: { select: { make: true, model: true, year: true } } } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+  ]);
+  res.json({
+    workshopName: pro.name,
+    average: summary._avg.rating,
+    count: summary._count._all,
+    reviews: reviews.map(({ customer, booking, ...review }) => ({
+      ...review,
+      customerName: customer.name,
+      vehicle: [booking.vehicle.year, booking.vehicle.make, booking.vehicle.model].filter(Boolean).join(" "),
+    })),
+  });
+});
 professionalRoutes.get("/me", async (req, res) =>
   res.json(
     await db.professional.findUniqueOrThrow({
