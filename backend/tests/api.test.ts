@@ -1072,7 +1072,7 @@ test(
       assert.equal(sharedVar.body[0].booking.professional.name, "Workshop Test");
       const grantedBooking = await send("get", `/api/bookings/${nextId}`, undefined, alice);
       assert.ok(grantedBooking.body.grant.grantedAt);
-      assert.equal((await send("get", `/api/bookings/${nextId}/history`, undefined, bob)).status, 404);
+      assert.equal((await send("get", `/api/bookings/${nextId}/history`, undefined, bob)).status, 403);
       assert.equal(
         (
           await send(
