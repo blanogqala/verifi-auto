@@ -433,6 +433,35 @@ async function connected(browser) {
       && outerStyle.overflow === 'hidden' && outer.clientHeight > 300;
   });
   if (!notificationScroll) throw new Error('Notifications must scroll inside both fixed panels.');
+  // Customer completion must reach the authenticated booking API, not try to
+  // persist the demo-only service record. The resulting review goes to the
+  // same workshop's public rating system.
+  await resetDisposableRateLimits();
+  await page.goto(bookingUrl);
+  await page.getByRole('button', { name: 'Confirm work done' }).click();
+  await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Completed').waitFor();
+  const reviewDialog = page.getByRole('dialog', { name: 'Rate your workshop' });
+  await reviewDialog.waitFor();
+  await reviewDialog.getByRole('radio', { name: '5 stars' }).check();
+  await reviewDialog.getByLabel('Your review').fill('Excellent brake repair and professional communication throughout.');
+  await reviewDialog.getByRole('button', { name: 'Submit review' }).click();
+  await reviewDialog.waitFor({ state: 'detached' });
+  const confirmed = await page.evaluate(async (id) => {
+    const response = await fetch('http://127.0.0.1:3099/api/bookings/' + id, { credentials: 'include' });
+    return { status: response.status, body: await response.json() };
+  }, bookingUrl.split('/').pop());
+  if (confirmed.status !== 200 || confirmed.body.status !== 'COMPLETED' ||
+      confirmed.body.review?.rating !== 5 ||
+      !confirmed.body.review?.body?.includes('Excellent brake repair')) {
+    throw new Error('Customer confirmation or saved public workshop review is missing: ' +
+      JSON.stringify({ status: confirmed.status, bookingStatus: confirmed.body?.status,
+        review: confirmed.body?.review }));
+  }
+  await page.reload();
+  await page.getByRole('button', { name: 'Edit your review' }).waitFor();
+  await page.getByRole('button', { name: 'Edit your review' }).click();
+  await page.getByRole('dialog', { name: 'Rate your workshop' }).getByText('Excellent brake repair and professional communication throughout.').waitFor();
+  await page.getByRole('button', { name: 'Maybe later' }).click();
   // My Garage vehicle details: work report is visible under its workshop and
   // opens an owner-facing VAR popup; booking history links back to the booking.
   await page.goto(bookingUrl);
