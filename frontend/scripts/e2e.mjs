@@ -389,6 +389,7 @@ async function connected(browser) {
     if (!disabled) throw new Error('An empty VAR must not permit an access grant.');
   });
   await varPanel.getByRole('button', { name: 'Notify workshop: No history available' }).click();
+  await page.getByText('Workshop notified that there is no earlier history to share.').waitFor();
   await page.goto(appUrl + '/#dashboard/notifications');
   await page.getByText(/No previous vehicle history|Workshop work report updated/).first().waitFor();
   await page.goto(appUrl + '/#dashboard/garage');
