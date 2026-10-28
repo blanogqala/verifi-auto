@@ -65,7 +65,7 @@ export function transitionJob(job: any, action: string, extra: any = {}) {
       if (!job.quoteId || job.quoteId === 'primary' || job.paid || job.quoteApproved || !['Confirmed', 'Awaiting approval', 'Changes requested'].includes(job.status)) throw Error('Only an unapproved additional quotation can be withdrawn.');
       return withEvent(job, { status: 'Withdrawn', quoteDraft: null }, 'withdraw-quote');
     case 'start-quote':
-      if (!job.quoteId || job.quoteId === 'primary' || job.status !== 'Approved' || !job.quoteApproved) throw Error('Approve the additional quotation before starting its repairs.');
+      if (!job.quoteId || job.quoteId === 'primary' || job.status !== 'Ready to start' || !job.quoteApproved || !job.paid) throw Error('Pay the additional quotation before starting its repairs.');
       return withEvent(job, { status: 'In progress' }, 'start-quote');
     case 'start':
       if (!['Ready to start', 'Approved'].includes(job.status) || !job.quoteApproved || !job.paid)
