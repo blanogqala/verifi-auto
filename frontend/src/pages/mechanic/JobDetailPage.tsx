@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Siren, MapPin, ClipboardList, History } from 'lucide-react';
 import { api } from '../../data-access/api';
 import { WorkReportEditor, WorkReportViewer, VarHistoryViewer } from '../../components/jobs/VehicleActivityRecord';
-import { appendNotification } from '../../features/notifications/inbox';
+import { appendNotification, unreadBookingNotices, markNotificationsRead } from '../../features/notifications/inbox';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { Card } from '../../components/ui/Card';
@@ -59,6 +59,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const registration = vehicle?.registration || job.registration || 'Not recorded';
   const history = sharedRecordsForProfessional(data, job, professionalId);
   const unread = unreadMessageCount(data, job.id, 'mechanic');
+  const unreadVarNoticeIds = unreadBookingNotices(data, 'mechanic', job.id, 'var').map((note: any) => note.id);
   const varGrant = (data.historyAccess || []).find((grant: any) => grant.bookingId === job.id);
   const varGranted = varGrant?.status === 'active';
   const varPending = varGrant?.status === 'requested';
@@ -127,6 +128,11 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         : sharedRecordsForProfessional(data, job, professionalId);
       setVarRecords(records);
       setVarOpen(true);
+      if (unreadVarNoticeIds.length) {
+        await update((current: any) => markNotificationsRead(current, {
+          role: 'mechanic', id: professionalId, ids: unreadVarNoticeIds,
+        }));
+      }
     } catch (reason: any) { setError(reason?.message || 'Could not load shared vehicle records.'); }
     finally { setVarBusy(false); }
   }
@@ -236,10 +242,13 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
           <div className="split-side">
             <CustomerDetailsCard job={{ ...job, customerName: customer }} customer={customerRecord} />
             <VehicleDetailsCard job={job} vehicle={vehicle} headerAction={canRequestVar ? (
-              <button type="button" className="var-header-action" disabled={varBusy || (varPending && !varGranted)}
-                onClick={() => void (varGranted ? viewVar() : requestVar())}>
-                <History size={16}/>{varGranted ? 'View VAR' : varPending ? 'VAR pending' : 'Request VAR'}
-              </button>
+              <span className="var-header-attention">
+                {unreadVarNoticeIds.length > 0 && <span className="var-attention-dot" aria-label="New shared vehicle history" title="New shared vehicle history"/>}
+                <button type="button" className="var-header-action" disabled={varBusy || (varPending && !varGranted)}
+                  onClick={() => void (varGranted ? viewVar() : requestVar())}>
+                  <History size={16}/>{varGranted ? 'View VAR' : varPending ? 'VAR pending' : 'Request VAR'}
+                </button>
+              </span>
             ) : undefined} />
             {history.length ? (
               <DetailCard quiet title="Service history">
