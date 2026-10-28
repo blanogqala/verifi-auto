@@ -222,6 +222,8 @@ export function useLiveSource(enabled: boolean, page: string) {
               professionalId: row.review.professionalId,
               rating: row.review.rating,
               text: row.review.body,
+              createdAt: row.review.createdAt,
+              updatedAt: row.review.updatedAt,
               photos: [],
             },
           ]
