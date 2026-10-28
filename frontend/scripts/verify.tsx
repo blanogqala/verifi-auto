@@ -1529,7 +1529,8 @@ const paidRecord = applyJobTransition(
   {},
   customerActor,
 );
-assert.equal(paidRecord.data.records[0].id, firstBooking.job.id);
+assert.equal(paidRecord.job.status, 'Ready to start');
+assert.equal(paidRecord.data.records.length, 0, 'Payment alone must not create a completed service record.');
 assert.equal(safeRouteId('%E0%A4%A'), null);
 assert.equal(safeRouteId('a%2Fb'), null);
 assert.equal(safeRouteId('pro-precision-motorworks'), 'pro-precision-motorworks');
