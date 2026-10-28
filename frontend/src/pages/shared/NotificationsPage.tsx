@@ -40,6 +40,7 @@ const icons: Record<string, any> = {
   Changes: FileText,
   Work: Wrench,
   Payments: Wallet,
+  'Customer reviews': Wrench,
   Messages: MessageSquare,
   Account: Bell,
   'Vehicle history': History,
