@@ -607,17 +607,24 @@ export async function createServiceRecord(tx: Tx, bookingId: string) {
       },
     },
   });
+  // Snapshot the mechanic's actual checked work, not just the planned quote.
+  // Pre-feature bookings retain their original approved-line fallback.
+  const report = booking.workReport && typeof booking.workReport === "object" &&
+    !Array.isArray(booking.workReport) ? booking.workReport as {
+      items?: unknown; notes?: unknown; mileage?: unknown; updatedAt?: unknown
+    } : null;
+  const reportItems = Array.isArray(report?.items) ? report.items : null;
+  const repairs = reportItems ?? booking.quotes.map((q) => ({
+    quoteId: q.id, lines: q.lines,
+  }));
+  const notes = typeof report?.notes === "string" ? report.notes : booking.completionNotes;
   await tx.serviceRecord.upsert({
     where: { bookingId },
-    update: {},
+    update: { notes, repairs: JSON.parse(JSON.stringify(repairs)) as Prisma.InputJsonValue },
     create: {
       bookingId,
-      notes: booking.completionNotes,
-      repairs: JSON.parse(
-        JSON.stringify(
-          booking.quotes.map((q) => ({ quoteId: q.id, lines: q.lines })),
-        ),
-      ) as Prisma.InputJsonValue,
+      notes,
+      repairs: JSON.parse(JSON.stringify(repairs)) as Prisma.InputJsonValue,
     },
   });
 }
