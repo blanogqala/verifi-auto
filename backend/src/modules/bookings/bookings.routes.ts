@@ -239,7 +239,7 @@ bookingRoutes.put(
     await transaction(async (tx) => {
       const booking = await service.getBooking(tx, bookingId, actor(req));
       requireThat(
-        ["CONFIRMED", "APPROVED", "IN_PROGRESS", "AWAITING_PAYMENT"].includes(
+        ["CONFIRMED", "APPROVED", "READY_TO_START", "IN_PROGRESS", "AWAITING_PAYMENT", "AWAITING_CONFIRMATION"].includes(
           booking.status,
         ),
         409,
