@@ -530,8 +530,20 @@ async function connected(browser) {
     return { ok: Math.abs(first.y - second.y) < 3 && second.x > first.right - 3 };
   });
   if (!layout.ok) throw new Error('Service areas and offered services must share the desktop row.');
+  if (await businessName.inputValue() !== 'Updated Workshop') {
+    throw new Error('The edited workshop name was not retained in the profile form.');
+  }
   await page.getByRole('button', { name: 'Save profile' }).click();
   await page.getByText('Business profile saved').waitFor();
+  const persistedWorkshop = await page.evaluate(async () => {
+    const response = await fetch('http://127.0.0.1:3099/api/professional/me', { credentials: 'include' });
+    return { status: response.status, body: await response.json() };
+  });
+  if (persistedWorkshop.status !== 200 || persistedWorkshop.body?.name !== 'Updated Workshop') {
+    throw new Error('Workshop profile save did not persist: ' + JSON.stringify({
+      status: persistedWorkshop.status, name: persistedWorkshop.body?.name, error: persistedWorkshop.body?.code,
+    }));
+  }
   await page.reload();
   await page.waitForFunction(() =>
     [...document.querySelectorAll('label')].some((label) => {
