@@ -146,3 +146,19 @@
 }
 
 .var-header-attention { display:inline-flex;align-items:center;gap:9px; }
+
+/* Booking-card dots supplement the pre-existing appointment request indicators. */
+.booking-card .booking-card-hit { position:relative; }
+.booking-card .booking-attention-dot {
+  display:block;
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  background:#f39b38;
+  box-shadow:0 0 0 4px rgb(243 155 56 / 20%);
+  pointer-events:none;
+  z-index:1;
+}
