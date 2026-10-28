@@ -22,6 +22,7 @@ import { money } from '../../features/admin/paymentRecords';
 import { bookingReference } from '../../features/jobs/jobViews';
 import { formatWhen } from '../../features/jobs/bookingProgress';
 import { eligibleCustomerReviews, ratingSummary } from '../../features/reviews/ratingSummary';
+import { reviewerName, ReviewStars } from '../../components/reviews/ReviewStars';
 import { providers } from '../../data/professionals';
 import { api, apiBase } from '../../data-access/api';
 
@@ -443,6 +444,9 @@ export function ProfessionalAdminDetailPage({ record, data, route, connected }: 
               </div>
               <div className="admin-customer-booking-side">
                 <StatusBadge value={customerBookingStatus[job.status] || job.status} />
+                {['COMPLETED', 'Completed'].includes(job.status) &&
+                  (job.review?.rating ?? (data.customerReviews || []).find((review: any) => review.bookingId === job.id)?.rating) != null &&
+                  <ReviewStars rating={job.review?.rating ?? (data.customerReviews || []).find((review: any) => review.bookingId === job.id)?.rating} compact/>}
                 {(data.jobs || []).some((x: any) => x.id === job.id) &&
                   <button type="button" className="text-link"
                     onClick={() => route('jobs/' + encodeURIComponent(job.id))}>
@@ -458,7 +462,10 @@ export function ProfessionalAdminDetailPage({ record, data, route, connected }: 
       {section === 'Reviews' && <DetailCard title="Customer reviews" icon={<Star size={20} />}>
         {reviews.length ? reviews.map((review: any) =>
           <article className="admin-review" key={review.id}>
-            <b>{review.rating} / 5</b>
+            <div className="admin-review-head">
+              <strong>{name} · {review.customer?.name || reviewerName(data, review)}</strong>
+              <ReviewStars rating={review.rating}/>
+            </div>
             <p>{review.body || review.text || 'No written review.'}</p>
             <small>{review.createdAt ? formatWhen(review.createdAt) : 'Date not recorded'}</small>
           </article>,
