@@ -63,8 +63,10 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const varGrant = (data.historyAccess || []).find((grant: any) => grant.bookingId === job.id);
   const varGranted = varGrant?.status === 'active';
   const varPending = varGrant?.status === 'requested';
-  const varNoEarlierRecords = ['revoked', 'declined'].includes(varGrant?.status) &&
+  const varNotShared = ['revoked', 'declined'].includes(varGrant?.status) &&
     !!varGrant?.requestedAt && !varGrant?.grantedAt && !(varGrant?.recordIds || []).length;
+  const varNoEarlierRecords = varNotShared && (data.notifications || []).some((note: any) =>
+    note.bookingId === job.id && /no (previous )?vehicle history available to share/i.test(note.title || ''));
   const canRequestVar = ['Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment'].includes(job.status);
   async function saveWorkReport(values: { checkedLineIds: string[]; notes: string; mileage: number }) {
     const reportItems = [
@@ -246,9 +248,9 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
             <VehicleDetailsCard job={job} vehicle={vehicle} headerAction={canRequestVar ? (
               <span className="var-header-attention">
                 {unreadVarNoticeIds.length > 0 && <span className="var-attention-dot" aria-label="New shared vehicle history" title="New shared vehicle history"/>}
-                <button type="button" className="var-header-action" disabled={varBusy || varNoEarlierRecords || (varPending && !varGranted)}
+                <button type="button" className="var-header-action" disabled={varBusy || varNotShared || (varPending && !varGranted)}
                   onClick={() => void (varGranted ? viewVar() : requestVar())}>
-                  <History size={16}/>{varGranted ? 'View VAR' : varNoEarlierRecords ? 'No VAR yet' : varPending ? 'VAR pending' : 'Request VAR'}
+                  <History size={16}/>{varGranted ? 'View VAR' : varNotShared ? (varNoEarlierRecords ? 'No VAR yet' : 'VAR unavailable') : varPending ? 'VAR pending' : 'Request VAR'}
                 </button>
               </span>
             ) : undefined} />
@@ -264,6 +266,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
             ) : (
               <p className="muted var-mechanic-history-status">{varNoEarlierRecords
                 ? 'The customer confirmed that this vehicle has no earlier completed service records to share.'
+                : varNotShared ? 'The customer did not share previous vehicle records for this booking.'
                 : varPending ? 'Waiting for the customer to choose which service records you may view.'
                 : 'No service history has been shared for this booking.'}</p>
             )}
