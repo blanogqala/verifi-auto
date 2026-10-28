@@ -446,7 +446,7 @@ async function connected(browser) {
   });
   await page.getByRole('button', { name: 'Confirm work done' }).click();
   try {
-    await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Completed').waitFor({ timeout: 14000 });
+    await page.locator('.progress-step:last-child.is-complete .progress-label').getByText('Completed').waitFor({ timeout: 14000 });
   } catch (reason) {
     const debug = await page.evaluate(async (id) => {
       const response = await fetch('http://127.0.0.1:3099/api/bookings/' + id, { credentials: 'include' });
@@ -475,6 +475,17 @@ async function connected(browser) {
     throw new Error('Customer confirmation or saved public workshop review is missing: ' +
       JSON.stringify({ status: confirmed.status, bookingStatus: confirmed.body?.status,
         review: confirmed.body?.review }));
+  }
+  const workshopReview = await page.evaluate(async (id) => {
+    const response = await fetch('http://127.0.0.1:3099/api/professionals/' + id);
+    const profile = await response.json();
+    return { status: response.status, rating: profile.rating, reviewCount: profile.reviewCount,
+      reviews: profile.reviews?.map((review) => ({ rating: review.rating, body: review.body })) };
+  }, confirmed.body.professionalId);
+  if (workshopReview.status !== 200 || workshopReview.reviewCount < 1 ||
+      !workshopReview.reviews?.some((review) => review.rating === 5 &&
+        review.body.includes('Excellent brake repair'))) {
+    throw new Error('Customer review missing from public workshop profile: ' + JSON.stringify(workshopReview));
   }
   await page.reload();
   await page.getByRole('button', { name: 'Edit your review' }).waitFor();
