@@ -147,7 +147,7 @@ async function resetDisposableRateLimits() {
   await client.connect();
   try {
     await client.query('DELETE FROM "RateLimit"');
-    record('[e2e] reset request counters in disposable database before admin journey\n');
+    record('[e2e] reset request counters in disposable test database\n');
   } finally {
     await client.end();
   }
@@ -496,6 +496,10 @@ async function connected(browser) {
   await other.getByRole('heading', { name: 'Booking not found' }).waitFor();
   await other.close();
 
+  // This long browser journey creates hundreds of ordinary API reads while
+  // moving between users. Reset only the disposable test DB counters here;
+  // production throttling stays active and unchanged.
+  await resetDisposableRateLimits();
   await signIn(page, 'mechanic@example.test');
   await page.goto(appUrl + '/#dashboard/profile/business');
   const businessName = page.getByLabel('Business or trading name');
@@ -590,6 +594,9 @@ async function connected(browser) {
   }
   await page.getByRole('button', { name: 'Save profile' }).click();
   await page.getByText('Business profile saved').waitFor();
+  // Rate-limit counters should never invalidate a verified persistence check
+  // or prevent the browser from hydrating the updated profile after reload.
+  await resetDisposableRateLimits();
   const persistedWorkshop = await page.evaluate(async () => {
     const response = await fetch('http://127.0.0.1:3099/api/professional/me', { credentials: 'include' });
     return { status: response.status, body: await response.json() };
@@ -599,6 +606,7 @@ async function connected(browser) {
       status: persistedWorkshop.status, name: persistedWorkshop.body?.name, error: persistedWorkshop.body?.code,
     }));
   }
+  await resetDisposableRateLimits();
   await page.reload();
   try {
     await page.getByLabel('Business or trading name').waitFor({ state: 'visible', timeout: 20000 });
