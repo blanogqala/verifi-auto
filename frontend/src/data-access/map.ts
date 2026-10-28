@@ -188,6 +188,8 @@ export function mapBooking(row: any) {
     accepted: !['REQUESTED', 'REJECTED'].includes(row.status),
     rejectionReason: row.rejectionReason || '',
     completionNotes: row.completionNotes || '',
+    workReport: row.workReport || null,
+    workReportUpdatedAt: row.workReportUpdatedAt || null,
     items: primary?.items || [],
     notes: primary?.notes || '',
     quoteDraft: primary?.quoteDraft || null,
@@ -228,6 +230,8 @@ export function mapRecords(vehicleId: string, history: any[]) {
     title: 'Completed service',
     notes: record.notes || '',
     repairs: record.repairs || [],
+    mileage: record.mileage ?? null,
+    provider: record.booking?.professional?.name || '',
   }));
 }
 
