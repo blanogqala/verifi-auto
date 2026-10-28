@@ -207,7 +207,11 @@ adminRoutes.get("/professionals/:id", async (req, res) => {
     where: { id: id.parse(req.params.id) },
     include: {
       reviews: {
-        select: { id: true, rating: true, body: true, createdAt: true },
+        select: {
+          id: true, rating: true, body: true, createdAt: true, bookingId: true,
+          customer: { select: { name: true } },
+          booking: { select: { vehicle: { select: { year: true, make: true, model: true } } } },
+        },
         orderBy: { createdAt: "desc" },
         take: 100,
       },
