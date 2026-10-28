@@ -618,12 +618,14 @@ export async function createServiceRecord(tx: Tx, bookingId: string) {
     quoteId: q.id, lines: q.lines,
   }));
   const notes = typeof report?.notes === "string" ? report.notes : booking.completionNotes;
+  const mileage = typeof report?.mileage === "number" ? report.mileage : null;
   await tx.serviceRecord.upsert({
     where: { bookingId },
-    update: { notes, repairs: JSON.parse(JSON.stringify(repairs)) as Prisma.InputJsonValue },
+    update: { notes, mileage, repairs: JSON.parse(JSON.stringify(repairs)) as Prisma.InputJsonValue },
     create: {
       bookingId,
       notes,
+      mileage,
       repairs: JSON.parse(JSON.stringify(repairs)) as Prisma.InputJsonValue,
     },
   });
