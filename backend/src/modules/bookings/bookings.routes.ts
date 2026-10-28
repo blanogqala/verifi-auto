@@ -34,6 +34,27 @@ bookingRoutes.post("/", roles("CUSTOMER"), async (req, res) =>
       ),
     ),
 );
+/** A simulated receipt must never be available to ordinary production accounts.
+ * In a local/test deployment ENABLE_TEST_PAYMENTS=true enables it. A deployed
+ * pilot requires an explicit comma-separated allowlist of verified test accounts.
+ */
+const sandboxTesterEmails = new Set(
+  env.SANDBOX_PAYMENT_TESTER_EMAILS.split(",").map((email) => email.trim().toLowerCase()).filter(Boolean),
+);
+async function canRecordSandboxPayment(userId: string) {
+  if (env.NODE_ENV !== "production") return env.ENABLE_TEST_PAYMENTS === "true";
+  if (!sandboxTesterEmails.size) return false;
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { email: true, verifiedAt: true, disabledAt: true },
+  });
+  return Boolean(user?.verifiedAt && !user.disabledAt &&
+    sandboxTesterEmails.has((user.email || "").toLowerCase()));
+}
+// This is a capability hint, not an authorisation decision.
+bookingRoutes.get("/sandbox-payment-capability", roles("CUSTOMER"), async (req, res) => {
+  res.json({ enabled: await canRecordSandboxPayment(actor(req).userId), mode: "TEST_ONLY" });
+});
 bookingRoutes.get("/:id", async (req, res) =>
   res.json(
     service.publicBooking(
@@ -140,20 +161,26 @@ bookingRoutes.post(
     );
   },
 );
-if (env.NODE_ENV !== "production" && env.ENABLE_TEST_PAYMENTS === "true")
-  bookingRoutes.post(
-    "/:id/quotes/:quoteId/test-payment",
-    roles("CUSTOMER"),
-    async (req, res) =>
-      res.json(
-        await service.recordTestPayment(
-          id.parse(req.params.id),
-          id.parse(req.params.quoteId),
-          expectedVersion.parse(req.body.version),
-          actor(req),
-        ),
+bookingRoutes.post(
+  "/:id/quotes/:quoteId/test-payment",
+  roles("CUSTOMER"),
+  async (req, res) => {
+    requireThat(
+      await canRecordSandboxPayment(actor(req).userId),
+      403,
+      "SANDBOX_PAYMENTS_DISABLED",
+      "Test payments are disabled for this account. No money was taken. An administrator must enable the sandbox tester allowlist.",
+    );
+    res.json(
+      await service.recordTestPayment(
+        id.parse(req.params.id),
+        id.parse(req.params.quoteId),
+        expectedVersion.parse(req.body?.version),
+        actor(req),
       ),
-  );
+    );
+  },
+);
 bookingRoutes.get("/:id/messages", async (req, res) => {
   const booking = await service.getBooking(
     db,
