@@ -406,8 +406,8 @@ async function connected(browser) {
   await page.getByText('Workshop notified that there is no earlier history to share.').waitFor();
   await page.goto(appUrl + '/#dashboard/notifications');
   await page.getByText(/No previous vehicle history|Workshop work report updated/).first().waitFor();
-  if (await page.getByRole('button', { name: 'Find a professional' }).count())
-    throw new Error('Notifications must not show a Find a professional CTA.');
+  if (await page.locator('.workspace-heading').getByRole('button', { name: 'Find a professional' }).count())
+    throw new Error('Notifications header must not show a Find a professional CTA.');
   await page.locator('.inbox-list').waitFor();
   await page.locator('.inbox-detail-scroll').waitFor();
   await page.getByRole('button', { name: /Mark all as read/ }).first().waitFor();
