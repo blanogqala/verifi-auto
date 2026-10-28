@@ -161,6 +161,7 @@ vehicleRoutes.get("/:id", async (req, res) => {
     },
     orderBy: { createdAt: "desc" },
     take: 100,
+    include: { booking: { select: { professional: { select: { name: true } } } } },
   });
   const assets = await db.vehicleAsset.findMany({
     where: {
