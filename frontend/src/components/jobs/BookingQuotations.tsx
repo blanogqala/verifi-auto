@@ -142,7 +142,7 @@ export function BookingQuotations({
               {mechanic &&
               job.status === 'In progress' &&
               quote.quoteId !== 'primary' &&
-              quote.status === 'Approved' ? (
+              quote.status === 'Ready to start' && quote.paid ? (
                 <button
                   className="primary"
                   type="button"
