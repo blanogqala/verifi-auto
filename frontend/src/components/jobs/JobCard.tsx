@@ -4,6 +4,7 @@ import { StatusBadge as Status } from '../ui/StatusBadge';
 import { ArrowRight, Car, Calendar, Siren, MapPin } from 'lucide-react';
 import { quoteTotal } from '../../features/jobs/jobWorkflow';
 import { formatDay } from '../../features/jobs/bookingProgress';
+import { ReviewStars } from '../reviews/ReviewStars';
 
 function VehicleArt({ image }: { image: string }) {
   if (image) return <img src={image} alt="" />;
@@ -54,6 +55,7 @@ export function JobCard({
             {registration ? <span>{registration}</span> : null}
             <span className="reference">{bookingReference(j)}</span>
             {quoteAmount ? <span className="mechanic-job-amount">Quote {quoteAmount}</span> : null}
+            {j.status === 'Completed' && j.reviewRating != null && <ReviewStars rating={j.reviewRating} compact/>}
           </span>
           <Status value={j.status} />
           {attention > 0 && <span className="booking-attention-dot" title="Unread booking update" aria-label="Unread booking update" />}
@@ -75,6 +77,7 @@ export function JobCard({
             <strong>{vehicleName}</strong>
             <span>{professional}</span>
             <span>{when}</span>
+            {j.status === 'Completed' && j.reviewRating != null && <ReviewStars rating={j.reviewRating} compact/>}
           </span>
           <Status value={j.status} />
           {attention > 0 && <span className="booking-attention-dot" title="Unread booking update" aria-label="Unread booking update" />}
@@ -96,6 +99,7 @@ export function JobCard({
         <Status value={j.status} />
       </div>
       <h3>{vehicleName}</h3>
+      {j.status === 'Completed' && j.reviewRating != null && <ReviewStars rating={j.reviewRating} compact/>}
       {registration ? <p className="job-registration">{registration}</p> : null}
       <p>
         <Car size={15} aria-hidden="true" />
