@@ -258,7 +258,7 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
           </details>
         ) : (
           <DetailCard title="Service history">
-            <HistoryList records={records} />
+            <HistoryList records={records} onOpen={setServiceView} />
           </DetailCard>
         )}
         {bookings.length > 3 ? (
@@ -268,7 +268,7 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
           </details>
         ) : (
           <DetailCard title="Related bookings">
-            <BookingList bookings={bookings} go={go} here={here} />
+            <BookingList bookings={bookings} go={go} here={here} onOpenReport={setReportView} />
           </DetailCard>
         )}
         <details className="fold">
