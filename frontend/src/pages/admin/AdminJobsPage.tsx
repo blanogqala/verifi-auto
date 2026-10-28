@@ -18,6 +18,7 @@ import {
 import { commitUpdate } from '../../features/demo/commitUpdate';
 import { appendAdminActivity } from '../../features/admin/detailRecords';
 import { formatWhen } from '../../features/jobs/bookingProgress';
+import { transitionJob } from '../../features/jobs/jobWorkflow';
 
 export function AdminJobsPage({ data, cardJobs, route, section, live = false }: any) {
   const [query, setQuery] = useState('');
@@ -43,8 +44,11 @@ export function AdminJobsPage({ data, cardJobs, route, section, live = false }: 
         'Awaiting approval',
         'Changes requested',
         'Approved',
+        'Ready to start',
         'In progress',
         'Awaiting payment',
+        'Awaiting confirmation',
+        'Disputed',
         'Completed',
         'Cancelled',
       ];
@@ -138,7 +142,7 @@ export function AdminJobsPage({ data, cardJobs, route, section, live = false }: 
           <p>
             {showingDisputes && !disputes.length
               ? live
-                ? 'Dispute management is not connected to the server yet. Contact support about a booking issue.'
+                ? 'Customer disputes about completed repairs will appear here for administrator review.'
                 : 'Booking disputes will appear here when recorded. No dispute has been created in this browser demo.'
               : 'Try another city, professional type or status.'}
           </p>
@@ -149,87 +153,78 @@ export function AdminJobsPage({ data, cardJobs, route, section, live = false }: 
 }
 export function AdminDisputePage({ data, id, route, update, notify }: any) {
   const [resolution, setResolution] = useState('');
+  const [decision, setDecision] = useState<'resolve-accept' | 'resolve-rework'>('resolve-rework');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const dispute = disputeRows(data).find((d: any) => d.id === id);
   const job = dispute && (data.jobs || []).find((j: any) => j.id === dispute.bookingId);
-  function resolve() {
-    commitUpdate(
-      update,
-      (current: any) => {
-        const next = resolveDispute(current, id, resolution, current.adminAccount?.name || 'Admin');
-        return next === current
-          ? current
-          : appendAdminActivity(next, {
-              action: 'Dispute resolved',
-              actor: current.adminAccount?.name || 'Admin',
-              role: 'admin',
-              target: id,
-            });
-      },
-      notify,
-      'Demo dispute resolved. No payment or booking status was changed.',
-    );
+
+  async function resolve() {
+    if (!dispute || !job || resolution.trim().length < 10 || busy) return;
+    setBusy(true);setError('');
+    try {
+      await update((current: any) => {
+        const source = current.jobs.find((entry: any) => entry.id === job.id);
+        const changed = transitionJob(source, decision, { reason: resolution.trim() });
+        return {
+          ...current,
+          jobs: current.jobs.map((entry: any) => entry.id === job.id ? changed : entry),
+          // Do not mutate the disconnected admin disputes collection for live bookings.
+        };
+      });
+      notify(decision === 'resolve-accept'
+        ? 'Dispute resolved: service accepted. No funds were released by Verifi Auto.'
+        : 'Dispute resolved: workshop asked to perform corrective work.');
+    } catch (reason: any) { setError(reason?.message || 'Could not resolve dispute.'); }
+    finally { setBusy(false); }
   }
+
   return (
     <div className="admin-detail-page">
       <DetailBack label="Back to disputes" onClick={() => route('jobs/disputes')} />
       {dispute ? (
         <>
-          <DetailHeader
-            title={dispute.title || 'Booking dispute'}
-            summary={dispute.id}
-            aside={<StatusBadge value={dispute.status} />}
-          />
+          <DetailHeader title={dispute.title || 'Booking dispute'} summary={dispute.id}
+            aside={<StatusBadge value={dispute.status} />}/>
           <DetailCard title="Dispute details">
-            <DetailFields
-              items={[
-                { label: 'Booking', value: dispute.bookingId || 'Not linked' },
-                { label: 'Opened', value: formatWhen(dispute.createdAt) || 'Date not recorded' },
-              ]}
-            />
+            <DetailFields items={[
+              { label: 'Booking', value: dispute.bookingId || 'Not linked' },
+              { label: 'Opened', value: formatWhen(dispute.createdAt) || 'Date not recorded' },
+              { label: 'Workshop', value: job?.provider || 'Not recorded' },
+              { label: 'Customer', value: job?.customerName || 'Not recorded' },
+            ]}/>
             <p>{dispute.description || dispute.note || 'No details provided.'}</p>
-            {job && (
-              <button
-                className="secondary"
-                onClick={() => route('jobs/' + encodeURIComponent(job.id))}
-              >
-                View booking
-              </button>
-            )}
+            {job && <button className="secondary" onClick={() => route('jobs/' + encodeURIComponent(job.id))}>Review full booking</button>}
           </DetailCard>
-          <DetailCard title="Resolution">
+          <DetailCard title="Administrator resolution">
             {dispute.status === 'Resolved' ? (
               <>
                 <p>{dispute.resolution}</p>
-                <small>
-                  {dispute.resolvedBy} · {formatWhen(dispute.resolvedAt)}
-                </small>
+                <small>{dispute.resolvedBy || 'Administrator'} · {formatWhen(dispute.resolvedAt)}</small>
+              </>
+            ) : job && dispute.liveBooking ? (
+              <>
+                <p>Review the customer's account, the mechanic's work report and the booking messages before deciding.</p>
+                <div className="service-admin-choices">
+                  <label><input type="radio" checked={decision === 'resolve-rework'} onChange={() => setDecision('resolve-rework')}/> Require corrective work</label>
+                  <label><input type="radio" checked={decision === 'resolve-accept'} onChange={() => setDecision('resolve-accept')}/> Accept service as completed</label>
+                </div>
+                <label className="field-label">Resolution and supporting reasons
+                  <textarea minLength={10} maxLength={2000} value={resolution} onChange={e => setResolution(e.target.value)}
+                    placeholder="Explain your findings and what happens next…" />
+                </label>
+                <button className="primary" disabled={busy || resolution.trim().length < 10} onClick={() => void resolve()}>
+                  {busy ? 'Recording decision…' : 'Record dispute decision'}
+                </button>
+                <p className="muted">No refund or escrow payout is processed here. Financial remediation requires a verified payment-provider integration and a separate reconciliation process.</p>
+                {error && <p className="form-error" role="alert">{error}</p>}
               </>
             ) : (
-              <>
-                <label className="field-label">
-                  Resolution notes
-                  <textarea
-                    value={resolution}
-                    onChange={(e) => setResolution(e.target.value)}
-                    placeholder="Record the agreed outcome and follow-up"
-                  />
-                </label>
-                <button className="primary" disabled={!resolution.trim()} onClick={resolve}>
-                  Resolve demo dispute
-                </button>
-                <p className="muted">
-                  Records an administrative outcome only. It does not issue a refund or change the
-                  job.
-                </p>
-              </>
+              <p className="muted">This older support-case record is read-only in the new booking dispute workflow.</p>
             )}
           </DetailCard>
         </>
-      ) : (
-        <DetailCard title="Dispute not found">
-          <p>Return to the list to choose an available dispute.</p>
-        </DetailCard>
-      )}
+      ) : <DetailCard title="Dispute not found"><p>Return to the list to choose an available dispute.</p></DetailCard>}
     </div>
   );
 }
