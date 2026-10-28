@@ -77,6 +77,7 @@ export function JobCard({
             <span>{when}</span>
           </span>
           <Status value={j.status} />
+          {attention > 0 && <span className="booking-attention-dot" title="Unread booking update" aria-label="Unread booking update" />}
           <ArrowRight className="booking-card-arrow" size={18} aria-hidden="true" />
         </button>
         {j.rejectionReason ? (
