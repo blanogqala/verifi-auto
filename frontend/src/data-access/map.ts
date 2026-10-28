@@ -188,6 +188,7 @@ export function mapBooking(row: any) {
     fee: null,
     pricingModel: 'quotation-inclusive',
     status,
+    reviewRating: row.status === 'COMPLETED' ? row.review?.rating ?? null : null,
     accepted: !['REQUESTED', 'REJECTED'].includes(row.status),
     rejectionReason: row.rejectionReason || '',
     completionNotes: row.completionNotes || '',
