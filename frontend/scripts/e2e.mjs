@@ -891,6 +891,13 @@ async function connected(browser) {
   await page.getByRole('heading', { name: /Booking history/ }).waitFor();
   await page.locator('.admin-detail-tabs').getByRole('button', { name: 'Reviews', exact: true }).click();
   await page.getByRole('heading', { name: 'Customer reviews' }).waitFor();
+  // Pending Workshop has no reviewed jobs. Inspect the workshop that actually
+  // handled Casey's completed booking and received her five-star review.
+  await page.goto(appUrl + '/#dashboard/professionals');
+  await page.getByRole('row').filter({ hasText: 'Updated Workshop' })
+    .getByRole('button', { name: 'View profile' }).click();
+  await page.getByRole('heading', { name: 'Updated Workshop' }).waitFor();
+  await page.locator('.admin-detail-tabs').getByRole('button', { name: 'Reviews', exact: true }).click();
   await page.getByText('Updated Workshop · Casey Customer').waitFor();
   await page.locator('.admin-review .review-rating-inline').first().waitFor();
   await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
