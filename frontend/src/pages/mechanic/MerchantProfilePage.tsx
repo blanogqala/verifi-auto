@@ -15,6 +15,7 @@ import { api } from '../../data-access/api';
 import { WorkshopReviewsDialog } from '../../components/reviews/WorkshopReviewsDialog';
 import { eligibleCustomerReviews } from '../../features/reviews/ratingSummary';
 import { reviewerName, ReviewStars } from '../../components/reviews/ReviewStars';
+import { notificationsFor, markNotificationsRead } from '../../features/notifications/inbox';
 
 const tabs: { id: MerchantProfileSection; label: string; Icon: typeof Wrench }[] = [
   { id: 'business', label: merchantProfileSectionLabel.business, Icon: Wrench },
@@ -83,6 +84,8 @@ export function MerchantProfilePage({
   const average = connected ? reviewFeed?.average ?? null : demoAverage;
   const reviewCount = connected ? reviewFeed?.count ?? 0 : demoReviews.length;
   const customerReviews = connected ? reviewFeed?.reviews || [] : demoReviews;
+  const unreadReviewNotifications = notificationsFor(data, 'mechanic', workshopId)
+    .filter((note: any) => !note.read && note.type === 'review');
 
   useEffect(() => {
     if (!connected || !workshopId) return;
@@ -97,11 +100,20 @@ export function MerchantProfilePage({
 
   async function openCustomerReviews() {
     setShowCustomerReviews(true);
-    if (!connected) return;
-    setReviewBusy(true); setReviewError('');
-    try { setReviewFeed(await api('/professional/me/reviews')); }
-    catch (reason: any) { setReviewError(reason?.message || 'Could not load reviews.'); }
-    finally { setReviewBusy(false); }
+    if (connected) {
+      setReviewBusy(true); setReviewError('');
+      try { setReviewFeed(await api('/professional/me/reviews')); }
+      catch (reason: any) { setReviewError(reason?.message || 'Could not load reviews.'); }
+      finally { setReviewBusy(false); }
+    }
+    if (unreadReviewNotifications.length) {
+      try {
+        await update((current: any) => markNotificationsRead(current, {
+          role: 'mechanic', id: workshopId,
+          ids: unreadReviewNotifications.map((note: any) => note.id),
+        }));
+      } catch (reason: any) { notify(reason?.message || 'Could not mark the reviews as read.'); }
+    }
   }
 
 
@@ -196,6 +208,7 @@ export function MerchantProfilePage({
               <span className="muted">No customer ratings yet</span>}
             <button className="secondary mechanic-review-button" type="button" onClick={() => void openCustomerReviews()}>
               <Star size={16} fill={reviewCount ? 'currentColor' : 'none'}/> View customer reviews
+              {unreadReviewNotifications.length > 0 && <span className="var-attention-dot" aria-label="New customer reviews" title="New customer reviews"/>}
             </button>
           </div>
           <p className="muted">
