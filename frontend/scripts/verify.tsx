@@ -823,7 +823,7 @@ assert.ok(!payHtml.includes('Review &amp; pay'));
 assert.ok(!payHtml.includes('Simulate payment'));
 assert.ok(!payHtml.includes('Paid to your bank'));
 const customerPay = screen('customer', 'payments', payData);
-assert.ok(customerPay.includes('Review &amp; pay'));
+assert.ok(customerPay.includes('>Pay</button>'));
 assert.ok(!customerPay.includes('does not confirm a bank payout'));
 assert.ok(customerOverview.includes('class="workspace-crumb"'));
 assert.ok(mechanicOverview.includes('class="workspace-crumb"'));
