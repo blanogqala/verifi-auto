@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { Camera, Check, FileText, Landmark, ShieldCheck, Wrench } from 'lucide-react';
+import { Camera, Check, FileText, Landmark, ShieldCheck, Wrench, Star } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { merchantProfileSectionLabel, type MerchantProfileSection } from '../../config/navigation';
@@ -11,6 +11,10 @@ import { photoFileError, readProfilePhoto } from '../../features/account/profile
 import { BusinessProfilePage } from './BusinessProfilePage';
 import { DocumentsPage } from './DocumentsPage';
 import { VerificationPage } from './VerificationPage';
+import { api } from '../../data-access/api';
+import { WorkshopReviewsDialog } from '../../components/reviews/WorkshopReviewsDialog';
+import { eligibleCustomerReviews } from '../../features/reviews/ratingSummary';
+import { reviewerName, ReviewStars } from '../../components/reviews/ReviewStars';
 
 const tabs: { id: MerchantProfileSection; label: string; Icon: typeof Wrench }[] = [
   { id: 'business', label: merchantProfileSectionLabel.business, Icon: Wrench },
@@ -64,6 +68,42 @@ export function MerchantProfilePage({
   const initials = initialsFromName(profile?.name);
   const accountPhoto = profile?.photo ?? data.settings?.photo ?? '';
   const verification = data.application?.status || 'Draft';
+  const [showCustomerReviews, setShowCustomerReviews] = useState(false);
+  const [reviewFeed, setReviewFeed] = useState<any>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const workshopId = saved.id || data.mechanicAccount?.professionalId || '';
+  const demoReviews = eligibleCustomerReviews(data, workshopId).map((review: any) => ({
+    ...review, customerName: reviewerName(data, review),
+    vehicle: (data.jobs || []).find((job: any) => job.id === review.bookingId)?.vehicleLabel || '',
+  }));
+  const demoAverage = demoReviews.length
+    ? demoReviews.reduce((sum: number, review: any) => sum + Number(review.rating), 0) / demoReviews.length
+    : null;
+  const average = connected ? reviewFeed?.average ?? null : demoAverage;
+  const reviewCount = connected ? reviewFeed?.count ?? 0 : demoReviews.length;
+  const customerReviews = connected ? reviewFeed?.reviews || [] : demoReviews;
+
+  useEffect(() => {
+    if (!connected || !workshopId) return;
+    let active = true;
+    setReviewBusy(true);
+    api('/professional/me/reviews')
+      .then((result) => { if (active) { setReviewFeed(result); setReviewError(''); } })
+      .catch((reason: any) => { if (active) setReviewError(reason?.message || 'Could not load reviews.'); })
+      .finally(() => { if (active) setReviewBusy(false); });
+    return () => { active = false; };
+  }, [Boolean(connected), workshopId, data.customerReviews]);
+
+  async function openCustomerReviews() {
+    setShowCustomerReviews(true);
+    if (!connected) return;
+    setReviewBusy(true); setReviewError('');
+    try { setReviewFeed(await api('/professional/me/reviews')); }
+    catch (reason: any) { setReviewError(reason?.message || 'Could not load reviews.'); }
+    finally { setReviewBusy(false); }
+  }
+
 
   function select(next: MerchantProfileSection) {
     if (next !== section) route('profile/' + next);
@@ -151,6 +191,13 @@ export function MerchantProfilePage({
           <p className="mechanic-trade">{displayName}</p>
           <p>{profile?.type || 'Professional'}</p>
           <Status value={verification} />
+          <div className="mechanic-review-panel" aria-label="Workshop customer rating">
+            {reviewCount ? <ReviewStars rating={average} count={reviewCount}/> :
+              <span className="muted">No customer ratings yet</span>}
+            <button className="secondary mechanic-review-button" type="button" onClick={() => void openCustomerReviews()}>
+              <Star size={16} fill={reviewCount ? 'currentColor' : 'none'}/> View customer reviews
+            </button>
+          </div>
           <p className="muted">
             {connected
               ? 'Your profile photo helps customers recognise you and your business.'
@@ -408,6 +455,12 @@ export function MerchantProfilePage({
           update={update}
         />
       </div>
+      {showCustomerReviews && <WorkshopReviewsDialog
+        name={displayName} average={average} count={reviewCount}
+        reviews={customerReviews} loading={reviewBusy} error={reviewError}
+        onClose={() => setShowCustomerReviews(false)}
+        onJob={(id) => { setShowCustomerReviews(false); route('jobs/' + encodeURIComponent(id)); }}
+      />}
     </div>
   );
 }
