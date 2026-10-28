@@ -16,6 +16,9 @@ const schema = z.object({
   SMTP_PASSWORD: z.string().default(""),
   MAIL_FROM: z.string().default("Verifi Auto <noreply@example.com>"),
   ENABLE_TEST_PAYMENTS: z.enum(["true", "false"]).default("false"),
+  // Explicit allowlist for a limited pilot on a production deployment. Blank by default.
+  // Only these verified customer accounts may record a TEST payment (no real money).
+  SANDBOX_PAYMENT_TESTER_EMAILS: z.string().default(""),
 });
 export const env = schema.parse(process.env);
 if (
