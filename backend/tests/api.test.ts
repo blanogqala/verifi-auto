@@ -1024,6 +1024,15 @@ test(
       assert.ok(requestedBooking.body.grant.requestedAt);
       assert.deepEqual(requestedBooking.body.grant.recordIds, []);
       assert.equal((await send("post", `/api/bookings/${nextId}/var-request`, {}, mechanic)).status, 200);
+      // Declining an unfulfilled VAR request must notify the mechanic rather than
+      // leaving the request pending with a disabled customer grant button.
+      const unavailableHistory = await send("put", `/api/bookings/${nextId}/history-access`,
+        { grant: false, recordIds: [] }, alice);
+      assert.equal(unavailableHistory.status, 200);
+      const mechanicNoHistory = await send("get", "/api/notifications", undefined, mechanic);
+      assert.ok(mechanicNoHistory.body.some((note: any) =>
+        note.resourceId === nextId && note.title === "No previous vehicle history available to share"));
+      assert.equal((await send("post", `/api/bookings/${nextId}/var-request`, {}, mechanic)).status, 200);
       assert.deepEqual(
         (
           await send(
