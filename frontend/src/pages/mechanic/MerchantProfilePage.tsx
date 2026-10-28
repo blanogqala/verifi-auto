@@ -72,9 +72,13 @@ export function MerchantProfilePage({
     r.professionalId === professionalId && Number.isInteger(Number(r.rating)) &&
     Number(r.rating) >= 1 && Number(r.rating) <= 5
   );
-  const averageRating = reviews.length
-    ? (reviews.reduce((total: number, r: any) => total + Number(r.rating), 0) / reviews.length).toFixed(1)
-    : null;
+  const aggregate = data.mechanicReviewSummary;
+  const overallCount = Number.isInteger(aggregate?.count) ? aggregate.count : reviews.length;
+  const averageRating = aggregate && aggregate.average != null
+    ? Number(aggregate.average).toFixed(1)
+    : reviews.length
+      ? (reviews.reduce((total: number, r: any) => total + Number(r.rating), 0) / reviews.length).toFixed(1)
+      : null;
   const visibleReviews = [...reviews]
     .filter((r: any) => !starFilter || Number(r.rating) === starFilter)
     .sort((a: any, b: any) => reviewSort === 'highest' ? b.rating - a.rating :
@@ -172,7 +176,7 @@ export function MerchantProfilePage({
         <div className="mechanic-review-summary" style={{ display: 'grid', gap: 8, alignContent: 'center', justifyItems: 'start' }}>
           <strong aria-label={averageRating ? `Average customer rating ${averageRating} out of 5` : 'No customer reviews yet'}>
             <Star size={18} style={{ display: 'inline', verticalAlign: 'middle', color: '#9658e8' }} />
-            {' '}{averageRating ? `${averageRating}/5 · ${reviews.length} review${reviews.length === 1 ? '' : 's'}` : 'No reviews yet'}
+            {' '}{averageRating ? `${averageRating}/5 · ${overallCount} review${overallCount === 1 ? '' : 's'}` : 'No reviews yet'}
           </strong>
           <button type="button" className="secondary" onClick={() => setShowReviews(true)}>
             View all reviews
@@ -201,7 +205,7 @@ export function MerchantProfilePage({
             <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#9658e8' }}>
               {averageRating ? `★ ${averageRating} / 5` : 'No reviews yet'}
             </p>
-            <p>{reviews.length} customer review{reviews.length === 1 ? '' : 's'}</p>
+            <p>{overallCount} customer review{overallCount === 1 ? '' : 's'}</p>
             {[5,4,3,2,1].map((stars) => {
               const count = reviews.filter((r: any) => Number(r.rating) === stars).length;
               return <div key={stars} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 5 }}>
@@ -219,11 +223,12 @@ export function MerchantProfilePage({
                 <option value={0}>All stars</option>{[5,4,3,2,1].map(n => <option key={n} value={n}>{n} stars</option>)}
               </select></label>
             </div>
+            {overallCount > reviews.length && <p className="muted">Showing the latest {reviews.length} of {overallCount} reviews.</p>}
             {visibleReviews.length ? visibleReviews.map((review: any) => {
               const job = (data.jobs || []).find((j: any) => j.id === review.bookingId);
               const customer = (data.customers || []).find((u: any) => u.id === review.customerId);
               return <article key={review.id} className="admin-review" style={{ padding: '15px 0', borderTop: '1px solid #9658e844' }}>
-                <strong>{customer?.name || job?.customerName || 'Customer name unavailable'}</strong>
+                <strong>{review.customerName || customer?.name || job?.customerName || 'Customer name unavailable'}</strong>
                 <p aria-label={`${review.rating} out of 5 stars`} style={{ color: '#9658e8', fontWeight: 700 }}>
                   {'★'.repeat(Number(review.rating))}{'☆'.repeat(5 - Number(review.rating))} · {review.rating}/5
                 </p>
