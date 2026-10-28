@@ -58,7 +58,6 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
   const registration = vehicle?.registration || job.registration || 'Not recorded';
   const history = sharedRecordsForProfessional(data, job, professionalId);
-  const events = Array.isArray(job.events) ? job.events : [];
   const unread = unreadMessageCount(data, job.id, 'mechanic');
   const varGrant = (data.historyAccess || []).find((grant: any) => grant.bookingId === job.id);
   const varGranted = varGrant?.status === 'active';
@@ -227,21 +226,6 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                 </p>
               ) : null}
             </BookingRequestCard>
-            <details className="fold">
-              <summary>Activity history</summary>
-              {events.length ? (
-                <ol className="activity-list">
-                  {events.map((event: any) => (
-                    <li key={(event.at || '') + event.type}>
-                      <time dateTime={event.at}>{formatWhen(event.at) || 'Time not recorded'}</time>
-                      <span>{event.label || event.type}</span>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p>No dated activity was stored for this job.</p>
-              )}
-            </details>
           </div>
           <div className="split-side">
             <CustomerDetailsCard job={{ ...job, customerName: customer }} customer={customerRecord} />
