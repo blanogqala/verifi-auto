@@ -600,12 +600,37 @@ async function connected(browser) {
     }));
   }
   await page.reload();
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('label')].some((label) => {
-      const input = label.querySelector('input');
-      return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Updated Workshop';
-    }),
-  );
+  try {
+    await page.getByLabel('Business or trading name').waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('label')].some((label) => {
+        const input = label.querySelector('input');
+        return label.textContent?.includes('Business or trading name') &&
+          input instanceof HTMLInputElement && input.value === 'Updated Workshop';
+      }), { timeout: 15000 });
+  } catch (reason) {
+    const debug = await page.evaluate(async () => {
+      const field = [...document.querySelectorAll('label')].find((label) =>
+        label.textContent?.includes('Business or trading name'))?.querySelector('input');
+      let currentProfile = null;
+      let session = null;
+      try {
+        const response = await fetch('http://127.0.0.1:3099/api/professional/me', { credentials: 'include' });
+        currentProfile = { status: response.status, body: await response.json() };
+      } catch (error) { currentProfile = { error: String(error) }; }
+      try {
+        const response = await fetch('http://127.0.0.1:3099/api/auth/session', { credentials: 'include' });
+        session = { status: response.status, user: (await response.json()).user?.role };
+      } catch (error) { session = { error: String(error) }; }
+      return {
+        url: location.href, inputValue: field?.value ?? null,
+        visibleHeadings: [...document.querySelectorAll('h1,h2')].map((heading) => heading.textContent?.trim()).slice(0, 12),
+        alertText: document.querySelector('[role="alert"]')?.textContent?.trim() ?? null,
+        currentProfile, session,
+      };
+    });
+    throw new Error('Business profile failed to refresh from saved data: ' + JSON.stringify(debug) + '; ' + String(reason));
+  }
   await page.getByRole('button', { name: 'Remove Durbanville, Cape Town' }).waitFor();
   await page.getByRole('button', { name: 'Remove Wheel balancing' }).waitFor();
   await page.getByRole('button', { name: 'Remove Tyres' }).waitFor();
