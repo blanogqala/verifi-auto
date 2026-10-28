@@ -1394,9 +1394,17 @@ const grantedPayment = grantHistoryAccess(payableHistory, {
   customerId: 'cust-01',
   recordIds: ['r1'],
 });
-const expiredAccess = applyJobTransition(grantedPayment, payableHistory.jobs[0], 'pay', {}, customerActor);
+const paidHistory = applyJobTransition(grantedPayment, payableHistory.jobs[0], 'pay', {}, customerActor);
+assert.equal(paidHistory.data.historyAccess[0].status, 'active');
+const startedHistory = applyJobTransition(paidHistory.data, paidHistory.job, 'start',
+  {}, { role: 'mechanic', id: payableHistory.jobs[0].professionalId });
+const reportedHistory = applyJobTransition(startedHistory.data, startedHistory.job, 'complete',
+  { completionNotes: 'Finished and checked the approved work' },
+  { role: 'mechanic', id: payableHistory.jobs[0].professionalId });
+assert.equal(reportedHistory.data.historyAccess[0].status, 'active');
+const expiredAccess = applyJobTransition(reportedHistory.data, reportedHistory.job, 'confirm-work', {}, customerActor);
 assert.equal(expiredAccess.data.historyAccess[0].status, 'expired');
-assert.equal(expiredAccess.data.historyAccess[0].expiresAt, expiredAccess.job.paidAt);
+assert.ok(expiredAccess.data.historyAccess[0].expiresAt);
 const reviewData = {
   ...initialData,
   customerReviews: [],
