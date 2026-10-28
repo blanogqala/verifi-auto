@@ -1,3 +1,5 @@
+import { bookingNotificationSection, unreadBookingNotices, unreadBookingIds } from '../src/features/notifications/inbox';
+import { mapNotification } from '../src/data-access/map';
 import { liveDirectoryHits, mapDirectoryProfessional } from '../src/data-access/directory';
 import { finishApplicationReview } from '../src/features/admin/reviewResult';
 import { SettingsPage } from '../src/pages/shared/SettingsPage';
@@ -1052,9 +1054,43 @@ assert.ok(!garageHtml.includes('Manage everything you need'));
 assert.equal(garageHtml.split('View details').length - 1, 1);
 const bookingHtml = screen('customer', 'bookings/VA-2026-1042');
 assert.ok(bookingHtml.includes('Front brake pads'));
-assert.ok(bookingHtml.includes('No dated timeline was stored'));
-assert.ok(bookingHtml.includes('Choose which completed service records this professional can see'));
+assert.ok(bookingHtml.includes('No work report has been submitted yet.'));
+assert.ok(bookingHtml.includes('Vehicle Activity Record (VAR)'));
 assert.ok(bookingHtml.includes('Activity history'));
+assert.ok(!bookingHtml.includes('Review workshop work report'));
+assert.ok(!bookingHtml.includes('No dated timeline was stored'));
+assert.equal(canVisit('customer', 'dashboard/bookings/VA-2026-1042/var'), true);
+assert.equal(canVisit('customer', 'dashboard/bookings/VA-2026-1042/activity'), true);
+assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/var'), false);
+const varNotice = mapNotification({
+  id: '345', userId: initialData.settings.id || 'cust-01',
+  topic: 'history-access', resourceId: 'VA-2026-1042',
+  title: 'Workshop requested access to your Vehicle Activity Record (VAR)',
+  createdAt: '2026-10-28T07:00:00Z', readAt: null,
+}, 'customer');
+const reportNotice = mapNotification({
+  id: '346', userId: initialData.settings.id || 'cust-01',
+  topic: 'booking', resourceId: 'VA-2026-1042',
+  title: 'Workshop work report updated — review the details',
+  createdAt: '2026-10-28T07:01:00Z', readAt: null,
+}, 'customer');
+assert.equal(bookingNotificationSection(varNotice), 'var');
+assert.equal(bookingNotificationSection(reportNotice), 'activity');
+const attentionFixture = {
+  ...initialData,
+  jobs: [{ ...initialData.jobs[0], id: 'VA-2026-1042', customerId: initialData.settings.id || 'cust-01' }],
+  notifications: [varNotice, reportNotice],
+};
+assert.equal(unreadBookingNotices(attentionFixture, 'customer', 'VA-2026-1042', 'var').length, 1);
+assert.equal(unreadBookingNotices(attentionFixture, 'customer', 'VA-2026-1042', 'activity').length, 1);
+assert.deepEqual(unreadBookingIds(attentionFixture, 'customer'), ['VA-2026-1042']);
+assert.equal(notificationDestination(attentionFixture, 'customer', varNotice), 'dashboard/bookings/VA-2026-1042/var');
+assert.equal(notificationDestination(attentionFixture, 'customer', reportNotice), 'dashboard/bookings/VA-2026-1042/activity');
+const attentionCleared = markNotificationsRead(attentionFixture, {
+  role: 'customer', id: initialData.settings.id || 'cust-01', ids: ['345'],
+});
+assert.equal(unreadBookingNotices(attentionCleared, 'customer', 'VA-2026-1042', 'var').length, 0);
+assert.equal(unreadBookingNotices(attentionCleared, 'customer', 'VA-2026-1042', 'activity').length, 1);
 assert.equal(bookingHtml.includes('Next step'), false);
 assert.equal(bookingHtml.split('progress-list').length - 1, 1);
 assert.ok(bookingHtml.indexOf('detail-header') < bookingHtml.indexOf('progress-list'));
