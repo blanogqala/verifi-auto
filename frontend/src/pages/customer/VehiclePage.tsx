@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { WorkReportViewer, VarHistoryViewer } from '../../components/jobs/VehicleActivityRecord';
 import { Card } from '../../components/ui/Card';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { DetailBack, DetailCard, DetailFields } from '../../components/ui/DetailChrome';
@@ -77,11 +78,15 @@ function urgentCare(label: string, state: string) {
 
 export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: any) {
   const [tab, setTab] = useState('overview');
+  const [reportView, setReportView] = useState<any>(null);
+  const [serviceView, setServiceView] = useState<any>(null);
   const vehicle = (data.vehicles || []).find((item: any) => item.id === vehicleId);
   const here = 'dashboard/garage/' + encodeURIComponent(vehicleId || '');
   const back = backTarget(here, 'dashboard/garage');
   useEffect(() => {
     setTab('overview');
+    setReportView(null);
+    setServiceView(null);
   }, [vehicleId]);
   useEffect(() => {
     if (!vehicle?.id) return;
@@ -249,7 +254,7 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
         {records.length > 3 ? (
           <details className="fold">
             <summary>Service history ({records.length})</summary>
-            <HistoryList records={records} />
+            <HistoryList records={records} onOpen={setServiceView} />
           </details>
         ) : (
           <DetailCard title="Service history">
@@ -259,7 +264,7 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
         {bookings.length > 3 ? (
           <details className="fold">
             <summary>Related bookings ({bookings.length})</summary>
-            <BookingList bookings={bookings} go={go} here={here} />
+            <BookingList bookings={bookings} go={go} here={here} onOpenReport={setReportView} />
           </details>
         ) : (
           <DetailCard title="Related bookings">
@@ -290,11 +295,13 @@ export function VehiclePage({ data, go, setDialog, vehicleId, live = false }: an
           )}
         </details>
       </DetailPanel>
+      {reportView?.workReport && <WorkReportViewer report={reportView.workReport} workshop={reportView.provider} final={reportView.status === 'Completed'} onClose={() => setReportView(null)} />}
+      {serviceView && <VarHistoryViewer records={[serviceView]} onClose={() => setServiceView(null)} />}
     </div>
   );
 }
 
-function HistoryList({ records }: { records: any[] }) {
+function HistoryList({ records, onOpen }: { records: any[]; onOpen: (record: any) => void }) {
   if (!records.length) return <p>No service records are linked to this vehicle.</p>;
   return (
     <ol className="history-list">
@@ -305,6 +312,7 @@ function HistoryList({ records }: { records: any[] }) {
           <span>{record.provider || 'Professional not recorded'}</span>
           <span>{mileageText(record.mileage)}</span>
           {record.notes ? <p>{record.notes}</p> : null}
+          <button className="secondary var-history-open" type="button" onClick={() => onOpen(record)}>View service details</button>
         </li>
       ))}
     </ol>
@@ -315,10 +323,12 @@ function BookingList({
   bookings,
   go,
   here,
+  onOpenReport,
 }: {
   bookings: any[];
   go: (path: string) => void;
   here: string;
+  onOpenReport: (job: any) => void;
 }) {
   if (!bookings.length) return <p>No bookings are linked to this vehicle.</p>;
   return (
@@ -333,15 +343,15 @@ function BookingList({
             </span>
             <Status value={job.status} />
           </div>
-          <button
-            className="secondary"
-            type="button"
-            onClick={() =>
-              followDetail(go, here, 'dashboard/bookings/' + encodeURIComponent(job.id))
-            }
-          >
-            Open booking
-          </button>
+          <div className="var-booking-actions">
+            <button className="secondary" type="button"
+              onClick={() => followDetail(go, here, 'dashboard/bookings/' + encodeURIComponent(job.id))}>
+              Open booking
+            </button>
+            {job.workReport && <button className="secondary" type="button" onClick={() => onOpenReport(job)}>
+              View work report
+            </button>}
+          </div>
         </article>
       ))}
     </div>
