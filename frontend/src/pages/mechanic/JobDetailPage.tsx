@@ -76,11 +76,17 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
       refresh();
     } else {
       const now = new Date().toISOString();
-      const result = update((current: any) => ({
+      const result = update((current: any) => appendNotification({
         ...current,
         jobs: (current.jobs || []).map((entry: any) => entry.id === job.id
           ? { ...entry, workReport: { items: reportItems, notes: values.notes, mileage: values.mileage, updatedAt: now }, workReportUpdatedAt: now }
           : entry),
+      }, {
+        recipientRole: 'customer', recipientId: job.customerId,
+        type: 'work-report', title: 'Workshop work report updated',
+        message: 'Your workshop submitted or revised the work completed on your vehicle.',
+        bookingId: job.id, panel: 'activity',
+        eventKey: 'work-report:' + job.id + ':' + now, createdAt: now,
       }));
       if (result === false) throw Error('Could not save the work report.');
       if (result instanceof Promise) await result;
