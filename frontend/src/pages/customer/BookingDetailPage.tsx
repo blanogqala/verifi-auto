@@ -14,29 +14,45 @@ import { grantHistoryAccess, revokeHistoryAccess } from '../../features/demo/dem
 import { bookingReference } from '../../features/jobs/jobViews';
 import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
-import { useEffect, useState } from 'react';
-import { Siren, MapPin, ClipboardList, ShieldCheck } from 'lucide-react';
-import { WorkReportViewer } from '../../components/jobs/VehicleActivityRecord';
+import { useEffect, useRef, useState } from 'react';
+import { Siren, MapPin, ShieldCheck } from 'lucide-react';
+import { InlineWorkReport } from '../../components/jobs/VehicleActivityRecord';
+import { markNotificationsRead, unreadBookingNotices } from '../../features/notifications/inbox';
 
 function ownerId(job: any, fallback: string) {
   return typeof job?.customerId === 'string' && job.customerId ? job.customerId : fallback;
 }
 
-export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview', setDialog, update, bookingId, professionals = [] }: any) {
+export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview', focusSection = '', setDialog, update, bookingId, professionals = [] }: any) {
   const customerId = data?.settings?.id || demoCustomerId;
   const job = (data.jobs || []).find((item: any) => item.id === bookingId);
   const [tab, setTab] = useState(panel || 'overview');
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
-  const [reportOpen, setReportOpen] = useState(false);
+  const varDetails = useRef<HTMLDetailsElement>(null);
+  const activityDetails = useRef<HTMLDetailsElement>(null);
   const here = 'dashboard/bookings/' + encodeURIComponent(bookingId || '');
   const back = backTarget(here, 'dashboard/bookings');
   useEffect(() => {
     setTab(panel || 'overview');
     setSelected([]);
     setError('');
-    setReportOpen(false);
   }, [bookingId, panel]);
+  function acknowledge(section: 'var' | 'activity') {
+    const ids = unreadBookingNotices(data, 'customer', bookingId, section).map((note: any) => note.id);
+    if (!ids.length) return;
+    void Promise.resolve(update((current: any) =>
+      markNotificationsRead(current, { role: 'customer', id: customerId, ids }))).catch((reason: any) =>
+      notify(reason?.message || 'Could not mark this update as read.'));
+  }
+  useEffect(() => {
+    if (!['var', 'activity'].includes(focusSection)) return;
+    const node = focusSection === 'var' ? varDetails.current : activityDetails.current;
+    if (!node) return;
+    node.open = true;
+    node.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    acknowledge(focusSection as 'var' | 'activity');
+  }, [bookingId, focusSection]);
   function choose(next: string) {
     setTab(next);
     onPanel?.(next);
@@ -56,7 +72,9 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
   const professional = (professionals || []).find((item: any) => item.id === job.professionalId);
   const records = (data.records || []).filter((record: any) => record.vehicleId === job.vehicleId);
   const grant = activeGrantForBooking(data, job.id);
-  const events = Array.isArray(job.events) ? job.events : [];
+  const pendingGrant = (data.historyAccess || []).find((g: any) => g.bookingId === job.id && g.status === 'requested');
+  const varAttention = unreadBookingNotices(data, 'customer', job.id, 'var').length > 0;
+  const activityAttention = unreadBookingNotices(data, 'customer', job.id, 'activity').length > 0;
 
   return (
     <div className="detail-page booking-detail">
@@ -97,11 +115,6 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             showVehicle
             onViewVehicle={vehicle ? () => followDetail(go, here, 'dashboard/garage/' + encodeURIComponent(vehicle.id)) : undefined}
           >
-            {job.workReport && (
-              <button className="var-inline-report" type="button" onClick={() => setReportOpen(true)}>
-                <ClipboardList size={18} /> Review workshop work report <span>View details</span>
-              </button>
-            )}
             {job.status === 'Requested' && job.kind !== 'EMERGENCY' || ['Requested', 'Confirmed'].includes(job.status) ? (
               <div className="booking-detail-actions">
                 {job.status === 'Requested' && job.kind !== 'EMERGENCY' &&
@@ -117,9 +130,12 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             onView={job.professionalId ? () => followDetail(go, here, 'dashboard/find/' + encodeURIComponent(job.professionalId)) : undefined}
           />
         </div>
-      <details className="fold" open={undefined}>
-        <summary>Vehicle Activity Record (VAR) · History sharing { (data.historyAccess || []).some((g: any) => g.bookingId === job.id && g.status === 'requested') ? '· Access requested' : ''}</summary>
-        {(data.historyAccess || []).some((g: any) => g.bookingId === job.id && g.status === 'requested') && (
+      <details ref={varDetails} className={'fold var-customer-panel' + (varAttention ? ' has-unread-attention' : '')}
+        onToggle={(event) => { if (event.currentTarget.open) acknowledge('var'); }}>
+        <summary><span>Vehicle Activity Record (VAR)</span>
+          {varAttention && <span className="var-attention-dot" aria-label="New VAR access request" title="New VAR access request" />}
+        </summary>
+        {pendingGrant && (
           <div className="var-customer-request" role="status">
             <ShieldCheck size={20}/>
             <div><strong>Your workshop requested access to your Vehicle Activity Record.</strong>
@@ -127,13 +143,11 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             </div>
           </div>
         )}
-        <p className="muted">Choose which completed service records this professional can see for this booking. You control access and may revoke it.</p>
-        <DetailFields
-          items={[
-            { label: 'Access', value: grant ? 'Granted' : (data.historyAccess || []).some((g: any) => g.bookingId === job.id && g.status === 'requested') ? 'Awaiting your approval' : 'No access' },
-            { label: 'Ends', value: 'When this booking is cancelled, rejected, or completed' },
-          ]}
-        />
+        {records.length > 0 && <p className="var-panel-help">Choose the previous services you want to share. You can revoke access at any time.</p>}
+        <DetailFields items={[
+          { label: 'Access', value: grant ? 'Granted' : pendingGrant ? 'Awaiting your decision' : 'No access' },
+          { label: 'Ends', value: 'When this booking ends' },
+        ]} />
         {canOfferHistoryAccess(job) ? (
           <form
             onSubmit={(event) => {
@@ -170,7 +184,10 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
                   </label>
                 ))
               ) : (
-                <p>No linked records are available to share for this vehicle.</p>
+                <div className="var-empty-history" role="status">
+                  <strong>This vehicle has no previous completed service records yet.</strong>
+                  <p>You cannot grant VAR access because there is no history to share. After a completed service is recorded, it can be shared with a workshop on a future booking.</p>
+                </div>
               )}
             </fieldset>
             {error ? (
@@ -181,6 +198,18 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             <button className="primary" type="submit" disabled={!selected.length}>
               Grant selected VAR access
             </button>
+            {!records.length && pendingGrant && (
+              <button className="secondary var-no-records-button" type="button"
+                onClick={() => {
+                  try {
+                    const saved = update((current: any) => revokeHistoryAccess(current, pendingGrant.id, customerId));
+                    void Promise.resolve(saved).then((ok) => notify(ok === false ? 'Could not send the response.' : 'Workshop notified that there is no earlier history to share.'))
+                      .catch((reason: any) => notify(reason?.message || 'Could not send the response.'));
+                  } catch (reason: any) { notify(reason?.message || 'Could not send the response.'); }
+                }}>
+                Notify workshop: No history available
+              </button>
+            )}
           </form>
         ) : (
           <p>History sharing opens after this professional accepts the booking, and ends when the booking ends.</p>
@@ -202,20 +231,12 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
           </button>
         ) : null}
       </details>
-      <details className="fold">
-        <summary>Activity history</summary>
-        {events.length ? (
-          <ol className="activity-list">
-            {events.map((event: any) => (
-              <li key={event.at + event.type}>
-                <time dateTime={event.at}>{formatWhen(event.at) || 'Time not recorded'}</time>
-                <span>{event.label || event.type}</span>
-              </li>
-            ))}
-          </ol>
-        ) : (
-          <p>No dated timeline was stored for this booking. The progress steps above use the current status only.</p>
-        )}
+      <details ref={activityDetails} className={'fold var-customer-panel var-activity-section' + (activityAttention ? ' has-unread-attention' : '')}
+        onToggle={(event) => { if (event.currentTarget.open) acknowledge('activity'); }}>
+        <summary><span>Activity history</span>
+          {activityAttention && <span className="var-attention-dot" aria-label="New workshop work report" title="New workshop work report"/>}
+        </summary>
+        <InlineWorkReport report={job.workReport} workshop={job.provider} final={job.status === 'Completed'} />
       </details>
       </DetailPanel>
       <DetailPanel scope="booking-detail" tabId="quote" value={tab}>
@@ -236,7 +257,6 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
           />
         </DetailCard>
       </DetailPanel>
-      {reportOpen && job.workReport && <WorkReportViewer report={job.workReport} workshop={job.provider} final={job.status === 'Completed'} onClose={() => setReportOpen(false)} />}
     </div>
   );
 }
