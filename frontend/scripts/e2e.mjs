@@ -362,11 +362,16 @@ async function connected(browser) {
   await page.getByLabel('Work performed / additional technician notes').fill('Replaced the front brake pads and checked the braking system.');
   await page.getByLabel('Vehicle odometer at service (km)').fill('68000');
   await page.getByRole('button', { name: 'Save work report' }).click();
-  await page.getByRole('button', { name: 'Review submitted work' }).click();
+  if (await page.getByRole('button', { name: 'Review submitted work' }).count())
+    throw new Error('Mechanic should only have Edit work report and Work is done.');
+  await page.getByRole('button', { name: 'Edit work report' }).click();
+  await page.getByText('View last saved work report').click();
   await page.getByText(/68.000 km/).waitFor();
-  await page.getByRole('button', { name: 'Close report' }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Request VAR' }).click();
   await page.getByRole('button', { name: 'VAR pending' }).waitFor();
+  await page.getByRole('button', { name: 'Work is done' }).click();
+  await page.getByText('Awaiting payment').first().waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, customerEmail);
@@ -401,6 +406,21 @@ async function connected(browser) {
   await page.getByText('Workshop notified that there is no earlier history to share.').waitFor();
   await page.goto(appUrl + '/#dashboard/notifications');
   await page.getByText(/No previous vehicle history|Workshop work report updated/).first().waitFor();
+  if (await page.getByRole('button', { name: 'Find a professional' }).count())
+    throw new Error('Notifications must not show a Find a professional CTA.');
+  await page.locator('.inbox-list').waitFor();
+  await page.locator('.inbox-detail-scroll').waitFor();
+  await page.getByRole('button', { name: /Mark all as read/ }).first().waitFor();
+  const notificationScroll = await page.evaluate(() => {
+    const list = document.querySelector('.inbox-threads');
+    const detail = document.querySelector('.inbox-detail-scroll');
+    const outer = document.querySelector('.inbox');
+    if (!list || !detail || !outer) return false;
+    const listStyle = getComputedStyle(list), detailStyle = getComputedStyle(detail), outerStyle = getComputedStyle(outer);
+    return listStyle.overflowY === 'auto' && detailStyle.overflowY === 'auto'
+      && outerStyle.overflow === 'hidden' && outer.clientHeight > 300;
+  });
+  if (!notificationScroll) throw new Error('Notifications must scroll inside both fixed panels.');
   // My Garage vehicle details: work report is visible under its workshop and
   // opens an owner-facing VAR popup; booking history links back to the booking.
   await page.goto(bookingUrl);
