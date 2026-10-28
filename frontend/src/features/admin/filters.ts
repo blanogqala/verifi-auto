@@ -38,7 +38,20 @@ export function adminJobRows(data: any) {
   });
 }
 export function disputeRows(data: any) {
-  return Array.isArray(data.disputes) ? data.disputes : [];
+  const stored = Array.isArray(data.disputes) ? data.disputes : [];
+  const bookingDisputes = (data.jobs || [])
+    .filter((job: any) => job?.disputeStatus || job?.status === 'Disputed')
+    .map((job: any) => ({
+      id: 'booking-' + job.id, bookingId: job.id, title: 'Repair completion dispute',
+      description: job.disputeReason || 'The customer challenged the finished work.',
+      status: job.disputeStatus === 'OPEN' || job.status === 'Disputed' ? 'Open' : 'Resolved',
+      resolution: job.disputeResolution || '', resolvedAt: job.disputeResolvedAt || null,
+      createdAt: job.createdAt || '',
+      provider: job.provider || '', customerName: job.customerName || '',
+      liveBooking: true,
+    }));
+  return [...bookingDisputes, ...stored.filter((row: any) =>
+    !bookingDisputes.some((b: any) => b.bookingId === row.bookingId))];
 }
 export function resolveDispute(data: any, id: string, resolution: string, actor: string) {
   if (!resolution.trim()) throw new Error('Add a resolution note first.');
