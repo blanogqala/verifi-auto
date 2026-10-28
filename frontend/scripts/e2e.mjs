@@ -460,7 +460,9 @@ async function connected(browser) {
   await page.reload();
   await page.getByRole('button', { name: 'Edit your review' }).waitFor();
   await page.getByRole('button', { name: 'Edit your review' }).click();
-  await page.getByRole('dialog', { name: 'Rate your workshop' }).getByText('Excellent brake repair and professional communication throughout.').waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('[role="dialog"] textarea')].some(
+    (field) => field.value === 'Excellent brake repair and professional communication throughout.'
+  ));
   await page.getByRole('button', { name: 'Maybe later' }).click();
   // My Garage vehicle details: work report is visible under its workshop and
   // opens an owner-facing VAR popup; booking history links back to the booking.
