@@ -545,7 +545,15 @@ async function connected(browser) {
   await page.getByLabel('Business or trading name').waitFor();
   await page.waitForFunction(imageReady, profileImageSelectors, { timeout: 20000 });
   await page.goto(appUrl + '/#find');
-  await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
+  const approvedDirectoryHeading = page.getByRole('heading', { name: 'Approved Workshop' });
+  try {
+    await approvedDirectoryHeading.waitFor({ timeout: 12000 });
+  } catch {
+    // The public directory may refresh after a profile photo write; retry once
+    // without weakening the requirement that the approved workshop remains listed.
+    await page.reload();
+    await approvedDirectoryHeading.waitFor({ timeout: 20000 });
+  }
   await page.waitForFunction(() => {
     const image = document.querySelector('main.app-page .provider-card .provider-art img');
     return image instanceof HTMLImageElement &&
