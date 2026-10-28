@@ -607,7 +607,7 @@ async function connected(browser) {
         const input = label.querySelector('input');
         return label.textContent?.includes('Business or trading name') &&
           input instanceof HTMLInputElement && input.value === 'Updated Workshop';
-      }), { timeout: 15000 });
+      }), undefined, { timeout: 15000 });
   } catch (reason) {
     const debug = await page.evaluate(async () => {
       const field = [...document.querySelectorAll('label')].find((label) =>
