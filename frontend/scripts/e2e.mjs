@@ -363,7 +363,7 @@ async function connected(browser) {
   await page.getByLabel('Vehicle odometer at service (km)').fill('68000');
   await page.getByRole('button', { name: 'Save work report' }).click();
   await page.getByRole('button', { name: 'Review submitted work' }).click();
-  await page.getByText(/68[\\s,\\u00a0\\u202f]*000 km/).waitFor();
+  await page.getByText(/68.000 km/).waitFor();
   await page.getByRole('button', { name: 'Close report' }).click();
   await page.getByRole('button', { name: 'Request VAR' }).click();
   await page.getByRole('button', { name: 'VAR pending' }).waitFor();
@@ -374,7 +374,7 @@ async function connected(browser) {
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
   await page.getByRole('button', { name: /Review workshop work report/ }).click();
-  await page.getByText(/68[\\s,\\u00a0\\u202f]*000 km/).waitFor();
+  await page.getByText(/68.000 km/).waitFor();
   await page.getByRole('button', { name: 'Close report' }).click();
   await page.goto(appUrl + '/#dashboard/garage');
   // Photos remain usable where no matching, licensed 3D model is available.
