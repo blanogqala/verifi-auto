@@ -575,6 +575,7 @@ export function Workspace({
         <JobCard
           key={j.id}
           job={j}
+          review={(data.customerReviews || []).find((review: any) => review.bookingId === j.id) || null}
           audience={role === 'mechanic' ? 'mechanic' : ''}
           person={role === 'mechanic' ? customerNameForJob(j, customers) : ''}
         registration={(data.vehicles || []).find((vehicle: any) => vehicle.id === j.vehicleId)?.registration || ''}
