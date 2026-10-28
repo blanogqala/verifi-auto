@@ -395,7 +395,8 @@ bookingRoutes.put("/:id/review", roles("CUSTOMER"), async (req, res) => {
       "INVALID_STATE",
       "Reviews are available after completion.",
     );
-    return tx.review.upsert({
+    const existing = booking.review;
+    const result = await tx.review.upsert({
       where: { bookingId: booking.id },
       create: {
         ...input,
@@ -405,6 +406,15 @@ bookingRoutes.put("/:id/review", roles("CUSTOMER"), async (req, res) => {
       },
       update: input,
     });
+    // Publish only on a new review or meaningful edit. The booking ID lets
+    // the mechanic navigate straight to the completed job.
+    if (!existing || existing.rating !== input.rating || existing.body !== input.body) {
+      await announce(
+        tx, [booking.professional.userId], "review", booking.id,
+        `Customer review ${existing ? "updated" : "received"}: ${input.rating}/5 stars for completed job`,
+      );
+    }
+    return result;
   });
   res.json(result);
 });
