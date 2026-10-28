@@ -388,6 +388,12 @@ assert.ok(!legacySettings.includes('Account settings'));
 const customerNotes = screen('customer', 'notifications');
 assert.ok(customerNotes.includes('customer-notify active'));
 assert.ok(customerNotes.includes('Your updates'));
+assert.ok(customerNotes.includes('Mark all as read'));
+assert.ok(customerNotes.includes('inbox-detail-scroll'));
+assert.ok(customerNotes.includes('inbox-threads'));
+assert.ok(!customerNotes.includes('Find a professional <'));
+assert.ok(!screen('mechanic', 'notifications').includes('Find a professional <'));
+assert.ok(!screen('admin', 'notifications').includes('Find a professional <'));
 assert.ok(customerNotes.includes('aria-label="Notifications"'));
 assert.ok(!customerNotes.includes('workspace-identity active'));
 const customerQuotes = screen('customer', 'quotes');
@@ -1747,6 +1753,20 @@ assert.equal(activeMechanicProfessionalId(initialData), 'pro-precision-motorwork
 assert.equal(jobsForMechanic(initialData.jobs, initialData).length, 1);
 assert.equal(mechanicOwnsJob({ ...initialData, mechanicAccount: { professionalId: 'pro-on-the-move-auto' } }, initialData.jobs[0]), false);
 assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042'), true);
+const mechanicReportData = normalizeDemoData(structuredClone(initialData));
+mechanicReportData.jobs = mechanicReportData.jobs.map((job: any) => ({
+  ...job, status: 'In progress', quoteApproved: true,
+  workReport: { notes: 'Fitted front brake pads and checked the system.', mileage: 68420,
+    updatedAt: '2026-10-28T08:00:00Z',
+    items: [{ id: 'line-1', description: 'Front brake pads', completed: true, quoteNumber: 1 }] },
+}));
+const mechanicReportHtml = screen('mechanic', 'jobs/VA-2026-1042', mechanicReportData);
+assert.ok(mechanicReportHtml.includes('Edit work report'));
+assert.ok(mechanicReportHtml.includes('Work is done'));
+assert.ok(!mechanicReportHtml.includes('Review submitted work'));
+assert.equal(transitionJob(mechanicReportData.jobs[0], 'complete', {
+  completionNotes: mechanicReportData.jobs[0].workReport.notes,
+}).status, 'Awaiting payment');
 assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/messages'), true);
 assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/quote'), true);
 assert.equal(canVisit('customer', 'dashboard/jobs/VA-2026-1042'), false);
