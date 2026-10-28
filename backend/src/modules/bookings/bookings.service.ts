@@ -437,7 +437,8 @@ export async function changeQuote(
       "These repairs have already finished.",
     );
     requireThat(
-      quote.version === input.version && !quote.payment && !quote.workStartedAt,
+      quote.version === input.version &&
+        (!quote.payment || input.action === "start") && !quote.workStartedAt,
       409,
       "QUOTE_LOCKED",
       "Quotation changed, was paid, or repairs already started. Reload it.",
@@ -500,10 +501,10 @@ export async function changeQuote(
       status = "WITHDRAWN";
     } else {
       requireThat(
-        status === "APPROVED" && booking.status === "IN_PROGRESS",
+        status === "PAID" && !!quote.payment && booking.status === "IN_PROGRESS",
         409,
-        "APPROVAL_REQUIRED",
-        "Start the job and obtain approval for these repairs first.",
+        "PAYMENT_REQUIRED",
+        "The customer must pay the additional quotation before these repairs begin.",
       );
       status = "IN_PROGRESS";
     }
