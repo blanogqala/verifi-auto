@@ -18,8 +18,10 @@ const openStatuses = [
   'Awaiting approval',
   'Changes requested',
   'Approved',
+  'Ready to start',
   'In progress',
   'Awaiting payment',
+  'Awaiting confirmation',
 ];
 
 function text(value: unknown) {

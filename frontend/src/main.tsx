@@ -8,6 +8,7 @@ import './styles/booking-polish.css';
 import './styles/var.css';
 import './styles/garage-details.css';
 import './styles/notification-workflow.css';
+import './styles/booking-lifecycle.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
 

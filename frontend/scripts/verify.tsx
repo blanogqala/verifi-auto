@@ -715,12 +715,17 @@ j = transitionJob(j, 'quote', {
   ],
 });
 j = transitionJob(j, 'approve');
+assert.throws(() => transitionJob(j, 'start'), /pay/i);
+j = transitionJob(j, 'pay');
+assert.equal(j.status, 'Ready to start');
+assert.equal(j.paid, true);
 j = transitionJob(j, 'start');
 assert.throws(() => transitionJob(j, 'complete', { completionNotes: '' }));
 j = transitionJob(j, 'complete', { completionNotes: 'Front brake pads replaced and tested' });
-j = transitionJob(j, 'pay');
+assert.equal(j.status, 'Awaiting confirmation');
+assert.throws(() => transitionJob(j, 'pay'));
+j = transitionJob(j, 'confirm-work');
 assert.equal(j.status, 'Completed');
-assert.equal(j.paid, true);
 assert.throws(() => transitionJob(j, 'pay'));
 assert.throws(() => transitionJob(j, 'cancel'));
 const request = {
@@ -1322,11 +1327,11 @@ const payable = {
 assert.throws(() => transitionJob({ ...payable, status: 'Awaiting approval', quoteApproved: false }, 'pay'));
 const customerActor = { role: 'customer' as const, id: 'cust-01' };
 const paidOnce = applyJobTransition({ ...initialData, jobs: [payable], records: [] }, payable, 'pay', {}, customerActor);
-assert.equal(paidOnce.job.status, 'Completed');
+assert.equal(paidOnce.job.status, 'Ready to start');
 assert.equal(paidOnce.job.paid, true);
 assert.ok(paidOnce.job.paidAt);
 assert.equal(paidOnce.job.paymentReference, `DEMO-${payable.id}`);
-assert.equal(paidOnce.data.records.filter((record: any) => record.id === payable.id).length, 1);
+assert.equal(paidOnce.data.records.filter((record: any) => record.id === payable.id).length, 0);
 assert.throws(() => applyJobTransition(paidOnce.data, paidOnce.job, 'pay', {}, customerActor));
 assert.equal(recordedCustomerPayments(paidOnce.data.jobs).length, 1);
 const archived = removeOrArchiveVehicle(initialData, 'v1');
@@ -1389,9 +1394,17 @@ const grantedPayment = grantHistoryAccess(payableHistory, {
   customerId: 'cust-01',
   recordIds: ['r1'],
 });
-const expiredAccess = applyJobTransition(grantedPayment, payableHistory.jobs[0], 'pay', {}, customerActor);
+const paidHistory = applyJobTransition(grantedPayment, payableHistory.jobs[0], 'pay', {}, customerActor);
+assert.equal(paidHistory.data.historyAccess[0].status, 'active');
+const startedHistory = applyJobTransition(paidHistory.data, paidHistory.job, 'start',
+  {}, { role: 'mechanic', id: payableHistory.jobs[0].professionalId });
+const reportedHistory = applyJobTransition(startedHistory.data, startedHistory.job, 'complete',
+  { completionNotes: 'Finished and checked the approved work' },
+  { role: 'mechanic', id: payableHistory.jobs[0].professionalId });
+assert.equal(reportedHistory.data.historyAccess[0].status, 'active');
+const expiredAccess = applyJobTransition(reportedHistory.data, reportedHistory.job, 'confirm-work', {}, customerActor);
 assert.equal(expiredAccess.data.historyAccess[0].status, 'expired');
-assert.equal(expiredAccess.data.historyAccess[0].expiresAt, expiredAccess.job.paidAt);
+assert.ok(expiredAccess.data.historyAccess[0].expiresAt);
 const reviewData = {
   ...initialData,
   customerReviews: [],
@@ -1516,7 +1529,8 @@ const paidRecord = applyJobTransition(
   {},
   customerActor,
 );
-assert.equal(paidRecord.data.records[0].id, firstBooking.job.id);
+assert.equal(paidRecord.job.status, 'Ready to start');
+assert.equal(paidRecord.data.records.length, 0, 'Payment alone must not create a completed service record.');
 assert.equal(safeRouteId('%E0%A4%A'), null);
 assert.equal(safeRouteId('a%2Fb'), null);
 assert.equal(safeRouteId('pro-precision-motorworks'), 'pro-precision-motorworks');
@@ -1728,10 +1742,10 @@ const olderLoad = loads.begin();
 const newerLoad = loads.begin();
 assert.equal(loads.isCurrent(olderLoad), false);
 assert.equal(loads.isCurrent(newerLoad), true);
-for (const status of ['Requested', 'Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment', 'Completed']) {
+for (const status of ['Requested', 'Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'Ready to start', 'In progress', 'Awaiting payment', 'Awaiting confirmation', 'Disputed', 'Completed']) {
   const progress = bookingProgress({ status });
-  assert.equal(progress.steps.some((step) => step.state === 'current' || status === 'Completed'), true);
-  if (status !== 'Completed' && status !== 'Rejected' && status !== 'Cancelled') {
+  assert.equal(progress.steps.some((step) => step.state === 'current' || step.state === 'stopped' || status === 'Completed'), true);
+  if (status !== 'Completed' && status !== 'Rejected' && status !== 'Cancelled' && status !== 'Disputed') {
     assert.equal(progress.terminal, '');
   }
 }
@@ -1739,14 +1753,20 @@ assert.equal(bookingProgress({ status: 'Completed' }).steps.every((step) => step
 assert.equal(bookingProgress({ status: 'Rejected', rejectionReason: 'Unavailable' }).terminal, 'rejected');
 assert.equal(bookingProgress({ status: 'Rejected' }).steps.some((step) => step.state === 'complete'), false);
 assert.equal(bookingProgress({ status: 'Cancelled', accepted: true }).steps[1].state, 'stopped');
-assert.equal(bookingProgress({ status: 'Awaiting approval' }).steps[2].state, 'current');
-assert.equal(bookingProgress({ status: 'Changes requested' }).steps[2].state, 'current');
+assert.equal(bookingProgress({ status: 'Awaiting approval' }).steps[1].state, 'current');
+assert.equal(bookingProgress({ status: 'Changes requested' }).steps[1].state, 'current');
 const returns = rememberReturn({}, 'dashboard/garage/v1', 'dashboard/bookings/VA-2026-1042');
 assert.equal(resolveReturn(returns, 'dashboard/garage/v1', 'dashboard/garage'), 'dashboard/bookings/VA-2026-1042');
 assert.equal(resolveReturn({}, 'dashboard/bookings/VA-2026-1042', 'dashboard/bookings'), 'dashboard/bookings');
 assert.equal(customerReturnAllowed('https://example.com'), false);
 assert.equal(customerReturnAllowed('dashboard/jobs/VA-1'), false);
 assert.equal(rememberReturn({}, 'dashboard/find/pro-precision-motorworks', 'dashboard/bookings/VA-2026-1042')['dashboard/find/pro-precision-motorworks'], 'dashboard/bookings/VA-2026-1042');
+
+// Include the original test line when a negative transition assertion fails.
+function checkThrowsAt(line: number, ...args: any[]) {
+  try { (assert.throws as (...values: any[]) => void)(...args); }
+  catch (reason) { throw new Error('Expected rejected action at verify.tsx:' + line + ' — ' + String(reason)); }
+}
 const mechanicActor = { role: 'mechanic' as const, id: 'pro-precision-motorworks' };
 const otherMechanic = { role: 'mechanic' as const, id: 'pro-on-the-move-auto' };
 assert.equal(activeMechanicProfessionalId(initialData), 'pro-precision-motorworks');
@@ -1764,9 +1784,12 @@ const mechanicReportHtml = screen('mechanic', 'jobs/VA-2026-1042', mechanicRepor
 assert.ok(mechanicReportHtml.includes('Edit work report'));
 assert.ok(mechanicReportHtml.includes('Work is done'));
 assert.ok(!mechanicReportHtml.includes('Review submitted work'));
-assert.equal(transitionJob(mechanicReportData.jobs[0], 'complete', {
+checkThrowsAt(1781, () => transitionJob(mechanicReportData.jobs[0], 'complete', {
   completionNotes: mechanicReportData.jobs[0].workReport.notes,
-}).status, 'Awaiting payment');
+}), /paid/i);
+assert.equal(transitionJob({ ...mechanicReportData.jobs[0], paid: true }, 'complete', {
+  completionNotes: mechanicReportData.jobs[0].workReport.notes,
+}).status, 'Awaiting confirmation');
 assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/messages'), true);
 assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/quote'), true);
 assert.equal(canVisit('customer', 'dashboard/jobs/VA-2026-1042'), false);
@@ -1800,7 +1823,7 @@ const accepted = applyJobTransition(requestData, requested, 'confirm', {}, mecha
 assert.equal(accepted.job.status, 'Confirmed');
 assert.equal(accepted.data.jobs.filter((job: any) => job.status === 'Requested').length, 0);
 assert.ok(notificationsFor(accepted.data, 'customer', 'cust-01').some((note: any) => note.type === 'accepted' && note.bookingId === 'req-1'));
-assert.throws(() => applyJobTransition(requestData, requested, 'confirm', {}, otherMechanic));
+checkThrowsAt(1820, () => applyJobTransition(requestData, requested, 'confirm', {}, otherMechanic));
 const rejectedRequest = applyJobTransition(requestData, requested, 'reject', { reason: 'Fully booked that morning' }, mechanicActor);
 assert.equal(rejectedRequest.job.status, 'Rejected');
 assert.equal(rejectedRequest.job.rejectionReason, 'Fully booked that morning');
@@ -1853,17 +1876,20 @@ assert.equal(quoteTotal(revised.job), 950);
 const approved = applyJobTransition(revised.data, revised.job, 'approve', {}, customerActor);
 assert.equal(approved.job.status, 'Approved');
 assert.equal(approved.job.approvedQuoteVersion, 2);
-assert.throws(() => applyJobTransition(approved.data, approved.job, 'quote', {
+checkThrowsAt(1873, () => applyJobTransition(approved.data, approved.job, 'quote', {
   rows: [{ id: 'd1', name: 'Secret', category: '', quantity: '', price: '10' }],
   notes: 'Should not replace an approval.',
 }, mechanicActor));
-assert.throws(() => applyJobTransition(approved.data, approved.job, 'approve', {}, mechanicActor));
-const started = applyJobTransition(approved.data, approved.job, 'start', {}, mechanicActor);
+checkThrowsAt(1877, () => applyJobTransition(approved.data, approved.job, 'approve', {}, mechanicActor));
+checkThrowsAt(1878, () => applyJobTransition(approved.data, approved.job, 'start', {}, mechanicActor), /pay/i);
+const paid = applyJobTransition(approved.data, approved.job, 'pay', {}, customerActor);
+assert.equal(paid.job.status, 'Ready to start');
+const started = applyJobTransition(paid.data, paid.job, 'start', {}, mechanicActor);
 const finished = applyJobTransition(started.data, started.job, 'complete', { completionNotes: 'Pads replaced.', completedMileage: '69000' }, mechanicActor);
-assert.equal(finished.job.status, 'Awaiting payment');
-assert.throws(() => applyJobTransition(finished.data, finished.job, 'pay', {}, mechanicActor));
-const paid = applyJobTransition(finished.data, finished.job, 'pay', {}, customerActor);
-assert.equal(paid.job.status, 'Completed');
+assert.equal(finished.job.status, 'Awaiting confirmation');
+checkThrowsAt(1884, () => applyJobTransition(finished.data, finished.job, 'pay', {}, mechanicActor));
+const acceptedWork = applyJobTransition(finished.data, finished.job, 'confirm-work', {}, customerActor);
+assert.equal(acceptedWork.job.status, 'Completed');
 assert.ok(notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks').some((note: any) => note.type === 'payment'));
 assert.ok(!notificationDestination(paid.data, 'customer', notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks')[0]));
 const customerQuote = notificationsFor(quoted.data, 'customer', 'cust-01').find((note: any) => note.type === 'quote');
@@ -1890,7 +1916,7 @@ assert.equal(sameMessage.duplicate, true);
 assert.equal(firstMessage.data.messages.length, 1);
 assert.equal(unreadMessageCount(firstMessage.data, 'req-1', 'mechanic'), 1);
 assert.equal(unreadMessageCount(firstMessage.data, 'req-1', 'customer'), 0);
-assert.throws(() => sendMessage(firstMessage.data, {
+checkThrowsAt(1913, () => sendMessage(firstMessage.data, {
   bookingId: 'req-1',
   role: 'mechanic',
   id: 'pro-on-the-move-auto',
@@ -1967,7 +1993,7 @@ for (const route of ['appointments/pending', 'appointments/pending/VA-2026-1101'
 
 assert.ok(!screen('customer', 'garage', showcaseGarage).includes('History not linked to a vehicle'));
 assert.ok(!screen('customer', 'garage', showcaseGarage).includes('Thandi Mbeki'));
-assert.throws(() => sendMessage(paid.data, {
+checkThrowsAt(1990, () => sendMessage(acceptedWork.data, {
   bookingId: 'req-1',
   role: 'customer',
   id: 'cust-01',
@@ -2160,8 +2186,8 @@ assert.equal(canVisit('customer', 'dashboard/disputes/d-01'), false);
 const disputeData = { ...initialData, disputes: [{ id: 'd-01', bookingId: 'VA-2026-1042', title: 'Sample concern', status: 'Open' }] };
 assert.ok(screen('admin', 'jobs/disputes', disputeData).includes('Sample concern'));
 assert.ok(screen('admin', 'disputes/d-01', disputeData).includes('Resolution notes'));
-assert.throws(() => resolveDispute(disputeData, 'd-01', '   ', 'Admin'));
-assert.throws(() => resolveDispute(disputeData, 'missing', 'Outcome agreed', 'Admin'));
+checkThrowsAt(2183, () => resolveDispute(disputeData, 'd-01', '   ', 'Admin'));
+checkThrowsAt(2184, () => resolveDispute(disputeData, 'missing', 'Outcome agreed', 'Admin'));
 const resolvedDispute = resolveDispute(disputeData, 'd-01', 'Outcome agreed', 'Admin');
 assert.equal(resolvedDispute.disputes[0].status, 'Resolved');
 assert.equal(disputeData.disputes[0].status, 'Open');
@@ -2188,25 +2214,27 @@ assert.equal(quoteTotal(partial.job), 700);
 assert.equal(partial.job.items[1].approved, false);
 assert.equal(partial.job.quoteVersions[1].totalCents, 95000);
 assert.ok(renderToString(<QuoteSummary job={partial.job} />).includes('Deferred'));
-assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { selectedLineIds: [] }, customerActor));
-assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { selectedLineIds: ['missing'] }, customerActor));
-assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { reviewToken: 'stale' }, customerActor));
+checkThrowsAt(2211, () => applyJobTransition(revised.data, revised.job, 'approve', { selectedLineIds: [] }, customerActor));
+checkThrowsAt(2212, () => applyJobTransition(revised.data, revised.job, 'approve', { selectedLineIds: ['missing'] }, customerActor));
+checkThrowsAt(2213, () => applyJobTransition(revised.data, revised.job, 'approve', { reviewToken: 'stale' }, customerActor));
 const earlyPaid = applyJobTransition(partial.data, partial.job, 'pay', { reviewToken: quoteReviewToken(partial.job) }, customerActor);
-assert.equal(earlyPaid.job.status, 'Approved');
+assert.equal(earlyPaid.job.status, 'Ready to start');
 assert.equal(earlyPaid.job.paid, true);
 assert.equal(earlyPaid.data.records?.some((r: any) => r.id === earlyPaid.job.id) || false, false);
-assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'pay', {}, customerActor));
-assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'quote', { items: earlyPaid.job.items, notes: 'Changed work' }, mechanicActor));
+checkThrowsAt(2218, () => applyJobTransition(earlyPaid.data, earlyPaid.job, 'pay', {}, customerActor));
+checkThrowsAt(2219, () => applyJobTransition(earlyPaid.data, earlyPaid.job, 'quote', { items: earlyPaid.job.items, notes: 'Changed work' }, mechanicActor));
 const earlyStarted = applyJobTransition(earlyPaid.data, earlyPaid.job, 'start', {}, mechanicActor);
 const earlyFinished = applyJobTransition(earlyStarted.data, earlyStarted.job, 'complete', { completionNotes: 'Selected repairs completed.' }, mechanicActor);
-assert.equal(earlyFinished.job.status, 'Completed');
-assert.equal(earlyFinished.data.records.filter((r: any) => r.id === earlyFinished.job.id).length, 1);
+assert.equal(earlyFinished.job.status, 'Awaiting confirmation');
+assert.equal(earlyFinished.data.records.filter((r: any) => r.id === earlyFinished.job.id).length, 0);
+const earlyConfirmed = applyJobTransition(earlyFinished.data, earlyFinished.job, 'confirm-work', {}, customerActor);
+assert.equal(earlyConfirmed.data.records.filter((r: any) => r.id === earlyConfirmed.job.id).length, 1);
 const requestedRevision = applyJobTransition(partial.data, partial.job, 'quote', {
   items: [{ id: 'd1', name: 'Pads', amount: 700 }, { id: 'oil', name: 'Oil change', amount: 300 }], notes: 'Pads and requested oil service.',
 }, mechanicActor);
 assert.equal(requestedRevision.job.status, 'Awaiting approval');
 assert.equal(requestedRevision.job.quoteApproved, false);
-assert.throws(() => applyJobTransition(requestedRevision.data, requestedRevision.job, 'pay', {}, customerActor));
+checkThrowsAt(2231, () => applyJobTransition(requestedRevision.data, requestedRevision.job, 'pay', {}, customerActor));
 assert.ok(!demoDocumentHtml(earlyPaid.job, 'invoice').includes('Labour'));
 
 // Customers can correct an unpaid selection without losing deferred repairs.
@@ -2216,13 +2244,14 @@ const reselection = applyJobTransition(partial.data, partial.job, 'approve', {
 assert.equal(quoteTotal(reselection.job), 950);
 assert.equal(reselection.job.items[1].approved, true);
 assert.equal(reselection.job.status, 'Approved');
-assert.throws(() => applyJobTransition(reselection.data, reselection.job, 'pay', { reviewToken: quoteReviewToken(partial.job) }, customerActor));
-assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'approve', { selectedLineIds: ['d1', 'd2'] }, customerActor));
-const selectionStarted = applyJobTransition(reselection.data, reselection.job, 'start', {}, mechanicActor);
-assert.throws(() => applyJobTransition(selectionStarted.data, selectionStarted.job, 'approve', { selectedLineIds: ['d1'] }, customerActor));
+checkThrowsAt(2241, () => applyJobTransition(reselection.data, reselection.job, 'pay', { reviewToken: quoteReviewToken(partial.job) }, customerActor));
+checkThrowsAt(2242, () => applyJobTransition(earlyPaid.data, earlyPaid.job, 'approve', { selectedLineIds: ['d1', 'd2'] }, customerActor));
+const reselectionPaid = applyJobTransition(reselection.data, reselection.job, 'pay', {}, customerActor);
+const selectionStarted = applyJobTransition(reselectionPaid.data, reselectionPaid.job, 'start', {}, mechanicActor);
+checkThrowsAt(2245, () => applyJobTransition(selectionStarted.data, selectionStarted.job, 'approve', { selectedLineIds: ['d1'] }, customerActor));
 const reopenChanges = applyJobTransition(reselection.data, reselection.job, 'changes', { changeRequest: 'Please clarify labour.' }, customerActor);
 assert.equal(reopenChanges.job.quoteApproved, false);
-assert.throws(() => applyJobTransition(reopenChanges.data, reopenChanges.job, 'pay', {}, customerActor));
+checkThrowsAt(2248, () => applyJobTransition(reopenChanges.data, reopenChanges.job, 'pay', {}, customerActor));
 
 
 // Extra quotations have independent approvals, revisions, payments and notification keys.
@@ -2239,10 +2268,10 @@ assert.equal(secondQuote.paid, false);
 assert.equal(secondQuote.quoteVersion, 1);
 assert.equal(secondQuote.status, 'Awaiting approval');
 assert.equal(applyJobTransition(withExtra.data, supplementInput, 'quote', extraQuotePayload, mechanicActor).duplicate, true);
-assert.throws(() => applyJobTransition(withExtra.data, secondQuote, 'approve', {}, mechanicActor));
-assert.throws(() => applyJobTransition(withExtra.data, secondQuote, 'approve', {}, { role: 'customer', id: 'another-customer' }));
-assert.throws(() => applyJobTransition(withExtra.data, secondQuote, 'pay', {}, customerActor));
-assert.throws(() => applyJobTransition(withExtra.data, withExtra.job, 'complete', { completionNotes: 'Done' }, mechanicActor));
+checkThrowsAt(2265, () => applyJobTransition(withExtra.data, secondQuote, 'approve', {}, mechanicActor));
+checkThrowsAt(2266, () => applyJobTransition(withExtra.data, secondQuote, 'approve', {}, { role: 'customer', id: 'another-customer' }));
+checkThrowsAt(2267, () => applyJobTransition(withExtra.data, secondQuote, 'pay', {}, customerActor));
+checkThrowsAt(2268, () => applyJobTransition(withExtra.data, withExtra.job, 'complete', { completionNotes: 'Done' }, mechanicActor));
 assert.equal(withExtra.data.notifications.filter((note: any) => note.eventKey === `quote:${secondQuote.id}:v1`).length, 1);
 assert.equal(withExtra.data.notifications.find((note: any) => note.eventKey === `quote:${secondQuote.id}:v1`).bookingId, withExtra.job.id);
 const selectedExtra = applyJobTransition(withExtra.data, secondQuote, 'approve', { selectedLineIds: ['gearbox'], reviewToken: quoteReviewToken(secondQuote) }, customerActor);
@@ -2252,14 +2281,16 @@ assert.equal(selectedExtra.job.status, 'In progress');
 assert.equal(awaitingCustomerPayments([selectedExtra.job]).length, 1);
 assert.equal(recordedCustomerPayments([selectedExtra.job]).length, 1);
 const selectedExtraAgain = applyJobTransition(selectedExtra.data, secondQuote, 'approve', { selectedLineIds: ['gearbox', 'mount'], reviewToken: quoteReviewToken(secondQuote) }, customerActor);
-assert.throws(() => applyJobTransition(selectedExtraAgain.data, secondQuote, 'pay', { reviewToken: quoteReviewToken(secondQuote) }, customerActor));
-const extraStarted = applyJobTransition(selectedExtraAgain.data, bookingQuotations(selectedExtraAgain.job)[1], 'start-quote', {}, mechanicActor);
-assert.throws(() => applyJobTransition(extraStarted.data, bookingQuotations(extraStarted.job)[1], 'approve', { selectedLineIds: ['gearbox'] }, customerActor));
+checkThrowsAt(2278, () => applyJobTransition(selectedExtraAgain.data, secondQuote, 'pay', { reviewToken: quoteReviewToken(secondQuote) }, customerActor));
+checkThrowsAt(2279, () => applyJobTransition(selectedExtraAgain.data, bookingQuotations(selectedExtraAgain.job)[1], 'start-quote', {}, mechanicActor), /pay/i);
+const extraPayment = applyJobTransition(selectedExtraAgain.data, bookingQuotations(selectedExtraAgain.job)[1], 'pay',
+  { reviewToken: quoteReviewToken(bookingQuotations(selectedExtraAgain.job)[1]) }, customerActor);
+const extraStarted = applyJobTransition(extraPayment.data, bookingQuotations(extraPayment.job)[1], 'start-quote', {}, mechanicActor);
+checkThrowsAt(2283, () => applyJobTransition(extraStarted.data, bookingQuotations(extraStarted.job)[1], 'approve', { selectedLineIds: ['gearbox'] }, customerActor));
 const multiFinished = applyJobTransition(extraStarted.data, extraStarted.job, 'complete', { completionNotes: 'Approved brake and gearbox repairs completed.' }, mechanicActor);
-assert.equal(multiFinished.job.status, 'Awaiting payment');
+assert.equal(multiFinished.job.status, 'Awaiting confirmation');
 assert.equal(multiFinished.data.records?.some((record: any) => record.id === multiFinished.job.id) || false, false);
-const outstandingExtra = bookingQuotations(multiFinished.job)[1];
-const multiPaid = applyJobTransition(multiFinished.data, outstandingExtra, 'pay', { reviewToken: quoteReviewToken(outstandingExtra) }, customerActor);
+const multiPaid = applyJobTransition(multiFinished.data, multiFinished.job, 'confirm-work', {}, customerActor);
 assert.equal(multiPaid.job.status, 'Completed');
 const paymentRows = recordedCustomerPayments([multiPaid.job, multiPaid.job]);
 assert.equal(paymentRows.length, 2);
@@ -2268,8 +2299,8 @@ assert.notEqual(paymentRows[0].paymentReference, paymentRows[1].paymentReference
 assert.equal(paymentRows[0].paidAt, earlyStarted.job.paidAt);
 assert.equal(awaitingCustomerPayments([multiPaid.job]).length, 0);
 assert.equal(multiPaid.data.records.filter((record: any) => record.id === multiPaid.job.id).length, 1);
-assert.throws(() => applyJobTransition(multiPaid.data, outstandingExtra, 'pay', {}, customerActor));
-assert.throws(() => applyJobTransition(multiPaid.data, newQuotation(multiPaid.job, 'late-quote'), 'quote', extraQuotePayload, mechanicActor));
+checkThrowsAt(2296, () => applyJobTransition(multiPaid.data, bookingQuotations(multiPaid.job)[1], 'pay', {}, customerActor));
+checkThrowsAt(2297, () => applyJobTransition(multiPaid.data, newQuotation(multiPaid.job, 'late-quote'), 'quote', extraQuotePayload, mechanicActor));
 assert.ok(demoDocumentHtml(paymentRows[1], 'invoice').includes('Quotation 2'));
 assert.ok(!demoDocumentHtml(paymentRows[1], 'invoice').includes('Pads'));
 const customerMultiHtml = renderToString(<BookingQuotations job={selectedExtra.job} setDialog={() => {}} />);
@@ -2283,7 +2314,7 @@ assert.ok(customerMultiHtml.includes('Review and pay'));
 assert.ok(customerMultiHtml.includes('View invoice'));
 const withdrawnExtra = applyJobTransition(withExtra.data, secondQuote, 'withdraw-quote', {}, mechanicActor);
 assert.equal(bookingQuotations(withdrawnExtra.job)[1].status, 'Withdrawn');
-assert.equal(applyJobTransition(withdrawnExtra.data, withdrawnExtra.job, 'complete', { completionNotes: 'Only the original repairs were needed.' }, mechanicActor).job.status, 'Completed');
+assert.equal(applyJobTransition(withdrawnExtra.data, withdrawnExtra.job, 'complete', { completionNotes: 'Only the original repairs were needed.' }, mechanicActor).job.status, 'Awaiting confirmation');
 const draftId = 'private-extra';
 const privateDraft = saveQuoteDraft(earlyStarted.data, { bookingId: earlyStarted.job.id, quoteId: draftId, rows: [{ id: 'private', name: 'Private draft diagnosis', category: '', quantity: '', price: '500' }], notes: 'Unsent private notes' }, mechanicActor);
 const draftBooking = privateDraft.jobs.find((job: any) => job.id === earlyStarted.job.id);

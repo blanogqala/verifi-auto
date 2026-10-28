@@ -146,7 +146,7 @@ export function updateRequestedBooking(
 }
 
 const mechanicActions = new Set(['confirm', 'reject', 'quote', 'start', 'complete', 'withdraw-quote', 'start-quote']);
-const customerActions = new Set(['approve', 'changes', 'pay', 'cancel']);
+const customerActions = new Set(['approve', 'changes', 'pay', 'cancel', 'confirm-work', 'dispute-work']);
 
 function assertActor(data: any, job: any, action: string, actor?: Actor) {
   if (!actor?.role || !actor.id) throw Error('Choose who is making this change.');
@@ -251,21 +251,30 @@ export function applyJobTransition(data: any, job: any, action: string, extra: a
     };
   }
   if (action === 'complete') {
-    changed.additionalQuotes = (changed.additionalQuotes || []).map((quote: any) => quote.quoteApproved ? { ...quote, status: quote.paid ? 'Completed' : 'Awaiting payment' } : quote);
-    changed.status = allApprovedQuotesPaid(changed) ? 'Completed' : 'Awaiting payment';
+    changed.additionalQuotes = (changed.additionalQuotes || []).map((quote: any) =>
+      quote.quoteApproved ? { ...quote, status: quote.paid ? 'Awaiting confirmation' : 'Approved' } : quote);
+    changed.status = 'Awaiting confirmation';
   }
-  if (action === 'pay' && booking.status === 'Awaiting payment') changed.status = allApprovedQuotesPaid(changed) ? 'Completed' : 'Awaiting payment';
+  if (action === 'pay' && ['Approved', 'Awaiting payment'].includes(booking.status))
+    changed.status = allApprovedQuotesPaid(changed) ? 'Ready to start' : 'Approved';
   let nextData = {
     ...data,
     jobs: (data.jobs || []).map((item: any) => (item.id === changed.id ? changed : item)),
   };
+  if (action === 'dispute-work') {
+    nextData = appendNotification(nextData, {
+      recipientRole: 'admin', recipientId: 'admin', type: 'dispute',
+      title: 'Customer opened a booking dispute', message: String(extra.reason || ''),
+      bookingId: booking.id, panel: 'overview', createdAt: new Date().toISOString(),
+    });
+  }
   for (const notice of transitionNotifications(current, supplemental ? quoteChanged : changed, action)) {
     nextData = appendNotification(nextData, supplemental ? { ...notice, bookingId: booking.id, message: `Quotation ${quoteChanged.quoteNumber} · ${notice.message}` } : notice);
   }
   const last = Array.isArray(changed.events) ? changed.events[changed.events.length - 1] : null;
   const at = last?.at || new Date().toISOString();
   let records = Array.isArray(data.records) ? data.records : [];
-  if (changed.status === 'Completed' && ['pay', 'complete'].includes(action) && !records.some((record: any) => record.id === changed.id)) {
+  if (changed.status === 'Completed' && ['confirm-work', 'resolve-accept'].includes(action) && !records.some((record: any) => record.id === changed.id)) {
     records = [
       {
         id: changed.id,

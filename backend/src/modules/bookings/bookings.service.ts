@@ -65,7 +65,7 @@ const participants = (booking: Awaited<ReturnType<typeof getBooking>>) => [
   booking.professional.userId,
 ];
 const active = (status: string) =>
-  !["COMPLETED", "REJECTED", "CANCELLED"].includes(status);
+  !["COMPLETED", "REJECTED", "CANCELLED", "DISPUTED"].includes(status);
 export const selectedTotal = (
   lines: { selected: boolean; quantity: number; unitPriceCents: number }[],
 ) =>
@@ -167,7 +167,7 @@ export async function createBooking(
 }
 export const actionInput = z
   .object({
-    action: z.enum(["accept", "reject", "cancel", "start", "complete"]),
+    action: z.enum(["accept", "reject", "cancel", "start", "complete", "confirm-work", "dispute-work", "resolve-accept", "resolve-rework"]),
     version: expectedVersion,
     reason: z.string().trim().max(2000).optional(),
     completionNotes: z.string().trim().max(4000).optional(),
@@ -186,9 +186,10 @@ export async function changeBooking(
       "CONFLICT",
       "Booking changed. Reload before continuing.",
     );
-    const customerAction = input.action === "cancel";
+    const customerAction = ["cancel", "confirm-work", "dispute-work"].includes(input.action);
+    const adminAction = ["resolve-accept", "resolve-rework"].includes(input.action);
     requireThat(
-      actor.role === (customerAction ? "CUSTOMER" : "MECHANIC"),
+      actor.role === (adminAction ? "ADMIN" : customerAction ? "CUSTOMER" : "MECHANIC"),
       403,
       "FORBIDDEN",
       "You cannot perform this action.",
@@ -229,16 +230,37 @@ export async function changeBooking(
       status = "CANCELLED";
     } else if (input.action === "start") {
       requireThat(
-        status === "APPROVED" && booking.quotes.some((q) => q.approvedAt),
+        ["READY_TO_START", "APPROVED"].includes(status) &&
+          booking.quotes.some((q) => q.approvedAt) &&
+          booking.quotes.filter((q) => q.approvedAt).every((q) => q.payment),
         409,
-        "APPROVAL_REQUIRED",
-        "Customer approval is required.",
+        "PAYMENT_REQUIRED",
+        "The customer must pay all approved quotations before repairs start.",
       );
       status = "IN_PROGRESS";
       await tx.quote.updateMany({
         where: { bookingId, approvedAt: { not: null } },
         data: { workStartedAt: new Date() },
       });
+    } else if (input.action === "confirm-work") {
+      requireThat(status === "AWAITING_CONFIRMATION", 409, "INVALID_STATE",
+        "The workshop must submit completed work before the customer can confirm.");
+      requireThat(booking.quotes.filter((q) => q.approvedAt).length > 0 &&
+        booking.quotes.filter((q) => q.approvedAt).every((q) => q.payment),
+        409, "PAYMENT_REQUIRED", "A verified payment is required before final confirmation.");
+      status = "COMPLETED";
+    } else if (input.action === "dispute-work") {
+      requireThat(status === "AWAITING_CONFIRMATION", 409, "INVALID_STATE",
+        "Disputes about finished work can be opened during customer confirmation.");
+      requireThat(input.reason && input.reason.trim().length >= 10, 422, "REASON_REQUIRED",
+        "Explain what was not completed (at least 10 characters).");
+      status = "DISPUTED";
+    } else if (input.action === "resolve-accept" || input.action === "resolve-rework") {
+      requireThat(status === "DISPUTED" && booking.disputeStatus === "OPEN",
+        409, "INVALID_STATE", "There is no open dispute for this booking.");
+      requireThat(input.reason && input.reason.trim().length >= 10, 422, "REASON_REQUIRED",
+        "Document your decision (at least 10 characters).");
+      status = input.action === "resolve-accept" ? "COMPLETED" : "IN_PROGRESS";
     } else {
       requireThat(
         status === "IN_PROGRESS",
@@ -260,11 +282,9 @@ export async function changeBooking(
         "PENDING_QUOTES",
         "Resolve or withdraw pending quotations first.",
       );
-      status = booking.quotes
-        .filter((q) => q.approvedAt)
-        .every((q) => q.payment)
-        ? "COMPLETED"
-        : "AWAITING_PAYMENT";
+      requireThat(booking.quotes.filter((q) => q.approvedAt).every((q) => q.payment),
+        409, "PAYMENT_REQUIRED", "Payment must be recorded before work is finished.");
+      status = "AWAITING_CONFIRMATION";
       await tx.quote.updateMany({
         where: { bookingId, approvedAt: { not: null } },
         data: { workStartedAt: new Date() },
@@ -276,9 +296,15 @@ export async function changeBooking(
         status,
         version: { increment: 1 },
         ...(input.action === "reject" ? { rejectionReason: input.reason } : {}),
-        ...(input.action === "complete"
-          ? { completionNotes: input.completionNotes }
-          : {}),
+        ...(input.action === "complete" ? { completionNotes: input.completionNotes } : {}),
+        ...(input.action === "dispute-work" ? {
+          disputeReason: input.reason!, disputeStatus: "OPEN",
+          disputeResolution: "", disputeResolvedAt: null,
+        } : {}),
+        ...(adminAction ? {
+          disputeStatus: input.action === "resolve-accept" ? "RESOLVED_ACCEPTED" : "RESOLVED_REWORK",
+          disputeResolution: input.reason!, disputeResolvedAt: new Date(),
+        } : {}),
       },
     });
     if (["CANCELLED", "REJECTED", "COMPLETED"].includes(status))
@@ -287,6 +313,11 @@ export async function changeBooking(
         data: { revokedAt: new Date() },
       });
     if (status === "COMPLETED") await createServiceRecord(tx, bookingId);
+    if (input.action === "dispute-work") {
+      const admins = await tx.user.findMany({ where: { role: "ADMIN", disabledAt: null }, select: { id: true } });
+      await announce(tx, admins.map((admin) => admin.id), "dispute", bookingId,
+        "Customer disputed workshop completion — review required");
+    }
     await announce(
       tx,
       participants(booking),
@@ -406,7 +437,8 @@ export async function changeQuote(
       "These repairs have already finished.",
     );
     requireThat(
-      quote.version === input.version && !quote.payment && !quote.workStartedAt,
+      quote.version === input.version &&
+        (!quote.payment || input.action === "start") && !quote.workStartedAt,
       409,
       "QUOTE_LOCKED",
       "Quotation changed, was paid, or repairs already started. Reload it.",
@@ -469,10 +501,10 @@ export async function changeQuote(
       status = "WITHDRAWN";
     } else {
       requireThat(
-        status === "APPROVED" && booking.status === "IN_PROGRESS",
+        status === "PAID" && !!quote.payment && booking.status === "IN_PROGRESS",
         409,
-        "APPROVAL_REQUIRED",
-        "Start the job and obtain approval for these repairs first.",
+        "PAYMENT_REQUIRED",
+        "The customer must pay the additional quotation before these repairs begin.",
       );
       status = "IN_PROGRESS";
     }
@@ -671,19 +703,13 @@ export async function recordTestPayment(
       data: { status: "PAID", version: { increment: 1 } },
     });
     if (
-      booking.status === "AWAITING_PAYMENT" &&
-      booking.quotes
-        .filter((q) => q.approvedAt && q.id !== quoteId)
-        .every((q) => q.payment)
+      ["APPROVED", "AWAITING_PAYMENT"].includes(booking.status) &&
+      booking.quotes.filter((q) => q.approvedAt && q.id !== quoteId).every((q) => q.payment)
     ) {
+      // Development-only payment is a test record. It never represents held escrow funds.
       await tx.booking.update({
         where: { id: bookingId },
-        data: { status: "COMPLETED", version: { increment: 1 } },
-      });
-      await createServiceRecord(tx, bookingId);
-      await tx.historyGrant.updateMany({
-        where: { bookingId },
-        data: { revokedAt: new Date() },
+        data: { status: "READY_TO_START", version: { increment: 1 } },
       });
     }
     await announce(

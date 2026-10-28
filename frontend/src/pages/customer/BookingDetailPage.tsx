@@ -17,6 +17,7 @@ import { backTarget, followDetail, returnLabel } from '../../features/navigation
 import { useEffect, useRef, useState } from 'react';
 import { Siren, MapPin, ShieldCheck } from 'lucide-react';
 import { InlineWorkReport } from '../../components/jobs/VehicleActivityRecord';
+import { ServiceConfirmationCard } from '../../components/jobs/ServiceConfirmationCard';
 import { markNotificationsRead, unreadBookingNotices } from '../../features/notifications/inbox';
 
 function ownerId(job: any, fallback: string) {
@@ -128,7 +129,9 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             job={job}
             professional={professional}
             onView={job.professionalId ? () => followDetail(go, here, 'dashboard/find/' + encodeURIComponent(job.professionalId)) : undefined}
-          />
+          >
+            <ServiceConfirmationCard job={job} customerId={customerId} data={data} update={update} notify={notify}/>
+          </ProfessionalDetailsCard>
         </div>
       <details ref={varDetails} className={'fold var-customer-panel' + (varAttention ? ' has-unread-attention' : '')}
         onToggle={(event) => { if (event.currentTarget.open) acknowledge('var'); }}>

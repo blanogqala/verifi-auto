@@ -9,7 +9,7 @@ import { id, expectedVersion } from "../../lib/validation.js";
 import { getBooking } from "./bookings.service.js";
 
 export const vehicleReportRoutes = Router();
-const accepted = ["CONFIRMED", "APPROVED", "IN_PROGRESS", "AWAITING_PAYMENT"];
+const accepted = ["CONFIRMED", "APPROVED", "READY_TO_START", "IN_PROGRESS", "AWAITING_PAYMENT", "AWAITING_CONFIRMATION"];
 const reportInput = z.object({
   version: expectedVersion,
   checkedLineIds: z.array(id).max(100).refine((list) => new Set(list).size === list.length, "Choose each repair once."),

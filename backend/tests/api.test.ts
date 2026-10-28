@@ -826,6 +826,8 @@ test(
       let job = (
         await send("get", `/api/bookings/${bookingId}`, undefined, mechanic)
       ).body;
+      assert.equal(job.status, "READY_TO_START");
+      assert.equal((await act("start", job.version, alice)).status, 403);
       assert.equal((await act("start", job.version, mechanic)).status, 200);
       job = (await send("get", `/api/bookings/${bookingId}`, undefined, mechanic)).body;
       const workReport = {
@@ -892,31 +894,40 @@ test(
         ).status,
         200,
       );
-      job = (
-        await send("get", `/api/bookings/${bookingId}`, undefined, mechanic)
-      ).body;
+      job = (await send("get", `/api/bookings/${bookingId}`, undefined, mechanic)).body;
+      assert.equal((await act("complete", job.version, mechanic, {
+        completionNotes: "Approved repairs finished.",
+      })).status, 409, "All approved quotations must be paid before work can finish.");
+      assert.equal((await send("post",
+        `/api/bookings/${bookingId}/quotes/${second.body.id}/test-payment`,
+        { version: 2 }, alice)).status, 200);
+      job = (await send("get", `/api/bookings/${bookingId}`, undefined, mechanic)).body;
       const finished = await act("complete", job.version, mechanic, {
         completionNotes: "Approved repairs finished.",
       });
-      assert.equal(
-        finished.body.status,
-        "AWAITING_PAYMENT",
-        JSON.stringify(finished.body),
-      );
+      assert.equal(finished.body.status, "AWAITING_CONFIRMATION", JSON.stringify(finished.body));
       assert.equal(await db.serviceRecord.count({ where: { bookingId } }), 0);
-      assert.equal(
-        (
-          await send(
-            "post",
-            `/api/bookings/${bookingId}/quotes/${second.body.id}/test-payment`,
-            { version: 2 },
-            alice,
-          )
-        ).status,
-        200,
-      );
-      job = (await send("get", `/api/bookings/${bookingId}`, undefined, alice))
-        .body;
+      assert.equal((await act("confirm-work", finished.body.version, mechanic)).status, 403);
+      const disputed = await act("dispute-work", finished.body.version, alice, {
+        reason: "The brakes are still making grinding noises after the repair.",
+      });
+      assert.equal(disputed.status, 200, JSON.stringify(disputed.body));
+      assert.equal(disputed.body.status, "DISPUTED");
+      assert.equal((await act("confirm-work", disputed.body.version, alice)).status, 409);
+      assert.equal(await db.serviceRecord.count({ where: { bookingId } }), 0);
+      assert.equal((await act("resolve-rework", disputed.body.version, mechanic, { reason: "Please inspect brakes again." })).status, 403);
+      const resolved = await act("resolve-rework", disputed.body.version, admin, {
+        reason: "Require another braking inspection with the customer present.",
+      });
+      assert.equal(resolved.status, 200, JSON.stringify(resolved.body));
+      assert.equal(resolved.body.status, "IN_PROGRESS");
+      const resubmitted = await act("complete", resolved.body.version, mechanic, {
+        completionNotes: "Completed second brake inspection and road test.",
+      });
+      assert.equal(resubmitted.body.status, "AWAITING_CONFIRMATION");
+      const accepted = await act("confirm-work", resubmitted.body.version, alice);
+      assert.equal(accepted.status, 200, JSON.stringify(accepted.body));
+      job = accepted.body;
       assert.equal(job.status, "COMPLETED");
       assert.equal(await db.serviceRecord.count({ where: { bookingId } }), 1);
       const completedRecord = await db.serviceRecord.findUniqueOrThrow({ where: { bookingId } });

@@ -25,7 +25,8 @@ await socket.start();
 process.env.DATABASE_URL = `postgresql://postgres:postgres@127.0.0.1:${port}/postgres`;
 process.env.WEB_ORIGIN = "http://127.0.0.1:5199";
 process.env.NODE_ENV = "test";
-process.env.ENABLE_TEST_PAYMENTS = "false";
+// Exercise the payment gate using throwaway test records only. This is never production.
+process.env.ENABLE_TEST_PAYMENTS = "true";
 process.env.COOKIE_SECURE = "false";
 process.env.PORT = "3099";
 

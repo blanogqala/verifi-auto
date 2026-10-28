@@ -65,8 +65,8 @@ export function BookingRequestCard({
   );
 }
 
-export function ProfessionalDetailsCard({ job, professional, onView }: {
-  job: any; professional?: any; onView?: () => void;
+export function ProfessionalDetailsCard({ job, professional, onView, children }: {
+  job: any; professional?: any; onView?: () => void; children?: ReactNode;
 }) {
   const name = present(job.provider || professional?.name, 'Professional not recorded');
   const phone = job.professionalPhone || professional?.phone || '';
@@ -96,6 +96,7 @@ export function ProfessionalDetailsCard({ job, professional, onView }: {
             <ContactLine Icon={MapPin} label="Service area" value={professional?.area || professional?.city || job.city} />}
         </div>
         {onView && <div className="booking-detail-actions"><button className="secondary" type="button" onClick={onView}>View professional <ArrowUpRight size={16}/></button></div>}
+        {children}
       </div>
     </DetailCard>
   );

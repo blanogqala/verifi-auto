@@ -65,7 +65,7 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
     !!varGrant?.requestedAt && !varGrant?.grantedAt && !(varGrant?.recordIds || []).length;
   const varNoEarlierRecords = varNotShared && (data.notifications || []).some((note: any) =>
     note.bookingId === job.id && /no (previous )?vehicle history available to share/i.test(note.title || ''));
-  const canRequestVar = ['Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment'].includes(job.status);
+  const canRequestVar = ['Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'Ready to start', 'In progress', 'Awaiting payment', 'Awaiting confirmation'].includes(job.status);
   async function saveWorkReport(values: { checkedLineIds: string[]; notes: string; mileage: number }) {
     const reportItems = [
       ...(job.quoteApproved ? [{ quoteNumber: 1, items: job.items }] : []),
@@ -203,10 +203,19 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                   </button>
                 </>
               ) : null}
-              {job.status === 'Approved' ? (
-                <button className="primary" type="button" disabled={busy} onClick={() => run('start')}>
-                  Start work
-                </button>
+              {job.status === 'Approved' || job.status === 'Awaiting payment' ? (
+                <div className="booking-payment-gate">
+                  <strong>Waiting for customer payment</strong>
+                  <p>Quotation approved. Repair work stays locked until the approved amount is recorded as paid by an authorised payment provider.</p>
+                  <button className="secondary" type="button" onClick={() => choose('quote')}>View quotation</button>
+                </div>
+              ) : null}
+              {job.status === 'Ready to start' ? (
+                <div className="booking-payment-gate is-ready">
+                  <strong>Payment recorded — ready to start</strong>
+                  <p>{job.testPayment ? 'Development test payment only; no real funds were collected.' : 'Payment recorded. Proceed with the agreed repairs.'}</p>
+                  <button className="primary" type="button" disabled={busy} onClick={() => run('start')}>Start work</button>
+                </div>
               ) : null}
               {job.status === 'In progress' ? (
                 <div className="var-work-actions">
@@ -226,18 +235,23 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                   )}
                 </div>
               ) : null}
-              {job.status === 'Awaiting payment' ? (
-                <>
-                  <p>Approved quotations still have an outstanding balance.</p>
-                  <button className="secondary" type="button" onClick={() => choose('quote')}>
-                    View quotation
-                  </button>
-                </>
-              ) : null}
+              {job.status === 'Awaiting confirmation' && (
+                <div className="booking-confirmation-hint">
+                  <strong>Work submitted for customer confirmation</strong>
+                  <p>The mechanic's report is saved. The customer can accept the repairs or open a dispute for admin review.</p>
+                </div>
+              )}
+              {job.status === 'Disputed' && (
+                <div className="booking-dispute-warning">
+                  <strong>Customer disputed this work</strong>
+                  <p>{job.disputeReason || 'A dispute was opened.'}</p>
+                  <p>Admin review is required. No payout has been authorised.</p>
+                </div>
+              )}
               {job.completionNotes ? <p>Completed work: {job.completionNotes}</p> : null}
               {job.paid ? (
                 <p>
-                  Demo payment recorded
+                  {job.testPayment ? 'Demo payment recorded' : 'Payment recorded'}
                   {job.paymentReference ? ` · ${job.paymentReference}` : ''}
                   {job.paidAt ? ` · ${formatWhen(job.paidAt)}` : ''}
                 </p>

@@ -3,8 +3,11 @@ const acceptedStatuses = [
   'Awaiting approval',
   'Changes requested',
   'Approved',
+  'Ready to start',
   'In progress',
   'Awaiting payment',
+  'Awaiting confirmation',
+  'Disputed',
   'Completed',
 ];
 
