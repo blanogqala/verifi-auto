@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
-import { Camera, Check, FileText, Landmark, ShieldCheck, Wrench } from 'lucide-react';
+import { Camera, Check, FileText, Landmark, ShieldCheck, Wrench, Star, X } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { StatusBadge as Status } from '../../components/ui/StatusBadge';
 import { merchantProfileSectionLabel, type MerchantProfileSection } from '../../config/navigation';
@@ -64,6 +64,29 @@ export function MerchantProfilePage({
   const initials = initialsFromName(profile?.name);
   const accountPhoto = profile?.photo ?? data.settings?.photo ?? '';
   const verification = data.application?.status || 'Draft';
+  const [showReviews, setShowReviews] = useState(false);
+  const [reviewSort, setReviewSort] = useState('newest');
+  const [starFilter, setStarFilter] = useState(0);
+  const professionalId = data.mechanicAccount?.professionalId || data.profile?.id || '';
+  const reviews = (data.customerReviews || []).filter((r: any) =>
+    r.professionalId === professionalId && Number.isInteger(Number(r.rating)) &&
+    Number(r.rating) >= 1 && Number(r.rating) <= 5
+  );
+  const averageRating = reviews.length
+    ? (reviews.reduce((total: number, r: any) => total + Number(r.rating), 0) / reviews.length).toFixed(1)
+    : null;
+  const visibleReviews = [...reviews]
+    .filter((r: any) => !starFilter || Number(r.rating) === starFilter)
+    .sort((a: any, b: any) => reviewSort === 'highest' ? b.rating - a.rating :
+      reviewSort === 'lowest' ? a.rating - b.rating :
+      reviewSort === 'oldest' ? String(a.createdAt || '').localeCompare(String(b.createdAt || '')) :
+      String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  useEffect(() => {
+    if (!showReviews) return;
+    const onKey = (event: globalThis.KeyboardEvent) => { if (event.key === 'Escape') setShowReviews(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showReviews]);
 
   function select(next: MerchantProfileSection) {
     if (next !== section) route('profile/' + next);
@@ -146,6 +169,15 @@ export function MerchantProfilePage({
             </p>
           ) : null}
         </div>
+        <div className="mechanic-review-summary" style={{ display: 'grid', gap: 8, alignContent: 'center', justifyItems: 'start' }}>
+          <strong aria-label={averageRating ? `Average customer rating ${averageRating} out of 5` : 'No customer reviews yet'}>
+            <Star size={18} style={{ display: 'inline', verticalAlign: 'middle', color: '#9658e8' }} />
+            {' '}{averageRating ? `${averageRating}/5 · ${reviews.length} review${reviews.length === 1 ? '' : 's'}` : 'No reviews yet'}
+          </strong>
+          <button type="button" className="secondary" onClick={() => setShowReviews(true)}>
+            View all reviews
+          </button>
+        </div>
         <div className="merchant-summary-copy">
           <h2>Mechanic profile</h2>
           <p className="mechanic-trade">{displayName}</p>
@@ -158,6 +190,51 @@ export function MerchantProfilePage({
           </p>
         </div>
       </Card>
+      {showReviews && (
+        <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowReviews(false); }}>
+          <section role="dialog" aria-modal="true" aria-label="Customer reviews and ratings"
+            className="dash-panel" style={{ width: 'min(92vw, 760px)', maxHeight: '88vh', overflowY: 'auto', padding: 24, margin: 'auto', borderRadius: 20, background: 'var(--surface, #faf7ff)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+              <div><h2>Customer reviews &amp; ratings</h2><p>{displayName}</p></div>
+              <button type="button" className="icon-action" aria-label="Close customer reviews" onClick={() => setShowReviews(false)}><X size={20} /></button>
+            </div>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#9658e8' }}>
+              {averageRating ? `★ ${averageRating} / 5` : 'No reviews yet'}
+            </p>
+            <p>{reviews.length} customer review{reviews.length === 1 ? '' : 's'}</p>
+            {[5,4,3,2,1].map((stars) => {
+              const count = reviews.filter((r: any) => Number(r.rating) === stars).length;
+              return <div key={stars} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 5 }}>
+                <span style={{ minWidth: 52 }}>{stars} ★</span>
+                <progress aria-label={`${stars} stars`} value={count} max={Math.max(1,reviews.length)} style={{ flex: 1 }} />
+                <span>{count}</span>
+              </div>;
+            })}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', margin: '18px 0' }}>
+              <label>Sort <select value={reviewSort} onChange={(event) => setReviewSort(event.target.value)}>
+                <option value="newest">Newest</option><option value="oldest">Oldest</option>
+                <option value="highest">Highest rated</option><option value="lowest">Lowest rated</option>
+              </select></label>
+              <label>Rating <select value={starFilter} onChange={(event) => setStarFilter(Number(event.target.value))}>
+                <option value={0}>All stars</option>{[5,4,3,2,1].map(n => <option key={n} value={n}>{n} stars</option>)}
+              </select></label>
+            </div>
+            {visibleReviews.length ? visibleReviews.map((review: any) => {
+              const job = (data.jobs || []).find((j: any) => j.id === review.bookingId);
+              const customer = (data.customers || []).find((u: any) => u.id === review.customerId);
+              return <article key={review.id} className="admin-review" style={{ padding: '15px 0', borderTop: '1px solid #9658e844' }}>
+                <strong>{customer?.name || job?.customerName || 'Customer name unavailable'}</strong>
+                <p aria-label={`${review.rating} out of 5 stars`} style={{ color: '#9658e8', fontWeight: 700 }}>
+                  {'★'.repeat(Number(review.rating))}{'☆'.repeat(5 - Number(review.rating))} · {review.rating}/5
+                </p>
+                <p>{review.text || review.body || 'No written review'}</p>
+                {job?.vehicle && <small>{job.vehicle} · </small>}
+                {review.createdAt && <small>{new Date(review.createdAt).toLocaleDateString('en-ZA')}</small>}
+              </article>;
+            }) : <p className="muted">No reviews match this filter.</p>}
+          </section>
+        </div>
+      )}
       <div
         className="profile-tablist folder-tabs"
         role="tablist"
