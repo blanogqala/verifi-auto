@@ -348,6 +348,23 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Review and approve' }).click();
   await page.getByRole('button', { name: 'Approve selected repairs' }).click();
   await page.getByText('Approved').first().waitFor();
+  // Production checkout is disabled. This disposable backend has test-only
+  // payments enabled to verify the payment-before-work permission boundary.
+  await resetDisposableRateLimits();
+  const paidResult = await page.evaluate(async (id) => {
+    const base = 'http://127.0.0.1:3099/api';
+    const session = await (await fetch(base + '/auth/session', { credentials: 'include' })).json();
+    const booking = await (await fetch(base + '/bookings/' + id, { credentials: 'include' })).json();
+    const quote = booking.quotes?.[0];
+    if (!quote) return { status: 0, message: 'Quotation missing' };
+    const response = await fetch(base + '/bookings/' + id + '/quotes/' + quote.id + '/test-payment', {
+      credentials: 'include', method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': session.csrf || '' },
+      body: JSON.stringify({ version: quote.version }),
+    });
+    return { status: response.status, body: await response.json() };
+  }, bookingUrl.split('/').pop());
+  if (paidResult.status !== 200) throw new Error('Disposable test payment failed: ' + JSON.stringify(paidResult));
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, 'mechanic@example.test');
@@ -371,7 +388,7 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Request VAR' }).click();
   await page.getByRole('button', { name: 'VAR pending' }).waitFor();
   await page.getByRole('button', { name: 'Work is done' }).click();
-  await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Awaiting payment').waitFor();
+  await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Awaiting confirmation').waitFor();
   if (await page.getByRole('button', { name: 'Work is done' }).count())
     throw new Error('Finished work should advance the job beyond In progress.');
   await page.getByRole('button', { name: 'Sign out' }).click();
@@ -395,6 +412,7 @@ async function connected(browser) {
   await activity.locator('.var-attention-dot').waitFor({ state: 'detached' });
   await activity.getByText(/68.000 km/).waitFor();
   await activity.getByText('Replaced the front brake pads and checked the braking system.').waitFor();
+  await page.getByRole('button', { name: 'Confirm work done' }).waitFor();
   // A VAR request for a vehicle without earlier completed records must explain
   // the disabled grant action and allow the customer to notify the workshop.
   const varPanel = page.locator('details.var-customer-panel').first();
