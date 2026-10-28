@@ -443,7 +443,9 @@ export function WorkspaceDialog({
           </p>
           <p className="muted">
             {dialog.linked
-              ? 'This vehicle has linked bookings or service records. It will be archived and hidden from My Garage, not permanently deleted. All associated history remains available on your account.'
+              ? (live
+                  ? 'This vehicle has linked bookings or service records. It will be archived and hidden from My Garage, not permanently deleted. Its associated history is retained on your account.'
+                  : 'This vehicle has linked bookings or service records. It will be archived and hidden from My Garage, not permanently deleted. Its associated history stays in this browser.')
               : 'This vehicle has no linked bookings or service records. It can be permanently removed from your garage.'}
           </p>
           <button
