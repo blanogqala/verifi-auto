@@ -210,3 +210,43 @@ export function VarHistoryViewer({ records, onClose }: { records: any[]; onClose
     </ReportDialog>
   );
 }
+
+/** Owner view of a saved service record (including legacy records without a detailed checklist). */
+export function OwnerServiceRecordViewer({ record, workshop, onClose }: {
+  record: any; workshop?: string; onClose: () => void;
+}) {
+  const repairs = Array.isArray(record?.repairs) ? record.repairs : [];
+  const lines = repairs.flatMap((item: any) => Array.isArray(item.lines)
+    ? item.lines.map((line: any) => ({ ...line, legacy: true }))
+    : [{ ...item, legacy: !('completed' in item) }]);
+  const when = record?.date || record?.createdAt || '';
+  const recordedMileage = record?.mileage != null && Number.isFinite(Number(record.mileage))
+    ? Number(record.mileage).toLocaleString('en-ZA') + ' km'
+    : 'Mileage not recorded';
+  return (
+    <ReportDialog title="Service details" subtitle={'Vehicle Activity Record · ' + (workshop || record?.provider || 'Workshop not recorded')} onClose={onClose}>
+      <div className="var-summary-strip">
+        <span><ShieldCheck size={17}/> Completed service</span>
+        <span><Gauge size={17}/>{recordedMileage}</span>
+        <span><Clock3 size={17}/>{when ? formatWhen(when) : 'Date not recorded'}</span>
+      </div>
+      <h3 className="var-section-heading">Workshop and service</h3>
+      <p className="var-report-notes">{record?.title || 'Completed service record'}</p>
+      {lines.length > 0 && <>
+        <h3 className="var-section-heading">Recorded service items</h3>
+        <div className="var-read-list">
+          {lines.map((line: any, index: number) => (
+            <div className="var-read-item" key={line.id || index}>
+              {line.completed === true ? <CheckCircle2 className="var-check-success" size={19}/> : <Wrench className="var-check-pending" size={19}/>}
+              <span><b>{line.description || line.name || 'Service item'}</b>
+                <small>{line.legacy ? 'Included in historical service record' : line.completed ? 'Marked complete' : 'Not marked complete'}</small></span>
+            </div>
+          ))}
+        </div>
+      </>}
+      <h3 className="var-section-heading">Technician notes</h3>
+      <p className="var-report-notes">{record?.notes || 'No additional notes were recorded.'}</p>
+      <div className="var-modal-actions"><button type="button" className="primary" onClick={onClose}>Close details</button></div>
+    </ReportDialog>
+  );
+}
