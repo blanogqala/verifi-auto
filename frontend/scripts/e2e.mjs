@@ -357,20 +357,25 @@ async function connected(browser) {
   await page.getByRole('heading', { name: 'Vehicle info' }).waitFor();
   await page.getByText('customer@example.test').waitFor();
   await page.getByRole('button', { name: 'Start work' }).click();
-  await page.getByLabel('Completed work').waitFor();
-  await page.getByLabel('Completed work').fill('Replaced the front brake pads.');
-  await page.getByLabel('Mileage (km)').fill('68000');
-  await page.getByRole('button', { name: 'Mark work finished' }).click();
-  await page.getByText('Awaiting payment').waitFor();
+  await page.getByRole('button', { name: 'Add completed work' }).click();
+  await page.locator('.var-check-item input[type="checkbox"]').first().check();
+  await page.getByLabel('Work performed / additional technician notes').fill('Replaced the front brake pads and checked the braking system.');
+  await page.getByLabel('Vehicle odometer at service (km)').fill('68000');
+  await page.getByRole('button', { name: 'Save work report' }).click();
+  await page.getByRole('button', { name: 'Review submitted work' }).click();
+  await page.getByText(/68.000 km/).waitFor();
+  await page.getByRole('button', { name: 'Close report' }).click();
+  await page.getByRole('button', { name: 'Request VAR' }).click();
+  await page.getByRole('button', { name: 'VAR pending' }).waitFor();
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, customerEmail);
-  await page.goto(appUrl + '/#dashboard/payments');
-  await page.getByRole('button', { name: 'Review & pay' }).click();
-  await page.getByRole('button', { name: 'Online card payments are unavailable' }).waitFor();
   await page.reload();
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
+  await page.getByRole('button', { name: /Review workshop work report/ }).click();
+  await page.getByText(/68.000 km/).waitFor();
+  await page.getByRole('button', { name: 'Close report' }).click();
   await page.goto(appUrl + '/#dashboard/garage');
   // Photos remain usable where no matching, licensed 3D model is available.
   // An unrelated concept car must never be identified as this customer's Polo.

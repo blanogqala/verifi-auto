@@ -15,7 +15,8 @@ import { bookingReference } from '../../features/jobs/jobViews';
 import { formatDay, formatWhen } from '../../features/jobs/bookingProgress';
 import { backTarget, followDetail, returnLabel } from '../../features/navigation/returnPath';
 import { useEffect, useState } from 'react';
-import { Siren, MapPin } from 'lucide-react';
+import { Siren, MapPin, ClipboardList, ShieldCheck } from 'lucide-react';
+import { WorkReportViewer } from '../../components/jobs/VehicleActivityRecord';
 
 function ownerId(job: any, fallback: string) {
   return typeof job?.customerId === 'string' && job.customerId ? job.customerId : fallback;
@@ -27,12 +28,14 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
   const [tab, setTab] = useState(panel || 'overview');
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
   const here = 'dashboard/bookings/' + encodeURIComponent(bookingId || '');
   const back = backTarget(here, 'dashboard/bookings');
   useEffect(() => {
     setTab(panel || 'overview');
     setSelected([]);
     setError('');
+    setReportOpen(false);
   }, [bookingId, panel]);
   function choose(next: string) {
     setTab(next);
@@ -94,6 +97,11 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             showVehicle
             onViewVehicle={vehicle ? () => followDetail(go, here, 'dashboard/garage/' + encodeURIComponent(vehicle.id)) : undefined}
           >
+            {job.workReport && (
+              <button className="var-inline-report" type="button" onClick={() => setReportOpen(true)}>
+                <ClipboardList size={18} /> Review workshop work report <span>View details</span>
+              </button>
+            )}
             {job.status === 'Requested' && job.kind !== 'EMERGENCY' || ['Requested', 'Confirmed'].includes(job.status) ? (
               <div className="booking-detail-actions">
                 {job.status === 'Requested' && job.kind !== 'EMERGENCY' &&
@@ -109,12 +117,20 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             onView={job.professionalId ? () => followDetail(go, here, 'dashboard/find/' + encodeURIComponent(job.professionalId)) : undefined}
           />
         </div>
-      <details className="fold">
-        <summary>History sharing</summary>
-        <p className="muted">Choose which service records this professional can see for this booking.</p>
+      <details className="fold" open={undefined}>
+        <summary>Vehicle Activity Record (VAR) · History sharing { (data.historyAccess || []).some((g: any) => g.bookingId === job.id && g.status === 'requested') ? '· Access requested' : ''}</summary>
+        {(data.historyAccess || []).some((g: any) => g.bookingId === job.id && g.status === 'requested') && (
+          <div className="var-customer-request" role="status">
+            <ShieldCheck size={20}/>
+            <div><strong>Your workshop requested access to your Vehicle Activity Record.</strong>
+              <p>Choose the previous completed services you want to share. The workshop cannot view your history until you approve.</p>
+            </div>
+          </div>
+        )}
+        <p className="muted">Choose which completed service records this professional can see for this booking. You control access and may revoke it.</p>
         <DetailFields
           items={[
-            { label: 'Access', value: grant ? 'Granted' : 'No access' },
+            { label: 'Access', value: grant ? 'Granted' : (data.historyAccess || []).some((g: any) => g.bookingId === job.id && g.status === 'requested') ? 'Awaiting your approval' : 'No access' },
             { label: 'Ends', value: 'When this booking is cancelled, rejected, or completed' },
           ]}
         />
@@ -162,8 +178,8 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
                 {error}
               </p>
             ) : null}
-            <button className="primary" type="submit" disabled={!records.length}>
-              Grant access
+            <button className="primary" type="submit" disabled={!selected.length}>
+              Grant selected VAR access
             </button>
           </form>
         ) : (
@@ -220,6 +236,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
           />
         </DetailCard>
       </DetailPanel>
+      {reportOpen && job.workReport && <WorkReportViewer report={job.workReport} workshop={job.provider} final={job.status === 'Completed'} onClose={() => setReportOpen(false)} />}
     </div>
   );
 }

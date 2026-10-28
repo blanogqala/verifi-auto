@@ -121,14 +121,14 @@ export function CustomerDetailsCard({ job, customer }: { job: any; customer?: an
   );
 }
 
-export function VehicleDetailsCard({ job, vehicle, onView }: { job: any; vehicle?: any; onView?: () => void }) {
+export function VehicleDetailsCard({ job, vehicle, onView, headerAction }: { job: any; vehicle?: any; onView?: () => void; headerAction?: ReactNode }) {
   const year = vehicle?.year ?? job.vehicleYear;
   const make = vehicle?.make ?? job.vehicleMake;
   const model = vehicle?.model ?? job.vehicleModel;
   const name = [year, make, model].filter(Boolean).join(' ') || job.vehicleLabel || job.vehicle || 'Not recorded';
   const mileage = vehicle?.mileage ?? job.vehicleMileage;
   return (
-    <DetailCard title="Vehicle info" icon={<CarFront size={22} aria-hidden="true" />}>
+    <DetailCard title="Vehicle info" icon={<CarFront size={22} aria-hidden="true" />} action={headerAction}>
       <div className="booking-detail-stack">
         <div className="booking-vehicle-heading">
           <span className="booking-person-avatar booking-vehicle-avatar"><CarFront size={28} aria-hidden="true" /></span>

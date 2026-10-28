@@ -7,8 +7,10 @@ import { requireThat, ApiError } from "../../lib/errors.js";
 import { announce } from "../../lib/events.js";
 import { env } from "../../config/env.js";
 import * as service from "./bookings.service.js";
+import { vehicleReportRoutes } from "./vehicleReport.routes.js";
 export const bookingRoutes = Router();
 bookingRoutes.use(verified);
+bookingRoutes.use(vehicleReportRoutes);
 bookingRoutes.get("/", async (req, res) => {
   const query = z
     .object({ take: takeQuery, cursor: id.optional() })
@@ -245,6 +247,7 @@ bookingRoutes.put(
         "History can only be shared during an accepted booking.",
       );
       const ids = [...new Set(input.recordIds)];
+      requireThat(!input.grant || ids.length > 0, 422, "RECORDS_REQUIRED", "Select the records you want to share.");
       const count = await tx.serviceRecord.count({
         where: {
           id: { in: ids },
@@ -264,6 +267,7 @@ bookingRoutes.put(
         recordIds: ids,
         expiresAt: new Date(Date.now() + 30 * 86400000),
         revokedAt: input.grant ? null : new Date(),
+        grantedAt: input.grant ? new Date() : null,
       };
       await tx.historyGrant.upsert({
         where: { bookingId },
@@ -300,6 +304,7 @@ bookingRoutes.get("/:id/history", roles("MECHANIC"), async (req, res) => {
     !grant ||
     grant.revokedAt ||
     grant.expiresAt < new Date() ||
+    grant.recordIds.length === 0 ||
     ["COMPLETED", "CANCELLED", "REJECTED"].includes(booking.status)
   ) {
     res.json([]);
@@ -312,8 +317,14 @@ bookingRoutes.get("/:id/history", roles("MECHANIC"), async (req, res) => {
         booking: {
           vehicleId: booking.vehicleId,
           customerId: booking.customerId,
+          status: "COMPLETED",
+          NOT: { id: booking.id },
         },
       },
+      include: { booking: { select: { id: true, appointmentAt: true,
+        professional: { select: { name: true } } } } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
     }),
   );
 });

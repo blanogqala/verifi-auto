@@ -199,7 +199,15 @@ export function useLiveSource(enabled: boolean, page: string) {
               customerId: row.customerId,
               professionalId: row.professionalId,
               recordIds: row.grant.recordIds || [],
-              status: row.grant.revokedAt ? 'revoked' : 'active',
+              status: row.grant.revokedAt ? 'revoked'
+                : row.grant.recordIds?.length > 0 && new Date(row.grant.expiresAt).getTime() > Date.now() &&
+                  !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(row.status)
+                  ? 'active'
+                  : row.grant.requestedAt && !row.grant.grantedAt
+                    ? 'requested'
+                    : 'expired',
+              requestedAt: row.grant.requestedAt || null,
+              grantedAt: row.grant.grantedAt || null,
             },
           ]
         : [],

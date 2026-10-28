@@ -827,6 +827,25 @@ test(
         await send("get", `/api/bookings/${bookingId}`, undefined, mechanic)
       ).body;
       assert.equal((await act("start", job.version, mechanic)).status, 200);
+      job = (await send("get", `/api/bookings/${bookingId}`, undefined, mechanic)).body;
+      const workReport = {
+        version: job.version,
+        checkedLineIds: [quoted.body.lines[0].id],
+        notes: "Changed the front brake pads and completed a road test.",
+        mileage: 68421,
+      };
+      assert.equal((await send("put", `/api/bookings/${bookingId}/work-report`, workReport, alice)).status, 403);
+      assert.equal((await send("put", `/api/bookings/${bookingId}/work-report`, {
+        ...workReport, checkedLineIds: [randomUUID()],
+      }, mechanic)).status, 422);
+      const savedWork = await send("put", `/api/bookings/${bookingId}/work-report`, workReport, mechanic);
+      assert.equal(savedWork.status, 200, JSON.stringify(savedWork.body));
+      assert.equal(savedWork.body.items[0].completed, true);
+      assert.equal(savedWork.body.mileage, 68421);
+      assert.equal((await send("put", `/api/bookings/${bookingId}/work-report`, workReport, mechanic)).status, 409);
+      const seenWork = await send("get", `/api/bookings/${bookingId}`, undefined, alice);
+      assert.equal(seenWork.body.workReport.notes, workReport.notes);
+      assert.equal(await db.serviceRecord.count({ where: { bookingId } }), 0);
       const second = await send(
         "post",
         `/api/bookings/${bookingId}/quotes`,
@@ -900,6 +919,12 @@ test(
         .body;
       assert.equal(job.status, "COMPLETED");
       assert.equal(await db.serviceRecord.count({ where: { bookingId } }), 1);
+      const completedRecord = await db.serviceRecord.findUniqueOrThrow({ where: { bookingId } });
+      assert.equal(completedRecord.mileage, 68421);
+      assert.equal(completedRecord.notes, workReport.notes);
+      assert.equal((completedRecord.repairs as any[])[0].completed, true);
+      const ownGarageRecord = await send("get", `/api/vehicles/${car.body.id}`, undefined, alice);
+      assert.equal(ownGarageRecord.body.history[0].mileage, 68421);
       const completedOverview = (
         await send("get", "/api/customer/overview", undefined, alice)
       ).body;
@@ -992,6 +1017,13 @@ test(
       const history = await db.serviceRecord.findUniqueOrThrow({
         where: { bookingId },
       });
+      assert.equal((await send("post", `/api/bookings/${nextId}/var-request`, {}, alice)).status, 403);
+      const varRequested = await send("post", `/api/bookings/${nextId}/var-request`, {}, mechanic);
+      assert.equal(varRequested.status, 200, JSON.stringify(varRequested.body));
+      const requestedBooking = await send("get", `/api/bookings/${nextId}`, undefined, alice);
+      assert.ok(requestedBooking.body.grant.requestedAt);
+      assert.deepEqual(requestedBooking.body.grant.recordIds, []);
+      assert.equal((await send("post", `/api/bookings/${nextId}/var-request`, {}, mechanic)).status, 200);
       assert.deepEqual(
         (
           await send(
@@ -1036,6 +1068,11 @@ test(
         ).body.length,
         1,
       );
+      const sharedVar = await send("get", `/api/bookings/${nextId}/history`, undefined, mechanic);
+      assert.equal(sharedVar.body[0].booking.professional.name, "Workshop Test");
+      const grantedBooking = await send("get", `/api/bookings/${nextId}`, undefined, alice);
+      assert.ok(grantedBooking.body.grant.grantedAt);
+      assert.equal((await send("get", `/api/bookings/${nextId}/history`, undefined, bob)).status, 403);
       assert.equal(
         (
           await send(

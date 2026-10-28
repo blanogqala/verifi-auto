@@ -5,6 +5,7 @@ import './styles/workspace.css';
 import './styles/cards.css';
 import './styles/customer.css';
 import './styles/booking-polish.css';
+import './styles/var.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
 

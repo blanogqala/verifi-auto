@@ -803,6 +803,8 @@ export function Workspace({
               job={scopedJobs.find((item: any) => item.id === mechanicJobId && isAcceptedJob(item)) || null}
               notify={notify}
               onAction={jobAction}
+              live={live}
+              refresh={refresh}
               panel={detailPanel(tab, 'jobs')}
               route={route}
               update={update}

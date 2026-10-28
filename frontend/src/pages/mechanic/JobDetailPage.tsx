@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Siren, MapPin } from 'lucide-react';
+import { Siren, MapPin, ClipboardList, History } from 'lucide-react';
+import { api } from '../../data-access/api';
+import { WorkReportEditor, WorkReportViewer, VarHistoryViewer } from '../../components/jobs/VehicleActivityRecord';
+import { appendNotification } from '../../features/notifications/inbox';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { Card } from '../../components/ui/Card';
@@ -17,10 +20,13 @@ import { sharedRecordsForProfessional } from '../../features/garage/historyAcces
 import { activeMechanicProfessionalId } from '../../features/identity/participants';
 import { unreadMessageCount } from '../../features/messages/conversation';
 
-export function JobDetailPage({ data, go, job, notify, onAction, panel, route, update }: any) {
+export function JobDetailPage({ data, go, job, notify, onAction, panel, route, update, live = false, refresh = () => {} }: any) {
   const [tab, setTab] = useState(panel || 'overview');
-  const [notes, setNotes] = useState('');
-  const [mileage, setMileage] = useState('');
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [varOpen, setVarOpen] = useState(false);
+  const [varRecords, setVarRecords] = useState<any[]>([]);
+  const [varBusy, setVarBusy] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const bookingId = job?.id || '';
@@ -28,8 +34,9 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
     setTab(panel || 'overview');
   }, [bookingId, panel]);
   useEffect(() => {
-    setNotes('');
-    setMileage('');
+    setEditorOpen(false);
+    setReportOpen(false);
+    setVarOpen(false);
     setError('');
     setBusy(false);
   }, [bookingId]);
@@ -53,6 +60,71 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const history = sharedRecordsForProfessional(data, job, professionalId);
   const events = Array.isArray(job.events) ? job.events : [];
   const unread = unreadMessageCount(data, job.id, 'mechanic');
+  const varGrant = (data.historyAccess || []).find((grant: any) => grant.bookingId === job.id);
+  const varGranted = varGrant?.status === 'active';
+  const varPending = varGrant?.status === 'requested';
+  const canRequestVar = ['Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment'].includes(job.status);
+  async function saveWorkReport(values: { checkedLineIds: string[]; notes: string; mileage: number }) {
+    const reportItems = [
+      ...(job.quoteApproved ? [{ quoteNumber: 1, items: job.items }] : []),
+      ...(job.additionalQuotes || []).filter((q: any) => q.quoteApproved),
+    ].flatMap((quote: any) => (quote.items || []).filter((item: any) => item.approved !== false && item.id).map((item: any) => ({
+      id: item.id, description: item.name || item.description, quoteNumber: quote.quoteNumber || 1,
+      completed: values.checkedLineIds.includes(item.id), quantity: item.quantity || 1,
+    })));
+    if (live) {
+      await api('/bookings/' + encodeURIComponent(job.id) + '/work-report', 'PUT', { ...values, version: job.version });
+      refresh();
+    } else {
+      const now = new Date().toISOString();
+      const result = update((current: any) => ({
+        ...current,
+        jobs: (current.jobs || []).map((entry: any) => entry.id === job.id
+          ? { ...entry, workReport: { items: reportItems, notes: values.notes, mileage: values.mileage, updatedAt: now }, workReportUpdatedAt: now }
+          : entry),
+      }));
+      if (result === false) throw Error('Could not save the work report.');
+      if (result instanceof Promise) await result;
+    }
+    notify('Work report saved to this booking and the vehicle history.');
+  }
+  async function requestVar() {
+    if (varBusy || !canRequestVar) return;
+    setVarBusy(true); setError('');
+    try {
+      if (live) {
+        await api('/bookings/' + encodeURIComponent(job.id) + '/var-request', 'POST', {});
+        refresh();
+      } else {
+        const current = data.historyAccess || [];
+        const next = {
+          id: 'grant-' + job.id, bookingId: job.id,
+          customerId: job.customerId, professionalId, vehicleId: job.vehicleId,
+          recordIds: [], status: 'requested', requestedAt: new Date().toISOString(),
+        };
+        const saved = update((state: any) => appendNotification({
+          ...state, historyAccess: [next, ...(state.historyAccess || []).filter((grant: any) => grant.bookingId !== job.id)],
+        }, { recipientRole: 'customer', recipientId: job.customerId, type: 'account',
+          title: 'Workshop requested VAR access', message: 'Review the Vehicle Activity Record access request in your booking.',
+          bookingId: job.id, panel: 'overview', createdAt: new Date().toISOString() }));
+        if (saved === false) throw Error('Could not save the request.');
+        if (saved instanceof Promise) await saved;
+      }
+      notify('VAR access requested. The customer must approve which service records you can see.');
+    } catch (reason: any) { setError(reason?.message || 'Could not request VAR access.'); }
+    finally { setVarBusy(false); }
+  }
+  async function viewVar() {
+    setVarBusy(true); setError('');
+    try {
+      const records = live
+        ? await api<any[]>('/bookings/' + encodeURIComponent(job.id) + '/history')
+        : sharedRecordsForProfessional(data, job, professionalId);
+      setVarRecords(records);
+      setVarOpen(true);
+    } catch (reason: any) { setError(reason?.message || 'Could not load shared vehicle records.'); }
+    finally { setVarBusy(false); }
+  }
 
   function choose(next: string) {
     setTab(next);
@@ -124,25 +196,14 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                 </button>
               ) : null}
               {job.status === 'In progress' ? (
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const saved = run('complete', { completionNotes: notes, completedMileage: mileage });
-                    if (!saved) setError('Could not record the completed work. Your notes are still here.');
-                  }}
-                >
-                  <label>
-                    Completed work
-                    <textarea value={notes} onChange={(event) => setNotes(event.target.value)} required />
-                  </label>
-                  <label>
-                    Mileage (km)
-                    <input inputMode="numeric" value={mileage} onChange={(event) => setMileage(event.target.value)} required />
-                  </label>
-                  <button className="primary" type="submit" disabled={busy}>
-                    Mark work finished
+                <div className="var-work-actions">
+                  <span className="var-work-in-progress"><ClipboardList size={18}/> Work is in progress</span>
+                  <p className="booking-detail-hint">Record completed quotation items, technician notes and vehicle mileage. The work report stays editable until the job is finished.</p>
+                  <button className="primary" type="button" onClick={() => setEditorOpen(true)}>
+                    {job.workReport ? 'Edit work report' : 'Add completed work'}
                   </button>
-                </form>
+                  {job.workReport && <button className="secondary" type="button" onClick={() => setReportOpen(true)}>Review submitted work</button>}
+                </div>
               ) : null}
               {job.status === 'Awaiting payment' ? (
                 <>
@@ -184,7 +245,12 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
           </div>
           <div className="split-side">
             <CustomerDetailsCard job={{ ...job, customerName: customer }} customer={customerRecord} />
-            <VehicleDetailsCard job={job} vehicle={vehicle} />
+            <VehicleDetailsCard job={job} vehicle={vehicle} headerAction={canRequestVar ? (
+              <button type="button" className="var-header-action" disabled={varBusy || (varPending && !varGranted)}
+                onClick={() => void (varGranted ? viewVar() : requestVar())}>
+                <History size={16}/>{varGranted ? 'View VAR' : varPending ? 'VAR pending' : 'Request VAR'}
+              </button>
+            ) : undefined} />
             {history.length ? (
               <DetailCard quiet title="Service history">
                 {history.map((record: any) => (
@@ -218,6 +284,9 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
           />
         </DetailCard>
       </DetailPanel>
+      {editorOpen && <WorkReportEditor job={job} onSave={saveWorkReport} onClose={() => setEditorOpen(false)} />}
+      {reportOpen && job.workReport && <WorkReportViewer report={job.workReport} workshop={job.provider} onClose={() => setReportOpen(false)} />}
+      {varOpen && <VarHistoryViewer records={varRecords} onClose={() => setVarOpen(false)} />}
     </div>
   );
 }

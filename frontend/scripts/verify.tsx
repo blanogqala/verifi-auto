@@ -1053,7 +1053,7 @@ assert.equal(garageHtml.split('View details').length - 1, 1);
 const bookingHtml = screen('customer', 'bookings/VA-2026-1042');
 assert.ok(bookingHtml.includes('Front brake pads'));
 assert.ok(bookingHtml.includes('No dated timeline was stored'));
-assert.ok(bookingHtml.includes('Choose which service records this professional can see'));
+assert.ok(bookingHtml.includes('Choose which completed service records this professional can see'));
 assert.ok(bookingHtml.includes('Activity history'));
 assert.equal(bookingHtml.includes('Next step'), false);
 assert.equal(bookingHtml.split('progress-list').length - 1, 1);
