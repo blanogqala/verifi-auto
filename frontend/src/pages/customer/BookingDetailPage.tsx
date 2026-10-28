@@ -24,7 +24,7 @@ function ownerId(job: any, fallback: string) {
   return typeof job?.customerId === 'string' && job.customerId ? job.customerId : fallback;
 }
 
-export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview', focusSection = '', setDialog, update, bookingId, professionals = [] }: any) {
+export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview', focusSection = '', setDialog, update, bookingId, professionals = [], live = false, refresh = () => {} }: any) {
   const customerId = data?.settings?.id || demoCustomerId;
   const job = (data.jobs || []).find((item: any) => item.id === bookingId);
   const [tab, setTab] = useState(panel || 'overview');
@@ -130,7 +130,7 @@ export function BookingDetailPage({ data, go, notify, onPanel, panel = 'overview
             professional={professional}
             onView={job.professionalId ? () => followDetail(go, here, 'dashboard/find/' + encodeURIComponent(job.professionalId)) : undefined}
           >
-            <ServiceConfirmationCard job={job} customerId={customerId} data={data} update={update} notify={notify}/>
+            <ServiceConfirmationCard job={job} customerId={customerId} data={data} update={update} notify={notify} live={live} refresh={refresh}/>
           </ProfessionalDetailsCard>
         </div>
       <details ref={varDetails} className={'fold var-customer-panel' + (varAttention ? ' has-unread-attention' : '')}

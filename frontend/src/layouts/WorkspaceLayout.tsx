@@ -821,6 +821,8 @@ export function Workspace({
               panel={detailPanel(tab, 'bookings')}
               setDialog={setDialog}
               update={update}
+              live={live}
+              refresh={refresh}
             />
           )}
           {!locked && appointmentDetail && role === 'mechanic' && (
