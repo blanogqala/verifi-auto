@@ -395,7 +395,8 @@ bookingRoutes.put("/:id/review", roles("CUSTOMER"), async (req, res) => {
       "INVALID_STATE",
       "Reviews are available after completion.",
     );
-    return tx.review.upsert({
+    const previous = await tx.review.findUnique({ where: { bookingId: booking.id } });
+    const review = await tx.review.upsert({
       where: { bookingId: booking.id },
       create: {
         ...input,
@@ -405,6 +406,22 @@ bookingRoutes.put("/:id/review", roles("CUSTOMER"), async (req, res) => {
       },
       update: input,
     });
+    // Notify once on creation. An edit does not generate a second "new review" alert.
+    if (!previous) {
+      const professional = await tx.professional.findUniqueOrThrow({
+        where: { id: booking.professionalId },
+        select: { userId: true },
+      });
+      await tx.notification.create({
+        data: {
+          userId: professional.userId,
+          topic: "CUSTOMER_REVIEW",
+          resourceId: booking.id,
+          title: `New customer review: ${input.rating}/5 stars`,
+        },
+      });
+    }
+    return review;
   });
   res.json(result);
 });

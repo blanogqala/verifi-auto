@@ -27,7 +27,16 @@ export function JobCard({
   audience = '',
   person = '',
   attention = 0,
+  review = null,
 }: any) {
+  const completed = String(j.status).toLowerCase() === 'completed';
+  const reviewed = completed && review && Number(review.rating) >= 1 && Number(review.rating) <= 5;
+  const ratingLabel = reviewed ? `Customer rating: ${review.rating}/5 stars` : '';
+  const ratingLine = reviewed ? (
+    <span className="completed-job-rating" aria-label={ratingLabel} style={{ color: 'var(--brand, #9658e8)', fontWeight: 700 }}>
+      {'★'.repeat(Number(review.rating))}{'☆'.repeat(5 - Number(review.rating))} · {review.rating}/5
+    </span>
+  ) : null;
   const vehicleName = j.vehicleLabel || j.vehicle || 'Vehicle not recorded';
   const when = `${j.date ? formatDay(j.date) : 'Date not recorded'}${j.time ? ` at ${j.time}` : ''}`;
   const professional = j.provider || 'Professional not recorded';
@@ -53,6 +62,7 @@ export function JobCard({
             {j.kind === 'EMERGENCY' && <span className="roadside-card-location"><MapPin size={13}/>{j.roadsideAddress || 'Roadside location in request'}</span>}
             {registration ? <span>{registration}</span> : null}
             <span className="reference">{bookingReference(j)}</span>
+            {ratingLine}
             {quoteAmount ? <span className="mechanic-job-amount">Quote {quoteAmount}</span> : null}
           </span>
           <Status value={j.status} />
@@ -75,6 +85,7 @@ export function JobCard({
             <strong>{vehicleName}</strong>
             <span>{professional}</span>
             <span>{when}</span>
+            {ratingLine}
           </span>
           <Status value={j.status} />
           {attention > 0 && <span className="booking-attention-dot" title="Unread booking update" aria-label="Unread booking update" />}
@@ -96,6 +107,7 @@ export function JobCard({
         <Status value={j.status} />
       </div>
       <h3>{vehicleName}</h3>
+      {ratingLine}
       {registration ? <p className="job-registration">{registration}</p> : null}
       <p>
         <Car size={15} aria-hidden="true" />

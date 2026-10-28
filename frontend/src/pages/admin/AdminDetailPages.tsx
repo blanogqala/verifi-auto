@@ -458,8 +458,13 @@ export function ProfessionalAdminDetailPage({ record, data, route, connected }: 
       {section === 'Reviews' && <DetailCard title="Customer reviews" icon={<Star size={20} />}>
         {reviews.length ? reviews.map((review: any) =>
           <article className="admin-review" key={review.id}>
-            <b>{review.rating} / 5</b>
+            <strong>{name}</strong>
+            <p><b>Customer: {review.customer?.name || (data.customers || []).find((customer: any) => customer.id === review.customerId)?.name || 'Customer name unavailable'}</b></p>
+            <p aria-label={`Rated ${review.rating} out of 5 stars`} style={{ color: '#9658e8', fontWeight: 700 }}>
+              {'★'.repeat(Number(review.rating))}{'☆'.repeat(5 - Number(review.rating))} · {review.rating} / 5
+            </p>
             <p>{review.body || review.text || 'No written review.'}</p>
+            {review.booking?.vehicle && <small>Vehicle: {[review.booking.vehicle.year, review.booking.vehicle.make, review.booking.vehicle.model].filter(Boolean).join(' ')}</small>}
             <small>{review.createdAt ? formatWhen(review.createdAt) : 'Date not recorded'}</small>
           </article>,
         ) : <p>No customer reviews yet.</p>}
