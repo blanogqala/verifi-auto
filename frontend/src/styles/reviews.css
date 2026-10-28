@@ -1,0 +1,31 @@
+/* Verifi Auto · workshop reputation and verified completion reviews */
+.review-rating-inline{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;color:#be7b16;font-size:13px;font-weight:650}
+.review-rating-inline strong{color:var(--ink);font-size:inherit}
+.review-rating-max,.review-rating-count{color:var(--muted);font-size:11px;font-weight:500}
+.review-rating-inline.is-compact{font-size:12px;width:max-content;padding:5px 9px;background:color-mix(in srgb,#ebb86e 16%,var(--surface));border:1px solid color-mix(in srgb,#d49943 22%,var(--line));border-radius:999px;gap:4px}
+.mechanic-review-panel{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin:9px 0 3px}
+.mechanic-review-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:37px;font-weight:700}
+.mechanic-review-button svg{color:#c68b26}
+.workshop-reviews-dialog{max-width:680px;}
+.workshop-reviews-dialog .var-modal-body{padding:20px;max-height:min(66vh,650px);overflow-y:auto}
+.workshop-reviews-summary{display:flex;align-items:center;gap:24px;padding:21px;border:1px solid var(--line);border-radius:16px;background:var(--surface2)}
+.workshop-reviews-summary>div:first-child{display:flex;flex-direction:column;align-items:center;border-right:1px solid var(--line);padding-right:24px;min-width:105px}
+.workshop-reviews-summary>div:first-child strong{font-size:44px;line-height:1;color:var(--soft);font-variant-numeric:tabular-nums}
+.workshop-reviews-summary span,.workshop-reviews-summary p{font-size:12px;color:var(--muted);margin:6px 0 0}
+.workshop-review-five{display:flex;align-items:center;gap:7px;color:var(--soft);font-weight:700}
+.workshop-review-five svg{color:#bf8425}
+.workshop-review-feed{display:grid;gap:13px;margin-top:17px}
+.workshop-review-entry{display:grid;gap:9px;padding:16px;border:1px solid var(--line);background:var(--surface);border-radius:13px}
+.workshop-review-entry-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.workshop-review-entry-head>div:first-child{display:grid;gap:4px}
+.workshop-review-entry-head strong{font-size:14px}
+.workshop-review-entry-head small,.workshop-review-entry>small{color:var(--muted);font-size:12px}
+.workshop-review-entry p{margin:0;line-height:1.6;overflow-wrap:anywhere}
+.workshop-review-entry .text-link{justify-self:start;display:inline-flex;align-items:center;gap:5px}
+.workshop-review-empty{text-align:center;display:grid;gap:8px;justify-items:center;padding:35px 15px;color:var(--muted)}
+.workshop-review-empty strong{color:var(--ink)}
+.workshop-review-empty p{margin:0}
+.admin-review-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.admin-review-head strong{font-size:14px}
+.admin-customer-booking-side .review-rating-inline{margin-top:5px}
+@media(max-width:600px){.workshop-reviews-summary{gap:14px;padding:14px}.workshop-reviews-summary>div:first-child{min-width:80px;padding-right:13px}.workshop-reviews-summary>div:first-child strong{font-size:35px}.workshop-reviews-dialog .var-modal-body{padding:13px}}
