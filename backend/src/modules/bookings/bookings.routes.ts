@@ -263,6 +263,9 @@ bookingRoutes.put(
         "NOT_FOUND",
         "Choose service records belonging to this vehicle.",
       );
+      const previousGrant = await tx.historyGrant.findUnique({ where: { bookingId } });
+      const noHistoryResponse = !input.grant && Boolean(previousGrant?.requestedAt) &&
+        !previousGrant?.grantedAt && !previousGrant?.recordIds.length;
       const data = {
         recordIds: ids,
         expiresAt: new Date(Date.now() + 30 * 86400000),
@@ -281,7 +284,9 @@ bookingRoutes.put(
         bookingId,
         input.grant
           ? "Vehicle history shared"
-          : "Vehicle history access revoked",
+          : noHistoryResponse
+            ? "No previous vehicle history available to share"
+            : "Vehicle history access revoked",
       );
     });
     res.json({
