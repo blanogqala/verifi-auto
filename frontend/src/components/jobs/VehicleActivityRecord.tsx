@@ -24,16 +24,29 @@ function ReportDialog({ title, subtitle, children, onClose }: {
   title: string; subtitle: string; children: React.ReactNode; onClose: () => void;
 }) {
   const closeButton = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeRef.current(); return; }
+      if (event.key !== 'Tab') return;
+      const focusable = [...(panel.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),a[href]'
+      ) || [])].filter((item) => item.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
     document.addEventListener('keydown', onKey);
     closeButton.current?.focus();
     return () => { document.removeEventListener('keydown', onKey); previous?.focus?.(); };
-  }, [onClose]);
+  }, []);
   return (
     <div className="var-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <section className="var-modal" role="dialog" aria-modal="true" aria-label={title}>
+      <section ref={panel} className="var-modal" role="dialog" aria-modal="true" aria-label={title}>
         <header className="var-modal-head">
           <div><span className="var-eyebrow"><Wrench size={16}/> Verifi Auto · Vehicle service record</span>
             <h2>{title}</h2><p>{subtitle}</p>
