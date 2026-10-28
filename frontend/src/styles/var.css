@@ -144,3 +144,5 @@
  .booking-detail .var-customer-panel > :not(summary) {margin-left:14px;margin-right:14px;}
  .var-activity-metadata > span {flex:1 1 140px;}
 }
+
+.var-header-attention { display:inline-flex;align-items:center;gap:9px; }
