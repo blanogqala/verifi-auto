@@ -48,3 +48,22 @@
 .booking-payment-gate.is-ready {border-color:#3fa475}
 .booking-dispute-warning {border-color:#c99142}
 @media(max-width:600px) {.service-confirmation-card {padding:12px}.booking-payment-gate button {justify-self:stretch}}
+
+/* Customer's post-completion rating dialog reuses the accessible VAR modal shell. */
+.service-rating-dialog {max-width:570px;}
+.service-rating-dialog .var-modal-body {padding:23px;}
+.service-rating-dialog .service-review-form {gap:17px;}
+.service-rating-dialog .service-stars {justify-content:flex-start;gap:5px;flex-wrap:wrap;}
+.service-rating-dialog .service-stars label {width:48px;height:48px;border:1px solid var(--line);border-radius:12px;}
+.service-rating-dialog .service-stars label:hover {border-color:var(--purple);background:var(--tint);}
+.service-rating-dialog .service-stars label:has(input:checked) {border-color:var(--purple);background:var(--tint);}
+.service-rating-dialog .service-review-form textarea {font-size:14px;line-height:1.6;min-height:110px;}
+.service-rating-actions {display:flex;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap;}
+.service-rating-actions button {min-height:43px;padding:10px 17px;}
+.service-rating-existing {display:flex;align-items:center;gap:7px;font-size:12px;line-height:1.5;color:var(--soft);overflow-wrap:anywhere;}
+.service-confirmation-card.is-complete > .primary {justify-self:start;min-height:43px;}
+@media(max-width:600px) {
+  .service-rating-dialog .var-modal-body {padding:16px;}
+  .service-rating-actions button {flex:1 1 145px;}
+  .service-rating-dialog .service-stars label {width:43px;height:43px;}
+}
