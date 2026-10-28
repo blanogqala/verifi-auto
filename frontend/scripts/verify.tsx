@@ -1763,8 +1763,8 @@ assert.equal(customerReturnAllowed('dashboard/jobs/VA-1'), false);
 assert.equal(rememberReturn({}, 'dashboard/find/pro-precision-motorworks', 'dashboard/bookings/VA-2026-1042')['dashboard/find/pro-precision-motorworks'], 'dashboard/bookings/VA-2026-1042');
 
 // Include the original test line when a negative transition assertion fails.
-function checkThrowsAt(line: number, ...args: Parameters<typeof assert.throws>) {
-  try { assert.throws(...args); }
+function checkThrowsAt(line: number, ...args: any[]) {
+  try { (assert.throws as (...values: any[]) => void)(...args); }
   catch (reason) { throw new Error('Expected rejected action at verify.tsx:' + line + ' — ' + String(reason)); }
 }
 const mechanicActor = { role: 'mechanic' as const, id: 'pro-precision-motorworks' };
