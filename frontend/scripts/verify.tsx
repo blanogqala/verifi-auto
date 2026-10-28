@@ -1,3 +1,4 @@
+import { vehicleVarEntries, groupByWorkshop, groupedVehicleBookings } from '../src/features/garage/vehicleTimeline';
 import { bookingNotificationSection, unreadBookingNotices, unreadBookingIds } from '../src/features/notifications/inbox';
 import { mapNotification } from '../src/data-access/map';
 import { liveDirectoryHits, mapDirectoryProfessional } from '../src/data-access/directory';
@@ -1110,7 +1111,33 @@ assert.ok(!vehicleHtml.includes('vehicle-canvas-host'));
 assert.ok(vehicleHtml.includes('Licence disc expiry'));
 assert.ok(vehicleHtml.includes('vehicle-detail-tab-overview'));
 assert.ok(vehicleHtml.includes('vehicle-detail-tab-history'));
-assert.ok(vehicleHtml.includes('Archive vehicle') || vehicleHtml.includes('Remove vehicle'));
+assert.ok(vehicleHtml.includes('Delete vehicle'));
+assert.ok(!vehicleHtml.includes('Archive vehicle'));
+assert.ok(vehicleHtml.includes('garage-detail-grid'));
+assert.ok(vehicleHtml.indexOf('Vehicle facts') < vehicleHtml.indexOf('Care reminders'));
+assert.ok(vehicleHtml.includes('Vehicle Activity Record'));
+assert.ok(vehicleHtml.includes('Booking history'));
+assert.ok(vehicleHtml.includes('Precision Motorworks'));
+const garageEntries = vehicleVarEntries(
+  [{ id: 'book-1', provider: 'Workshop A', status: 'Completed', date: '2026-10-20',
+    workReport: { items: [{ id: 'x', description: 'Brake pads', completed: true }], notes: 'New pads', mileage: 100, updatedAt: '2026-10-20' } }],
+  [{ id: 'rec-1', bookingId: 'book-1', provider: 'Workshop A', date: '2026-10-21', notes: 'New pads' },
+   { id: 'rec-2', provider: 'Workshop B', date: '2026-09-10', notes: 'Oil changed' }],
+);
+assert.equal(garageEntries.length, 2, 'A completed booking should not appear twice in VAR');
+assert.equal(garageEntries[0].kind, 'report');
+assert.equal(garageEntries[0].final, true);
+assert.equal(garageEntries[0].workshop, 'Workshop A');
+assert.equal(groupByWorkshop(garageEntries).length, 2);
+assert.equal(groupedVehicleBookings([
+  { id: 'a', provider: 'Workshop A', date: '2026-09-01' },
+  { id: 'b', provider: 'Workshop A', date: '2026-10-01' },
+  { id: 'c', provider: 'Workshop B', date: '2026-08-01' },
+])[0].entries[0].id, 'b');
+const provisionalVar = vehicleVarEntries([{ id: 'draft-1', provider: 'Workshop A', status: 'In progress',
+  workReport: { items: [{ description: 'Oil change', completed: false }], notes: 'Checking', updatedAt: '2026-10-21' } }], []);
+assert.equal(provisionalVar[0].final, false);
+assert.equal(provisionalVar[0].title, 'Work report · Not final');
 const baseCss = readFileSync(join(process.cwd(), 'src/styles/base.css'), 'utf8');
 assert.equal(/^header \{/m.test(baseCss), false);
 assert.ok(baseCss.includes('header.site-header'));
