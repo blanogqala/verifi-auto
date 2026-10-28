@@ -181,6 +181,9 @@ model Booking {
   status BookingStatus @default(REQUESTED)
   rejectionReason String @default("")
   completionNotes String @default("")
+  // Mechanic-authored report, editable only while the booking is in progress.
+  workReport Json?
+  workReportUpdatedAt DateTime?
   version Int @default(0)
   clientRequestId String @db.Uuid
   createdAt DateTime @default(now())
@@ -270,6 +273,8 @@ model HistoryGrant {
   bookingId String @unique @db.Uuid
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
   recordIds String[]
+  requestedAt DateTime?
+  grantedAt DateTime?
   expiresAt DateTime
   revokedAt DateTime?
 }
