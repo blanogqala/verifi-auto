@@ -2293,7 +2293,7 @@ assert.notEqual(paymentRows[0].paymentReference, paymentRows[1].paymentReference
 assert.equal(paymentRows[0].paidAt, earlyStarted.job.paidAt);
 assert.equal(awaitingCustomerPayments([multiPaid.job]).length, 0);
 assert.equal(multiPaid.data.records.filter((record: any) => record.id === multiPaid.job.id).length, 1);
-assert.throws(() => applyJobTransition(multiPaid.data, outstandingExtra, 'pay', {}, customerActor));
+assert.throws(() => applyJobTransition(multiPaid.data, bookingQuotations(multiPaid.job)[1], 'pay', {}, customerActor));
 assert.throws(() => applyJobTransition(multiPaid.data, newQuotation(multiPaid.job, 'late-quote'), 'quote', extraQuotePayload, mechanicActor));
 assert.ok(demoDocumentHtml(paymentRows[1], 'invoice').includes('Quotation 2'));
 assert.ok(!demoDocumentHtml(paymentRows[1], 'invoice').includes('Pads'));
