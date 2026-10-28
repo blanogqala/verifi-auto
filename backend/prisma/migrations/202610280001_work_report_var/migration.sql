@@ -4,3 +4,5 @@ ALTER TABLE "Booking"
 ALTER TABLE "HistoryGrant"
   ADD COLUMN "requestedAt" TIMESTAMP(3),
   ADD COLUMN "grantedAt" TIMESTAMP(3);
+
+ALTER TABLE "ServiceRecord" ADD COLUMN "mileage" INTEGER;
