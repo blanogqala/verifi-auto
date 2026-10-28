@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Calendar,
+  History,
+  ClipboardCheck,
   Check,
   FileText,
   MessageSquare,
@@ -40,6 +42,8 @@ const icons: Record<string, any> = {
   Payments: Wallet,
   Messages: MessageSquare,
   Account: Bell,
+  'Vehicle history': History,
+  'Work reports': ClipboardCheck,
   Updates: Bell,
 };
 
@@ -278,7 +282,11 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
                             className="text-link"
                             onClick={() => openDestination(note)}
                           >
-                            Open
+                            {bookingNotificationSection(note) === 'var'
+                              ? 'Review vehicle history'
+                              : bookingNotificationSection(note) === 'activity'
+                                ? 'View work report'
+                                : 'Open'}
                           </button>
                         ) : null}
                       </div>
