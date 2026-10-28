@@ -22,6 +22,8 @@ export type WorkspaceSidebarProps = {
   tab: string;
   unread: number;
   appointmentAttention?: number;
+  bookingAttention?: number;
+  jobAttention?: number;
   drawer: boolean;
 };
 
@@ -47,6 +49,7 @@ function NavButton({
   tabIndex,
   unread,
   appointmentAttention = 0,
+  attention = 0,
 }: {
   id: string;
   label: string;
@@ -55,6 +58,7 @@ function NavButton({
   tabIndex?: number;
   unread: number;
   appointmentAttention?: number;
+  attention?: number;
 }) {
   const Icon = icons[id];
   return (
@@ -70,6 +74,10 @@ function NavButton({
       {id === 'notifications' && unread > 0 && <span className="nav-count">{unread}</span>}
       {id.startsWith('appointments') && appointmentAttention > 0 && (
         <span className="nav-attention-dot" title={`${appointmentAttention} new appointment request(s)`} aria-label={`${appointmentAttention} new appointment request(s)`} />
+      )}
+      {attention > 0 && (
+        <span className="nav-attention-dot" title={`${attention} unread booking update(s)`}
+          aria-label={`${attention} booking(s) need attention`} />
       )}
     </button>
   );
@@ -135,6 +143,8 @@ export function WorkspaceSidebar({
   tab,
   unread,
   appointmentAttention = 0,
+  bookingAttention = 0,
+  jobAttention = 0,
   drawer,
 }: WorkspaceSidebarProps) {
   const dialog = drawer && side;
@@ -225,6 +235,7 @@ export function WorkspaceSidebar({
               selected={itemSelected(id, tab)}
               unread={unread}
               appointmentAttention={merchant ? appointmentAttention : 0}
+              attention={customer && id === 'bookings' ? bookingAttention : merchant && id === 'jobs' ? jobAttention : 0}
               onClick={() => route(id)}
             />
           );
