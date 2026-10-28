@@ -97,6 +97,7 @@ export function useLiveSource(enabled: boolean, page: string) {
       : [];
     next.notifications = notes.map((note) => mapNotification(note, role || 'customer'));
     let rawBookings: any[] = [];
+    let mechanicReviews: any = null;
     if (verified && role === 'customer') {
       const [vehicles, bookings] = await Promise.all([
         readOrEmpty<any[]>('/vehicles', [], problems),
@@ -111,11 +112,14 @@ export function useLiveSource(enabled: boolean, page: string) {
       next.jobs = bookings.map(mapBooking);
     }
     if (verified && role === 'mechanic') {
-      const [bookings, me, docs] = await Promise.all([
+      const [bookings, me, docs, reviewFeed] = await Promise.all([
         readOrEmpty<any[]>('/bookings?take=100', [], problems),
         readOrEmpty<any>('/professional/me', null, problems),
         readOrEmpty<any[]>('/documents', [], problems),
+        readOrEmpty<any>('/professional/me/reviews', null, problems),
       ]);
+      mechanicReviews = reviewFeed;
+      if (reviewFeed) next.mechanicReviewSummary = { average: reviewFeed.average, count: reviewFeed.count };
       rawBookings = bookings;
       next.jobs = bookings.map(mapBooking);
       if (me) {
@@ -229,6 +233,14 @@ export function useLiveSource(enabled: boolean, page: string) {
           ]
         : [],
     );
+    if (role === 'mechanic' && mechanicReviews) {
+      next.customerReviews = (mechanicReviews.reviews || []).map((review: any) => ({
+        ...review,
+        text: review.body,
+        customerName: review.customerName,
+        photos: [],
+      }));
+    }
     setData(next);
     setError('');
     if (problems.length) assignError(setResourceErrors, 'workspace', problems[0]);
