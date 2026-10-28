@@ -110,9 +110,9 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         };
         const saved = update((state: any) => appendNotification({
           ...state, historyAccess: [next, ...(state.historyAccess || []).filter((grant: any) => grant.bookingId !== job.id)],
-        }, { recipientRole: 'customer', recipientId: job.customerId, type: 'account',
+        }, { recipientRole: 'customer', recipientId: job.customerId, type: 'var-request', topic: 'history-access',
           title: 'Workshop requested VAR access', message: 'Review the Vehicle Activity Record access request in your booking.',
-          bookingId: job.id, panel: 'overview', createdAt: new Date().toISOString() }));
+          bookingId: job.id, panel: 'var', createdAt: new Date().toISOString() }));
         if (saved === false) throw Error('Could not save the request.');
         if (saved instanceof Promise) await saved;
       }
