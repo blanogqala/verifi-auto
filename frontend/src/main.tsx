@@ -13,3 +13,5 @@ import './styles/booking-lifecycle.css';
 createRoot(document.getElementById('root')!).render(<App />);
 
 import './styles/roadside.css';
+
+import './styles/reviews.css';
