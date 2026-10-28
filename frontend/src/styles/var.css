@@ -85,3 +85,80 @@
 @media(prefers-reduced-motion:reduce) {
   .var-check-item { transition:none; }
 }
+
+/* Actionable notification breadcrumbs and in-page customer work history. */
+.booking-detail .var-customer-panel {
+  border:1px solid var(--card-border);
+  border-radius:16px;
+  background:radial-gradient(ellipse at top right,color-mix(in srgb,var(--purple) 10%,transparent),transparent 70%),var(--card-background);
+  overflow:hidden;
+}
+.booking-detail .var-customer-panel > summary {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  padding:17px 19px;
+  font-weight:750;
+  font-size:14px;
+}
+.booking-detail .var-customer-panel > summary:focus-visible { outline:2px solid var(--purple);outline-offset:-4px; }
+.booking-detail .var-customer-panel.has-unread-attention {
+  border-color:#ee9b2e;
+  box-shadow:0 0 0 1px color-mix(in srgb,#ee9b2e 35%,transparent);
+}
+.var-attention-dot {
+  width:10px;height:10px;flex:0 0 10px;border-radius:50%;
+  display:inline-block;background:#f5a333;box-shadow:0 0 0 4px rgb(245 163 51 / 15%);
+}
+.booking-detail .var-customer-panel > :not(summary) { margin-left:19px;margin-right:19px; }
+.booking-detail .var-customer-panel > :last-child { margin-bottom:19px; }
+.var-panel-help { color:var(--muted);font-size:12px;line-height:1.55; }
+.var-empty-history {
+  padding:15px;
+  border:1px dashed color-mix(in srgb,var(--purple) 40%,var(--line));
+  border-radius:12px;
+  background:var(--surface2);
+}
+.var-empty-history strong { display:block;font-size:13px;line-height:1.4; }
+.var-empty-history p { margin:6px 0 0;color:var(--muted);font-size:12px;line-height:1.6; }
+.var-no-records-button { display:block;margin-top:10px; }
+.var-activity-report { display:grid;gap:15px;padding:1px 0 18px; }
+.var-activity-summary { display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap; }
+.var-activity-identity { display:flex;align-items:center;gap:11px; }
+.var-activity-identity > span:last-child { display:grid;gap:3px; }
+.var-activity-identity strong { font-size:14px; }
+.var-activity-identity small { font-size:11px;color:var(--muted); }
+.var-activity-icon { width:45px;height:45px;display:grid;place-items:center;background:var(--tint);color:var(--soft);border-radius:13px; }
+.var-activity-status { padding:8px 10px;border-radius:999px;background:var(--tint);color:var(--soft);font-size:11px;font-weight:750; }
+.var-activity-metadata { display:flex;flex-wrap:wrap;gap:9px; }
+.var-activity-metadata > span { display:inline-flex;align-items:center;gap:7px;padding:9px 12px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;font-size:12px; }
+.var-activity-metadata svg { color:var(--soft); }
+.var-activity-empty { display:flex;gap:13px;align-items:flex-start;padding:15px 0 20px; }
+.var-activity-empty > svg { flex-shrink:0;color:var(--soft); }
+.var-activity-empty strong { font-size:13px; }
+.var-activity-empty p { margin:5px 0 0;font-size:12px;color:var(--muted); }
+.var-activity-report .var-report-notes { line-height:1.65; }
+@media(max-width:600px){
+ .booking-detail .var-customer-panel > summary {padding:15px;}
+ .booking-detail .var-customer-panel > :not(summary) {margin-left:14px;margin-right:14px;}
+ .var-activity-metadata > span {flex:1 1 140px;}
+}
+
+.var-header-attention { display:inline-flex;align-items:center;gap:9px; }
+
+/* Booking-card dots supplement the pre-existing appointment request indicators. */
+.booking-card .booking-card-hit { position:relative; }
+.booking-card .booking-attention-dot {
+  display:block;
+  position:absolute;
+  top:12px;
+  right:12px;
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  background:#f39b38;
+  box-shadow:0 0 0 4px rgb(243 155 56 / 20%);
+  pointer-events:none;
+  z-index:1;
+}

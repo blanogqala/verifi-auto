@@ -11,6 +11,8 @@
  * server. See features/sync/realtimeContract.ts.
  */
 
+import { appendNotification } from '../notifications/inbox';
+
 const openStatuses = [
   'Confirmed',
   'Awaiting approval',
@@ -77,7 +79,16 @@ export function grantHistoryAccess(
     next,
     ...grantsOf(data).filter((grant: any) => grant?.bookingId !== job.id || grant?.status !== 'active'),
   ];
-  return { ...data, historyAccess };
+  return appendNotification({ ...data, historyAccess }, {
+    recipientRole: 'mechanic',
+    recipientId: job.professionalId,
+    type: 'account',
+    title: 'Vehicle history access granted', topic: 'history-access',
+    message: 'The customer shared selected service records for this booking.',
+    bookingId: job.id, panel: 'overview',
+    eventKey: 'var-granted:' + job.id + ':' + now,
+    createdAt: now,
+  });
 }
 
 export function revokeHistoryAccess(data: any, grantId: string, customerId: string, now = new Date().toISOString()) {
@@ -86,11 +97,23 @@ export function revokeHistoryAccess(data: any, grantId: string, customerId: stri
     if (grant?.id !== grantId) return grant;
     found = true;
     if (grant.customerId !== customerId) throw Error('Only the customer who granted access can revoke it.');
-    if (grant.status !== 'active') return grant;
-    return { ...grant, status: 'revoked', revokedAt: now };
+    if (grant.status !== 'active' && grant.status !== 'requested') return grant;
+    return { ...grant, status: grant.status === 'requested' ? 'declined' : 'revoked', revokedAt: now };
   });
   if (!found) throw Error('Access grant not found.');
-  return { ...data, historyAccess };
+  const changed = grantsOf(data).find((grant: any) => grant.id === grantId);
+  const response = { ...data, historyAccess };
+  if (!changed || !['active', 'requested'].includes(changed.status)) return response;
+  return appendNotification(response, {
+    recipientRole: 'mechanic',
+    recipientId: changed.professionalId,
+    type: 'account',
+    title: changed.status === 'requested' ? 'No vehicle history available to share' : 'Vehicle history access revoked',
+    message: changed.status === 'requested' ? 'The customer has no previous service records available for this vehicle.' : 'The customer revoked access to shared vehicle records.',
+    bookingId: changed.bookingId, panel: 'overview',
+    eventKey: 'var-access-response:' + grantId + ':' + now,
+    createdAt: now,
+  });
 }
 
 export function settleHistoryAccess(data: any, job: any, action: string, at: string) {

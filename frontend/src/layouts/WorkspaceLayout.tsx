@@ -65,7 +65,7 @@ import {
 } from '../data/mechanicShowcase';
 import { followDetail, readBookingFilters, writeBookingFilters } from '../features/navigation/returnPath';
 import { api, apiBase } from '../data-access/api';
-import { unreadAppointmentRequestIds, markNotificationsRead, notificationsFor } from '../features/notifications/inbox';
+import { unreadAppointmentRequestIds, unreadBookingNotices, unreadBookingIds, markNotificationsRead, notificationsFor } from '../features/notifications/inbox';
 import { VehicleStage } from '../components/garage/VehicleStage';
 import {
   Role,
@@ -270,6 +270,11 @@ export function Workspace({
   const unreadRequestIds = role === 'mechanic'
     ? unreadAppointmentRequestIds(data, scopedJobs)
     : [];
+  const unreadBookingIdSet = new Set(role === 'customer' || role === 'mechanic' ? unreadBookingIds(data, role) : []);
+  const bookingAttention = role === 'customer'
+    ? scopedJobs.filter((job: any) => unreadBookingIdSet.has(job.id)).length : 0;
+  const jobAttention = role === 'mechanic'
+    ? scopedJobs.filter((job: any) => isAcceptedJob(job) && unreadBookingIdSet.has(job.id)).length : 0;
   const accountName =
     role === 'customer'
       ? data.settings?.name
@@ -345,6 +350,23 @@ export function Workspace({
       notify(error?.message || 'Could not mark the appointment as viewed.');
     });
   }, [role, appointmentDetail?.id, appointmentDetail?.section, data.notifications, selfId, update]);
+  // A dot is acknowledged only when the matching booking section is reached.
+  // VAR and work-report dots stay on their own cards until the card is expanded.
+  useEffect(() => {
+    if (role !== 'customer' && role !== 'mechanic') return;
+    const openedId = role === 'customer' ? bookingId : mechanicJobId;
+    if (!openedId) return;
+    const section = tab.endsWith('/messages') ? 'messages'
+      : tab.endsWith('/quote') ? 'quote'
+      : tab.endsWith('/var') || tab.endsWith('/activity') ? ''
+      : 'overview';
+    if (!section) return;
+    const ids = unreadBookingNotices(data, role, openedId, section).map((note: any) => note.id);
+    if (!ids.length) return;
+    void Promise.resolve(update((current: any) =>
+      markNotificationsRead(current, { role, id: selfId, ids }))).catch((error: any) =>
+      notify(error?.message || 'Could not clear the booking indicator.'));
+  }, [role, bookingId, mechanicJobId, tab, data.notifications, selfId, update]);
   function route(t: string) {
     go('dashboard/' + t);
     setSide(false);
@@ -518,6 +540,7 @@ export function Workspace({
           resolveVehicleAsset((data.vehicles || []).find((vehicle: any) => vehicle.id === j.vehicleId)),
         )}
         viewLabel={role === 'customer' ? 'View booking' : 'View details'}
+        attention={unreadBookingIdSet.has(j.id) ? 1 : 0}
         onView={() => {
           if (role === 'customer') {
             followDetail(go, 'dashboard/' + (tab.split('/')[0] || 'bookings'), 'dashboard/bookings/' + encodeURIComponent(j.id));
@@ -566,6 +589,8 @@ export function Workspace({
         tab={tab}
         unread={unread}
         appointmentAttention={unreadRequestIds.length}
+        bookingAttention={bookingAttention}
+        jobAttention={jobAttention}
       />
       <main className="workspace-main">
         <WorkspaceTopbar
@@ -743,6 +768,7 @@ export function Workspace({
           {!locked && bookingId && role === 'customer' && (
             <BookingDetailPage
               bookingId={bookingId}
+              focusSection={tab.endsWith('/var') ? 'var' : tab.endsWith('/activity') ? 'activity' : ''}
               data={data}
               professionals={directory.allProfessionals || directory.results}
               go={go}

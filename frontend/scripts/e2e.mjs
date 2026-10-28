@@ -371,11 +371,36 @@ async function connected(browser) {
 
   await signIn(page, customerEmail);
   await page.reload();
+  await page.goto(appUrl + '/#dashboard/bookings');
+  await page.getByRole('combobox', { name: 'Filter job status' }).selectOption('All');
+  await page.getByRole('searchbox', { name: 'Search' }).fill('');
+  await page.locator('.sidebar .nav-item').filter({ hasText: 'My bookings' }).locator('.nav-attention-dot').waitFor();
+  await page.locator('.booking-card .booking-attention-dot').first().waitFor();
   await page.goto(bookingUrl);
   await page.getByText('Brake noise from the front wheels').waitFor();
-  await page.getByRole('button', { name: /Review workshop work report/ }).click();
-  await page.getByText(/68.000 km/).waitFor();
-  await page.getByRole('button', { name: 'Close report' }).click();
+  await page.locator('.var-activity-section .var-attention-dot').waitFor();
+  await page.locator('.var-customer-panel').first().locator('.var-attention-dot').waitFor();
+  if (await page.getByRole('button', { name: /Review workshop work report/ }).count()) {
+    throw new Error('The customer overview should not open work reports in a popup.');
+  }
+  const activity = page.locator('details.var-activity-section');
+  await activity.locator('summary').click();
+  await activity.locator('.var-attention-dot').waitFor({ state: 'detached' });
+  await activity.getByText(/68.000 km/).waitFor();
+  await activity.getByText('Replaced the front brake pads and checked the braking system.').waitFor();
+  // A VAR request for a vehicle without earlier completed records must explain
+  // the disabled grant action and allow the customer to notify the workshop.
+  const varPanel = page.locator('details.var-customer-panel').first();
+  await varPanel.locator('summary').click();
+  await varPanel.locator('.var-attention-dot').waitFor({ state: 'detached' });
+  await varPanel.getByText('This vehicle has no previous completed service records yet.').waitFor();
+  await varPanel.getByRole('button', { name: 'Grant selected VAR access' }).isDisabled().then((disabled) => {
+    if (!disabled) throw new Error('An empty VAR must not permit an access grant.');
+  });
+  await varPanel.getByRole('button', { name: 'Notify workshop: No history available' }).click();
+  await page.getByText('Workshop notified that there is no earlier history to share.').waitFor();
+  await page.goto(appUrl + '/#dashboard/notifications');
+  await page.getByText(/No previous vehicle history|Workshop work report updated/).first().waitFor();
   await page.goto(appUrl + '/#dashboard/garage');
   // Photos remain usable where no matching, licensed 3D model is available.
   // An unrelated concept car must never be identified as this customer's Polo.
@@ -505,8 +530,20 @@ async function connected(browser) {
     return { ok: Math.abs(first.y - second.y) < 3 && second.x > first.right - 3 };
   });
   if (!layout.ok) throw new Error('Service areas and offered services must share the desktop row.');
+  if (await businessName.inputValue() !== 'Updated Workshop') {
+    throw new Error('The edited workshop name was not retained in the profile form.');
+  }
   await page.getByRole('button', { name: 'Save profile' }).click();
   await page.getByText('Business profile saved').waitFor();
+  const persistedWorkshop = await page.evaluate(async () => {
+    const response = await fetch('http://127.0.0.1:3099/api/professional/me', { credentials: 'include' });
+    return { status: response.status, body: await response.json() };
+  });
+  if (persistedWorkshop.status !== 200 || persistedWorkshop.body?.name !== 'Updated Workshop') {
+    throw new Error('Workshop profile save did not persist: ' + JSON.stringify({
+      status: persistedWorkshop.status, name: persistedWorkshop.body?.name, error: persistedWorkshop.body?.code,
+    }));
+  }
   await page.reload();
   await page.waitForFunction(() =>
     [...document.querySelectorAll('label')].some((label) => {

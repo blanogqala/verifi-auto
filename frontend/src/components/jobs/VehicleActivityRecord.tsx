@@ -139,6 +139,49 @@ export function WorkReportViewer({ report, onClose, workshop, final = false }: {
   );
 }
 
+/** Customer booking activity is the readable work report, not a second popup. */
+export function InlineWorkReport({ report, workshop, final = false }: {
+  report?: WorkReport | null; workshop?: string; final?: boolean;
+}) {
+  if (!report) return (
+    <div className="var-activity-empty">
+      <ClipboardCheck size={23} aria-hidden="true" />
+      <div><strong>No work report has been submitted yet.</strong>
+        <p>When the workshop records the work performed, it will appear here.</p>
+      </div>
+    </div>
+  );
+  const items = Array.isArray(report.items) ? report.items : [];
+  const done = items.filter((item) => item.completed).length;
+  return (
+    <div className="var-activity-report">
+      <div className="var-activity-summary">
+        <div className="var-activity-identity">
+          <span className="var-activity-icon"><Wrench size={22} aria-hidden="true"/></span>
+          <span><strong>{workshop || 'Assigned workshop'}</strong><small>{final ? 'Completed service' : 'Work report · In progress'}</small></span>
+        </div>
+        <span className="var-activity-status">{done}/{items.length} tasks marked done</span>
+      </div>
+      <div className="var-activity-metadata">
+        <span><Gauge size={16} aria-hidden="true"/> {report.mileage == null ? 'Mileage not recorded' : Number(report.mileage).toLocaleString('en-ZA') + ' km'}</span>
+        <span><Clock3 size={16} aria-hidden="true"/> Updated {report.updatedAt ? formatWhen(report.updatedAt) : 'date not recorded'}</span>
+      </div>
+      <h3 className="var-section-heading">Work checklist</h3>
+      <div className="var-read-list">
+        {items.length ? items.map((item, i) => (
+          <div key={item.id || i} className={'var-read-item' + (item.completed ? ' is-complete' : '')}>
+            {item.completed ? <CheckCircle2 size={19} className="var-check-success" aria-hidden="true"/> : <Circle size={19} className="var-check-pending" aria-hidden="true"/>}
+            <span><b>{item.description}</b><small>Quotation {item.quoteNumber || 1} · {item.completed ? 'Completed' : 'Not marked complete'}</small></span>
+          </div>
+        )) : <p>No quotation tasks were recorded.</p>}
+      </div>
+      <h3 className="var-section-heading">Technician notes</h3>
+      <p className="var-report-notes">{report.notes || 'No notes provided.'}</p>
+      {!final && <p className="var-fine-print">This is a provisional work report and may be edited by the workshop before the job is finalised.</p>}
+    </div>
+  );
+}
+
 export function VarHistoryViewer({ records, onClose }: { records: any[]; onClose: () => void }) {
   return (
     <ReportDialog title="Vehicle Activity Record (VAR)" subtitle="Only the service records explicitly shared by the customer for this booking appear here." onClose={onClose}>

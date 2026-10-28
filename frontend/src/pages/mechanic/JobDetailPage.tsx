@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Siren, MapPin, ClipboardList, History } from 'lucide-react';
 import { api } from '../../data-access/api';
 import { WorkReportEditor, WorkReportViewer, VarHistoryViewer } from '../../components/jobs/VehicleActivityRecord';
-import { appendNotification } from '../../features/notifications/inbox';
+import { appendNotification, unreadBookingNotices, markNotificationsRead } from '../../features/notifications/inbox';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
 import { Card } from '../../components/ui/Card';
@@ -58,11 +58,15 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   const vehicle = (data.vehicles || []).find((item: any) => item.id === job.vehicleId);
   const registration = vehicle?.registration || job.registration || 'Not recorded';
   const history = sharedRecordsForProfessional(data, job, professionalId);
-  const events = Array.isArray(job.events) ? job.events : [];
   const unread = unreadMessageCount(data, job.id, 'mechanic');
+  const unreadVarNoticeIds = unreadBookingNotices(data, 'mechanic', job.id, 'var').map((note: any) => note.id);
   const varGrant = (data.historyAccess || []).find((grant: any) => grant.bookingId === job.id);
   const varGranted = varGrant?.status === 'active';
   const varPending = varGrant?.status === 'requested';
+  const varNotShared = ['revoked', 'declined'].includes(varGrant?.status) &&
+    !!varGrant?.requestedAt && !varGrant?.grantedAt && !(varGrant?.recordIds || []).length;
+  const varNoEarlierRecords = varNotShared && (data.notifications || []).some((note: any) =>
+    note.bookingId === job.id && /no (previous )?vehicle history available to share/i.test(note.title || ''));
   const canRequestVar = ['Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment'].includes(job.status);
   async function saveWorkReport(values: { checkedLineIds: string[]; notes: string; mileage: number }) {
     const reportItems = [
@@ -77,11 +81,17 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
       refresh();
     } else {
       const now = new Date().toISOString();
-      const result = update((current: any) => ({
+      const result = update((current: any) => appendNotification({
         ...current,
         jobs: (current.jobs || []).map((entry: any) => entry.id === job.id
           ? { ...entry, workReport: { items: reportItems, notes: values.notes, mileage: values.mileage, updatedAt: now }, workReportUpdatedAt: now }
           : entry),
+      }, {
+        recipientRole: 'customer', recipientId: job.customerId,
+        type: 'work-report', title: 'Workshop work report updated',
+        message: 'Your workshop submitted or revised the work completed on your vehicle.',
+        bookingId: job.id, panel: 'activity',
+        eventKey: 'work-report:' + job.id + ':' + now, createdAt: now,
       }));
       if (result === false) throw Error('Could not save the work report.');
       if (result instanceof Promise) await result;
@@ -104,9 +114,9 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         };
         const saved = update((state: any) => appendNotification({
           ...state, historyAccess: [next, ...(state.historyAccess || []).filter((grant: any) => grant.bookingId !== job.id)],
-        }, { recipientRole: 'customer', recipientId: job.customerId, type: 'account',
+        }, { recipientRole: 'customer', recipientId: job.customerId, type: 'var-request', topic: 'history-access',
           title: 'Workshop requested VAR access', message: 'Review the Vehicle Activity Record access request in your booking.',
-          bookingId: job.id, panel: 'overview', createdAt: new Date().toISOString() }));
+          bookingId: job.id, panel: 'var', createdAt: new Date().toISOString() }));
         if (saved === false) throw Error('Could not save the request.');
         if (saved instanceof Promise) await saved;
       }
@@ -122,6 +132,11 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         : sharedRecordsForProfessional(data, job, professionalId);
       setVarRecords(records);
       setVarOpen(true);
+      if (unreadVarNoticeIds.length) {
+        await update((current: any) => markNotificationsRead(current, {
+          role: 'mechanic', id: professionalId, ids: unreadVarNoticeIds,
+        }));
+      }
     } catch (reason: any) { setError(reason?.message || 'Could not load shared vehicle records.'); }
     finally { setVarBusy(false); }
   }
@@ -227,29 +242,17 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                 </p>
               ) : null}
             </BookingRequestCard>
-            <details className="fold">
-              <summary>Activity history</summary>
-              {events.length ? (
-                <ol className="activity-list">
-                  {events.map((event: any) => (
-                    <li key={(event.at || '') + event.type}>
-                      <time dateTime={event.at}>{formatWhen(event.at) || 'Time not recorded'}</time>
-                      <span>{event.label || event.type}</span>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p>No dated activity was stored for this job.</p>
-              )}
-            </details>
           </div>
           <div className="split-side">
             <CustomerDetailsCard job={{ ...job, customerName: customer }} customer={customerRecord} />
             <VehicleDetailsCard job={job} vehicle={vehicle} headerAction={canRequestVar ? (
-              <button type="button" className="var-header-action" disabled={varBusy || (varPending && !varGranted)}
-                onClick={() => void (varGranted ? viewVar() : requestVar())}>
-                <History size={16}/>{varGranted ? 'View VAR' : varPending ? 'VAR pending' : 'Request VAR'}
-              </button>
+              <span className="var-header-attention">
+                {unreadVarNoticeIds.length > 0 && <span className="var-attention-dot" aria-label="New shared vehicle history" title="New shared vehicle history"/>}
+                <button type="button" className="var-header-action" disabled={varBusy || varNotShared || (varPending && !varGranted)}
+                  onClick={() => void (varGranted ? viewVar() : requestVar())}>
+                  <History size={16}/>{varGranted ? 'View VAR' : varNotShared ? (varNoEarlierRecords ? 'No VAR yet' : 'VAR unavailable') : varPending ? 'VAR pending' : 'Request VAR'}
+                </button>
+              </span>
             ) : undefined} />
             {history.length ? (
               <DetailCard quiet title="Service history">
@@ -261,7 +264,11 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                 ))}
               </DetailCard>
             ) : (
-              <p className="muted">No service history has been shared for this booking.</p>
+              <p className="muted var-mechanic-history-status">{varNoEarlierRecords
+                ? 'The customer confirmed that this vehicle has no earlier completed service records to share.'
+                : varNotShared ? 'The customer did not share previous vehicle records for this booking.'
+                : varPending ? 'Waiting for the customer to choose which service records you may view.'
+                : 'No service history has been shared for this booking.'}</p>
             )}
           </div>
         </div>

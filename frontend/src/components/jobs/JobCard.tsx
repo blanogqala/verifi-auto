@@ -26,6 +26,7 @@ export function JobCard({
   image = '',
   audience = '',
   person = '',
+  attention = 0,
 }: any) {
   const vehicleName = j.vehicleLabel || j.vehicle || 'Vehicle not recorded';
   const when = `${j.date ? formatDay(j.date) : 'Date not recorded'}${j.time ? ` at ${j.time}` : ''}`;
@@ -34,7 +35,7 @@ export function JobCard({
 
   if (audience === 'mechanic') {
     return (
-      <Card as="article" className={"job-card booking-card mechanic-job-card" + (j.kind === 'EMERGENCY' ? " roadside-alert-card" : "")}>
+      <Card as="article" className={"job-card booking-card mechanic-job-card" + (j.kind === 'EMERGENCY' ? " roadside-alert-card" : "") + (attention ? ' needs-attention' : '')}>
         <button
           type="button"
           className="booking-card-hit"
@@ -55,6 +56,7 @@ export function JobCard({
             {quoteAmount ? <span className="mechanic-job-amount">Quote {quoteAmount}</span> : null}
           </span>
           <Status value={j.status} />
+          {attention > 0 && <span className="booking-attention-dot" title="Unread booking update" aria-label="Unread booking update" />}
           <ArrowRight className="booking-card-arrow" size={18} aria-hidden="true" />
         </button>
       </Card>
@@ -63,7 +65,7 @@ export function JobCard({
 
   if (!quoteAction) {
     return (
-      <Card as="article" className={"job-card booking-card" + (j.kind === 'EMERGENCY' ? " roadside-alert-card" : "")}>
+      <Card as="article" className={"job-card booking-card" + (j.kind === 'EMERGENCY' ? " roadside-alert-card" : "") + (attention ? ' needs-attention' : '')}>
         <button type="button" className="booking-card-hit" onClick={onView} aria-label={`${viewLabel}, ${vehicleName}`}>
           <span className="booking-card-art">
             <VehicleArt image={image} />
@@ -75,6 +77,7 @@ export function JobCard({
             <span>{when}</span>
           </span>
           <Status value={j.status} />
+          {attention > 0 && <span className="booking-attention-dot" title="Unread booking update" aria-label="Unread booking update" />}
           <ArrowRight className="booking-card-arrow" size={18} aria-hidden="true" />
         </button>
         {j.rejectionReason ? (

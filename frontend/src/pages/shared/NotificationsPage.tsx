@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Bell,
   Calendar,
+  History,
+  ClipboardCheck,
   Check,
   FileText,
   MessageSquare,
@@ -22,6 +24,7 @@ import {
   markNotificationsRead,
   notificationDay,
   notificationDestination,
+  bookingNotificationSection,
   notificationLabel,
   notificationsFor,
 } from '../../features/notifications/inbox';
@@ -39,6 +42,8 @@ const icons: Record<string, any> = {
   Payments: Wallet,
   Messages: MessageSquare,
   Account: Bell,
+  'Vehicle history': History,
+  'Work reports': ClipboardCheck,
   Updates: Bell,
 };
 
@@ -111,7 +116,9 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
     if (!path) return;
     // Opening the inbox list does not clear outstanding work. Opening its
     // associated activity acknowledges that specific notification.
-    if (!note.read) {
+    // VAR/work report notifications remain unread until the exact detail panel
+    // is actually opened, rather than clearing at the inbox.
+    if (!note.read && !['var', 'activity'].includes(bookingNotificationSection(note))) {
       const result = connected
         ? connected.mark([note.id])
         : commitUpdate(
@@ -275,7 +282,11 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
                             className="text-link"
                             onClick={() => openDestination(note)}
                           >
-                            Open
+                            {bookingNotificationSection(note) === 'var'
+                              ? 'Review vehicle history'
+                              : bookingNotificationSection(note) === 'activity'
+                                ? 'View work report'
+                                : 'Open'}
                           </button>
                         ) : null}
                       </div>

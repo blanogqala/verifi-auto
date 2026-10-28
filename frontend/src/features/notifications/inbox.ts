@@ -35,6 +35,8 @@ export const notificationTypeLabel: Record<string, string> = {
   payment: 'Payments',
   message: 'Messages',
   account: 'Account',
+  'var-request': 'Vehicle history',
+  'work-report': 'Work reports',
 };
 
 export function notificationLabel(type: string) {
@@ -99,6 +101,31 @@ export function notificationsFor(data: any, role: string, id: string) {
   });
 }
 
+/** Associate unread notices with the exact card/section that contains the action. */
+export function bookingNotificationSection(note: any): 'var' | 'activity' | 'quote' | 'messages' | 'overview' {
+  const topic = textValue(note?.topic);
+  const type = textValue(note?.type);
+  const title = textValue(note?.title).toLowerCase();
+  if (type === 'var-request' || (topic === 'history-access' &&
+    (title.includes('request') || title.includes('var') || title.includes('history shared') || title.includes('access granted')))) return 'var';
+  if (type === 'work-report' || title.includes('work report updated')) return 'activity';
+  if (note?.panel === 'quote' || type === 'quote' || topic === 'quotation' || topic === 'payment') return 'quote';
+  if (note?.panel === 'messages' || type === 'message' || topic === 'message') return 'messages';
+  return 'overview';
+}
+
+export function unreadBookingNotices(data: any, role: string, bookingId?: string, section?: string) {
+  const self = participantId(data, role);
+  return notificationsFor(data, role, self).filter((note: any) =>
+    !note.read && !!note.bookingId &&
+    (!bookingId || note.bookingId === bookingId) &&
+    (!section || bookingNotificationSection(note) === section));
+}
+
+export function unreadBookingIds(data: any, role: string): string[] {
+  return [...new Set<string>(unreadBookingNotices(data, role).map((note: any) => String(note.bookingId)))];
+}
+
 export function unreadNotificationCount(data: any, role: string, id = participantId(data, role)) {
   return notificationsFor(data, role, id).filter((item: any) => item.read !== true).length;
 }
@@ -155,11 +182,12 @@ export function notificationDestination(data: any, role: string, note: any) {
   if (!bookingId) return null;
   const job = (data?.jobs || []).find((item: any) => item?.id === bookingId);
   if (!job) return null;
-  const panel = note.panel === 'messages' || note.panel === 'quote' ? note.panel : '';
+  const section = bookingNotificationSection(note);
+  const panel = section === 'messages' || section === 'quote' ? section : '';
   const suffix = panel ? `/${panel}` : '';
   if (role === 'customer') {
     if ((textValue(job.customerId) || demoCustomerId) !== self) return null;
-    const path = `dashboard/bookings/${encodeId(bookingId)}${suffix}`;
+    const path = `dashboard/bookings/${encodeId(bookingId)}${section === 'var' ? '/var' : section === 'activity' ? '/activity' : suffix}`;
     return canVisit('customer', path) ? path : null;
   }
   if (role === 'mechanic') {

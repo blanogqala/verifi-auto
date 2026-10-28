@@ -4,6 +4,7 @@ import { allowedDashboardPages, appointmentSections, type AppointmentSection } f
 const customerDetail = /^(find|garage)\/[^/]+$/;
 const routeIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,120}$/;
 const detailPanels = new Set(['quote', 'messages']);
+const customerFocusPanels = new Set(['var', 'activity']);
 
 export function safeRouteId(value: string) {
   if (!value) return null;
@@ -31,7 +32,7 @@ export function detailId(tab: string, section: string) {
   const rest = tab.slice(prefix.length);
   const parts = rest.split('/');
   if (!parts[0] || parts.length > 2) return null;
-  if (parts[1] && !detailPanels.has(parts[1])) return null;
+  if (parts[1] && !detailPanels.has(parts[1]) && !(section === 'bookings' && customerFocusPanels.has(parts[1]))) return null;
   if (parts[1] && section !== 'bookings' && section !== 'jobs') return null;
   return safeRouteId(parts[0]);
 }
@@ -52,7 +53,7 @@ function allowedDetail(role: Role, tab: string) {
   if (role === 'admin' && parts.length === 2 && ['applications', 'professionals', 'customers', 'jobs', 'disputes'].includes(parts[0]) && safeRouteId(parts[1])) return true;
   if (parts.length === 2 && role === 'customer' && customerDetail.test(tab)) return true;
   if (parts.length === 2 && role === 'customer' && parts[0] === 'bookings' && safeRouteId(parts[1])) return true;
-  if (parts.length === 3 && role === 'customer' && parts[0] === 'bookings' && safeRouteId(parts[1]) && detailPanels.has(parts[2]))
+  if (parts.length === 3 && role === 'customer' && parts[0] === 'bookings' && safeRouteId(parts[1]) && (detailPanels.has(parts[2]) || customerFocusPanels.has(parts[2])))
     return true;
   if (parts.length === 2 && role === 'mechanic' && parts[0] === 'jobs' && safeRouteId(parts[1])) return true;
   if (parts.length === 3 && role === 'mechanic' && parts[0] === 'jobs' && safeRouteId(parts[1]) && detailPanels.has(parts[2]))

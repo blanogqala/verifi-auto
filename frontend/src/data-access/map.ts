@@ -237,12 +237,17 @@ export function mapRecords(vehicleId: string, history: any[]) {
 
 export function mapNotification(note: any, role: string) {
   const topic = note.topic || '';
+  const title = String(note.title || '');
   return {
     id: String(note.id),
     recipientId: note.userId,
     recipientRole: role,
     type:
-      topic === 'booking'
+      topic === 'history-access' && /request|VAR/i.test(title)
+        ? 'var-request'
+        : topic === 'booking' && /work report updated/i.test(title)
+          ? 'work-report'
+        : topic === 'booking'
         ? 'request'
         : topic === 'quotation'
           ? 'quote'
