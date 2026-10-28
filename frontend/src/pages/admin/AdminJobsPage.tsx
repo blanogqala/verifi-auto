@@ -220,7 +220,23 @@ export function AdminDisputePage({ data, id, route, update, notify }: any) {
                 {error && <p className="form-error" role="alert">{error}</p>}
               </>
             ) : (
-              <p className="muted">This older support-case record is read-only in the new booking dispute workflow.</p>
+              <>
+                <label className="field-label">Resolution notes
+                  <textarea value={resolution} onChange={(event) => setResolution(event.target.value)}
+                    placeholder="Record the agreed outcome and follow-up"/>
+                </label>
+                <button type="button" className="primary" disabled={!resolution.trim() || busy}
+                  onClick={() => {
+                    commitUpdate(update, (current: any) => {
+                      const next = resolveDispute(current, id, resolution, current.adminAccount?.name || 'Admin');
+                      return next === current ? current : appendAdminActivity(next, {
+                        action: 'Dispute resolved', actor: current.adminAccount?.name || 'Admin',
+                        role: 'admin', target: id,
+                      });
+                    }, notify, 'Demo dispute resolved. No payment or booking status was changed.');
+                  }}>Resolve demo dispute</button>
+                <p className="muted">This historical demo dispute records an administrative outcome only. No payment, refund or booking status is changed.</p>
+              </>
             )}
           </DetailCard>
         </>
