@@ -83,7 +83,7 @@ export function grantHistoryAccess(
     recipientRole: 'mechanic',
     recipientId: job.professionalId,
     type: 'account',
-    title: 'Vehicle history access granted',
+    title: 'Vehicle history access granted', topic: 'history-access',
     message: 'The customer shared selected service records for this booking.',
     bookingId: job.id, panel: 'overview',
     eventKey: 'var-granted:' + job.id + ':' + now,
