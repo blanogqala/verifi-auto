@@ -136,12 +136,25 @@ async function syncJob(before: any, after: any) {
     await bookingAction(before, 'cancel');
     return;
   }
-  if (before.status === 'Approved' && after.status === 'In progress') {
+  if (['Ready to start', 'Approved'].includes(before.status) && after.status === 'In progress') {
     await bookingAction(before, 'start');
     return;
   }
-  if (before.status === 'In progress' && ['Awaiting payment', 'Completed'].includes(after.status)) {
+  if (before.status === 'In progress' && after.status === 'Awaiting confirmation') {
     await bookingAction(before, 'complete', { completionNotes: after.completionNotes });
+    return;
+  }
+  if (before.status === 'Awaiting confirmation' && after.status === 'Completed') {
+    await bookingAction(before, 'confirm-work');
+    return;
+  }
+  if (before.status === 'Awaiting confirmation' && after.status === 'Disputed') {
+    await bookingAction(before, 'dispute-work', { reason: after.disputeReason });
+    return;
+  }
+  if (before.status === 'Disputed' && ['Completed', 'In progress'].includes(after.status)) {
+    await bookingAction(before, after.status === 'Completed' ? 'resolve-accept' : 'resolve-rework',
+      { reason: after.disputeResolution });
     return;
   }
   await syncQuote(before, before, after);
