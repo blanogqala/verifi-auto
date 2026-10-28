@@ -371,7 +371,9 @@ async function connected(browser) {
   await page.getByRole('button', { name: 'Request VAR' }).click();
   await page.getByRole('button', { name: 'VAR pending' }).waitFor();
   await page.getByRole('button', { name: 'Work is done' }).click();
-  await page.getByText('Awaiting payment').first().waitFor();
+  await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Awaiting payment').waitFor();
+  if (await page.getByRole('button', { name: 'Work is done' }).count())
+    throw new Error('Finished work should advance the job beyond In progress.');
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, customerEmail);
