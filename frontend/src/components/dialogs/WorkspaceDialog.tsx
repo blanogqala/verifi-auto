@@ -27,6 +27,8 @@ export function WorkspaceDialog({
   filter,
   jobAction,
   live = false,
+  sandboxPaymentsEnabled = false,
+  paymentBusy = false,
   name,
   note,
   notify,
@@ -354,7 +356,7 @@ export function WorkspaceDialog({
               ? 'Payment simulated.'
               : dialog.kind === 'invoice'
                 ? 'Repair invoice.'
-                : 'Demo checkout.'}
+                : 'Test checkout.'}
           </h2>
           <p>
             {bookingReference(dialog.job)}
@@ -393,23 +395,34 @@ export function WorkspaceDialog({
             </div>
           ) : null}
           {dialog.kind === 'pay' && role === 'customer' ? (
-            live ? (
-              <button className="primary full" type="button" disabled>
-                Online card payments are unavailable
+            <>
+              <button
+                className="primary full"
+                type="button"
+                disabled={paymentBusy || dialog.job.paid || (live && !sandboxPaymentsEnabled)}
+                onClick={() => {
+                  if (live && !window.confirm(
+                    'This is a TEST PAYMENT only. No bank or card transaction occurs, and it does not place money in escrow. Record a simulated payment for this booking?'
+                  )) return;
+                  jobAction(dialog.job, 'pay', {
+                    mileage: dialog.job.completedMileage,
+                    reviewToken: quoteReviewToken(dialog.job),
+                  });
+                }}
+              >
+                {paymentBusy ? 'Recording test payment…' : 'Simulate payment'} <Wallet size={17} />
               </button>
-            ) : (
-            <button
-              className="primary full"
-              onClick={() =>
-                jobAction(dialog.job, 'pay', {
-                  mileage: dialog.job.completedMileage,
-                  reviewToken: quoteReviewToken(dialog.job),
-                })
-              }
-            >
-              Simulate payment <Wallet size={17} />
-            </button>
-            )
+              {live && !sandboxPaymentsEnabled && (
+                <p className="muted" role="status">
+                  Test payments are not enabled for this account. The platform administrator can
+                  enable a limited sandbox tester account. No real payment can be taken yet.
+                </p>
+              )}
+              <p className="muted">
+                Test mode only: confirming creates a TEST record for this quotation and advances
+                the booking to the repair stage. No funds are collected, held, or released.
+              </p>
+            </>
           ) : dialog.kind === 'receipt' ? (
             <div className="success-note">
               <CheckCircle2 size={20} />
