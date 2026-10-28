@@ -1993,7 +1993,7 @@ for (const route of ['appointments/pending', 'appointments/pending/VA-2026-1101'
 
 assert.ok(!screen('customer', 'garage', showcaseGarage).includes('History not linked to a vehicle'));
 assert.ok(!screen('customer', 'garage', showcaseGarage).includes('Thandi Mbeki'));
-checkThrowsAt(1990, () => sendMessage(paid.data, {
+checkThrowsAt(1990, () => sendMessage(acceptedWork.data, {
   bookingId: 'req-1',
   role: 'customer',
   id: 'cust-01',
