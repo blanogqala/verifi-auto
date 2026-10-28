@@ -715,12 +715,17 @@ j = transitionJob(j, 'quote', {
   ],
 });
 j = transitionJob(j, 'approve');
+assert.throws(() => transitionJob(j, 'start'), /pay/i);
+j = transitionJob(j, 'pay');
+assert.equal(j.status, 'Ready to start');
+assert.equal(j.paid, true);
 j = transitionJob(j, 'start');
 assert.throws(() => transitionJob(j, 'complete', { completionNotes: '' }));
 j = transitionJob(j, 'complete', { completionNotes: 'Front brake pads replaced and tested' });
-j = transitionJob(j, 'pay');
+assert.equal(j.status, 'Awaiting confirmation');
+assert.throws(() => transitionJob(j, 'pay'));
+j = transitionJob(j, 'confirm-work');
 assert.equal(j.status, 'Completed');
-assert.equal(j.paid, true);
 assert.throws(() => transitionJob(j, 'pay'));
 assert.throws(() => transitionJob(j, 'cancel'));
 const request = {
@@ -1322,11 +1327,11 @@ const payable = {
 assert.throws(() => transitionJob({ ...payable, status: 'Awaiting approval', quoteApproved: false }, 'pay'));
 const customerActor = { role: 'customer' as const, id: 'cust-01' };
 const paidOnce = applyJobTransition({ ...initialData, jobs: [payable], records: [] }, payable, 'pay', {}, customerActor);
-assert.equal(paidOnce.job.status, 'Completed');
+assert.equal(paidOnce.job.status, 'Ready to start');
 assert.equal(paidOnce.job.paid, true);
 assert.ok(paidOnce.job.paidAt);
 assert.equal(paidOnce.job.paymentReference, `DEMO-${payable.id}`);
-assert.equal(paidOnce.data.records.filter((record: any) => record.id === payable.id).length, 1);
+assert.equal(paidOnce.data.records.filter((record: any) => record.id === payable.id).length, 0);
 assert.throws(() => applyJobTransition(paidOnce.data, paidOnce.job, 'pay', {}, customerActor));
 assert.equal(recordedCustomerPayments(paidOnce.data.jobs).length, 1);
 const archived = removeOrArchiveVehicle(initialData, 'v1');
@@ -1764,9 +1769,12 @@ const mechanicReportHtml = screen('mechanic', 'jobs/VA-2026-1042', mechanicRepor
 assert.ok(mechanicReportHtml.includes('Edit work report'));
 assert.ok(mechanicReportHtml.includes('Work is done'));
 assert.ok(!mechanicReportHtml.includes('Review submitted work'));
-assert.equal(transitionJob(mechanicReportData.jobs[0], 'complete', {
+assert.throws(() => transitionJob(mechanicReportData.jobs[0], 'complete', {
   completionNotes: mechanicReportData.jobs[0].workReport.notes,
-}).status, 'Awaiting payment');
+}), /paid/i);
+assert.equal(transitionJob({ ...mechanicReportData.jobs[0], paid: true }, 'complete', {
+  completionNotes: mechanicReportData.jobs[0].workReport.notes,
+}).status, 'Awaiting confirmation');
 assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/messages'), true);
 assert.equal(canVisit('mechanic', 'dashboard/jobs/VA-2026-1042/quote'), true);
 assert.equal(canVisit('customer', 'dashboard/jobs/VA-2026-1042'), false);
