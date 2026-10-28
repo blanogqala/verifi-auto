@@ -59,7 +59,7 @@ export function vehicleVarEntries(bookings: any[], records: any[]): VehicleVarEn
   for (const record of records) {
     if (!record?.id) continue;
     const bookingId = text(record.bookingId);
-    if (bookingId && represented.has(bookingId)) continue;
+    if ((bookingId && represented.has(bookingId)) || represented.has(String(record.id))) continue;
     // Records without booking relations are genuine historic vehicle entries, not duplicates.
     const job = bookingId ? byBooking.get(bookingId) : undefined;
     entries.push({
