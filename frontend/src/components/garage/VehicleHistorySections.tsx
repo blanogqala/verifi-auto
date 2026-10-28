@@ -5,6 +5,7 @@ import { StatusBadge } from '../ui/StatusBadge';
 import { WorkReportViewer, OwnerServiceRecordViewer } from '../jobs/VehicleActivityRecord';
 import { vehicleVarEntries, groupByWorkshop, groupedVehicleBookings, type VehicleVarEntry } from '../../features/garage/vehicleTimeline';
 import { bookingReference } from '../../features/jobs/jobViews';
+import { followDetail } from '../../features/navigation/returnPath';
 import { formatDay } from '../../features/jobs/bookingProgress';
 
 function readableDate(value: string) {
@@ -101,7 +102,7 @@ export function GarageBookingHistory({ bookings, go, from }: {
               <div className="garage-var-entries">
                 {group.entries.map((job: any) => (
                   <button type="button" className="garage-var-entry garage-booking-entry" key={job.id}
-                    onClick={() => go('dashboard/bookings/' + encodeURIComponent(job.id))}
+                    onClick={() => followDetail(go, from, 'dashboard/bookings/' + encodeURIComponent(job.id))}
                     aria-label={'Open booking ' + bookingReference(job) + ' with ' + group.name}>
                     <span className="garage-var-entry-icon"><CalendarDays size={21}/></span>
                     <span className="garage-var-entry-body">
