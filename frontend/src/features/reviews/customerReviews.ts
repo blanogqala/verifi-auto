@@ -1,3 +1,4 @@
+import { appendNotification } from '../notifications/inbox';
 import { photoFileError } from '../account/profilePhoto';
 
 const demoCustomerId = 'cust-01';
@@ -85,10 +86,23 @@ export function saveCustomerReview(
     createdAt: existingForBooking?.createdAt || now,
     updatedAt: now,
   };
-  return {
+  const changed = !existingForBooking || existingForBooking.rating !== rating || existingForBooking.text !== body;
+  const saved = {
     ...data,
     customerReviews: [next, ...reviews.filter((review: any) => review.id !== next.id && review.bookingId !== input.bookingId)],
   };
+  if (!changed) return saved;
+  return appendNotification(saved, {
+    recipientRole: 'mechanic',
+    recipientId: input.professionalId,
+    type: 'review',
+    title: existingForBooking ? 'Customer updated their review' : 'New customer review',
+    message: `${rating}/5 stars for your completed booking. Open the job to see the feedback.`,
+    bookingId: input.bookingId,
+    panel: 'overview',
+    createdAt: now,
+    eventKey: `review:${input.bookingId}:${now}`,
+  });
 }
 
 export function deleteCustomerReview(data: any, reviewId: string, customerId: string) {
