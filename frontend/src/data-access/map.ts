@@ -263,13 +263,15 @@ export function mapNotification(note: any, role: string) {
             ? 'message'
             : topic === 'payment'
               ? 'payment'
-              : 'account',
+              : topic === 'review'
+                ? 'review'
+                : 'account',
     title: note.title || 'Update',
     message: note.title || '',
     text: note.title || '',
     createdAt: note.createdAt,
     read: Boolean(note.readAt),
-    bookingId: ['booking', 'quotation', 'message', 'payment', 'history-access'].includes(topic)
+    bookingId: ['booking', 'quotation', 'message', 'payment', 'history-access', 'review'].includes(topic)
       ? note.resourceId
       : undefined,
     topic,
