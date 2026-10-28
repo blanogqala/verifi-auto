@@ -220,8 +220,11 @@ export function useLiveSource(enabled: boolean, page: string) {
               bookingId: row.id,
               customerId: row.review.customerId,
               professionalId: row.review.professionalId,
+              customerName: row.customer?.name || '',
+              workshopName: row.professional?.name || '',
               rating: row.review.rating,
               text: row.review.body,
+              createdAt: row.review.createdAt || '',
               photos: [],
             },
           ]
