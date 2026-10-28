@@ -106,7 +106,8 @@ export function bookingNotificationSection(note: any): 'var' | 'activity' | 'quo
   const topic = textValue(note?.topic);
   const type = textValue(note?.type);
   const title = textValue(note?.title).toLowerCase();
-  if (type === 'var-request' || (topic === 'history-access' && (title.includes('request') || title.includes('var')))) return 'var';
+  if (type === 'var-request' || (topic === 'history-access' &&
+    (title.includes('request') || title.includes('var') || title.includes('history shared')))) return 'var';
   if (type === 'work-report' || title.includes('work report updated')) return 'activity';
   if (note?.panel === 'quote' || type === 'quote' || topic === 'quotation' || topic === 'payment') return 'quote';
   if (note?.panel === 'messages' || type === 'message' || topic === 'message') return 'messages';
