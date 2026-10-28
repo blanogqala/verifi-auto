@@ -372,6 +372,8 @@ async function connected(browser) {
   await signIn(page, customerEmail);
   await page.reload();
   await page.goto(appUrl + '/#dashboard/bookings');
+  await page.getByRole('combobox', { name: 'Filter job status' }).selectOption('All');
+  await page.getByRole('searchbox', { name: 'Search' }).fill('');
   await page.locator('.sidebar .nav-item').filter({ hasText: 'My bookings' }).locator('.nav-attention-dot').waitFor();
   await page.locator('.booking-card .booking-attention-dot').first().waitFor();
   await page.goto(bookingUrl);
