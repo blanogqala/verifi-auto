@@ -580,6 +580,28 @@ async function connected(browser) {
       return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Approved Workshop';
     }),
   );
+  // Workshop can inspect reviews with the true customer name and all-time average.
+  const workshopReviewButton = page.getByRole('button', { name: 'View customer reviews' });
+  await workshopReviewButton.waitFor();
+  await page.locator('.mechanic-review-panel').getByLabel(/5\.0 out of 5 stars/).waitFor();
+  await workshopReviewButton.click();
+  const workshopReviewsDialog = page.getByRole('dialog', { name: 'Customer reviews' });
+  await workshopReviewsDialog.waitFor();
+  await workshopReviewsDialog.getByText('Casey Customer').waitFor();
+  await workshopReviewsDialog.getByText('Excellent brake repair and professional communication throughout.').waitFor();
+  await workshopReviewsDialog.getByRole('button', { name: 'Close customer reviews' }).click();
+  const incomingReviewAlert = await page.evaluate(async (id) => {
+    const response = await fetch('http://127.0.0.1:3099/api/notifications?take=100', { credentials: 'include' });
+    const notes = await response.json();
+    return { status: response.status, alerts: notes.filter((note) =>
+      note.topic === 'review' && note.resourceId === id) };
+  }, bookingUrl.split('/').pop());
+  if (incomingReviewAlert.status !== 200 || !incomingReviewAlert.alerts.length)
+    throw new Error('Mechanic did not receive a customer review notification: ' + JSON.stringify(incomingReviewAlert));
+  await page.goto(appUrl + '/#dashboard/jobs');
+  await page.locator('.mechanic-job-card .review-rating-inline').first().waitFor();
+  await page.goto(appUrl + '/#dashboard/profile/business');
+  await businessName.waitFor();
   // Photo uploads are stored on User.photo. Ensure the same saved image appears
   // on the business header, profile summary, sidebar and topbar after reload.
   const profilePng = Buffer.from(
@@ -869,6 +891,8 @@ async function connected(browser) {
   await page.getByRole('heading', { name: /Booking history/ }).waitFor();
   await page.locator('.admin-detail-tabs').getByRole('button', { name: 'Reviews', exact: true }).click();
   await page.getByRole('heading', { name: 'Customer reviews' }).waitFor();
+  await page.getByText('Approved Workshop · Casey Customer').waitFor();
+  await page.locator('.admin-review .review-rating-inline').first().waitFor();
   await page.goto(appUrl + '/#professional/00000000-0000-4000-8000-000000000000');
   await page.getByRole('heading', { name: 'Professional not found' }).waitFor();
   await page.close();
