@@ -1031,7 +1031,7 @@ test(
       assert.equal(unavailableHistory.status, 200);
       const mechanicNoHistory = await send("get", "/api/notifications", undefined, mechanic);
       assert.ok(mechanicNoHistory.body.some((note: any) =>
-        note.resourceId === nextId && note.title === "No previous vehicle history available to share"));
+        note.resourceId === nextId && note.title === "Customer declined vehicle history access"));
       assert.equal((await send("post", `/api/bookings/${nextId}/var-request`, {}, mechanic)).status, 200);
       assert.deepEqual(
         (
