@@ -1875,12 +1875,15 @@ assert.throws(() => applyJobTransition(approved.data, approved.job, 'quote', {
   notes: 'Should not replace an approval.',
 }, mechanicActor));
 assert.throws(() => applyJobTransition(approved.data, approved.job, 'approve', {}, mechanicActor));
-const started = applyJobTransition(approved.data, approved.job, 'start', {}, mechanicActor);
+assert.throws(() => applyJobTransition(approved.data, approved.job, 'start', {}, mechanicActor), /pay/i);
+const paid = applyJobTransition(approved.data, approved.job, 'pay', {}, customerActor);
+assert.equal(paid.job.status, 'Ready to start');
+const started = applyJobTransition(paid.data, paid.job, 'start', {}, mechanicActor);
 const finished = applyJobTransition(started.data, started.job, 'complete', { completionNotes: 'Pads replaced.', completedMileage: '69000' }, mechanicActor);
-assert.equal(finished.job.status, 'Awaiting payment');
+assert.equal(finished.job.status, 'Awaiting confirmation');
 assert.throws(() => applyJobTransition(finished.data, finished.job, 'pay', {}, mechanicActor));
-const paid = applyJobTransition(finished.data, finished.job, 'pay', {}, customerActor);
-assert.equal(paid.job.status, 'Completed');
+const accepted = applyJobTransition(finished.data, finished.job, 'confirm-work', {}, customerActor);
+assert.equal(accepted.job.status, 'Completed');
 assert.ok(notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks').some((note: any) => note.type === 'payment'));
 assert.ok(!notificationDestination(paid.data, 'customer', notificationsFor(paid.data, 'mechanic', 'pro-precision-motorworks')[0]));
 const customerQuote = notificationsFor(quoted.data, 'customer', 'cust-01').find((note: any) => note.type === 'quote');
@@ -2209,15 +2212,17 @@ assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { s
 assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { selectedLineIds: ['missing'] }, customerActor));
 assert.throws(() => applyJobTransition(revised.data, revised.job, 'approve', { reviewToken: 'stale' }, customerActor));
 const earlyPaid = applyJobTransition(partial.data, partial.job, 'pay', { reviewToken: quoteReviewToken(partial.job) }, customerActor);
-assert.equal(earlyPaid.job.status, 'Approved');
+assert.equal(earlyPaid.job.status, 'Ready to start');
 assert.equal(earlyPaid.job.paid, true);
 assert.equal(earlyPaid.data.records?.some((r: any) => r.id === earlyPaid.job.id) || false, false);
 assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'pay', {}, customerActor));
 assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'quote', { items: earlyPaid.job.items, notes: 'Changed work' }, mechanicActor));
 const earlyStarted = applyJobTransition(earlyPaid.data, earlyPaid.job, 'start', {}, mechanicActor);
 const earlyFinished = applyJobTransition(earlyStarted.data, earlyStarted.job, 'complete', { completionNotes: 'Selected repairs completed.' }, mechanicActor);
-assert.equal(earlyFinished.job.status, 'Completed');
-assert.equal(earlyFinished.data.records.filter((r: any) => r.id === earlyFinished.job.id).length, 1);
+assert.equal(earlyFinished.job.status, 'Awaiting confirmation');
+assert.equal(earlyFinished.data.records.filter((r: any) => r.id === earlyFinished.job.id).length, 0);
+const earlyConfirmed = applyJobTransition(earlyFinished.data, earlyFinished.job, 'confirm-work', {}, customerActor);
+assert.equal(earlyConfirmed.data.records.filter((r: any) => r.id === earlyConfirmed.job.id).length, 1);
 const requestedRevision = applyJobTransition(partial.data, partial.job, 'quote', {
   items: [{ id: 'd1', name: 'Pads', amount: 700 }, { id: 'oil', name: 'Oil change', amount: 300 }], notes: 'Pads and requested oil service.',
 }, mechanicActor);
@@ -2235,7 +2240,8 @@ assert.equal(reselection.job.items[1].approved, true);
 assert.equal(reselection.job.status, 'Approved');
 assert.throws(() => applyJobTransition(reselection.data, reselection.job, 'pay', { reviewToken: quoteReviewToken(partial.job) }, customerActor));
 assert.throws(() => applyJobTransition(earlyPaid.data, earlyPaid.job, 'approve', { selectedLineIds: ['d1', 'd2'] }, customerActor));
-const selectionStarted = applyJobTransition(reselection.data, reselection.job, 'start', {}, mechanicActor);
+const reselectionPaid = applyJobTransition(reselection.data, reselection.job, 'pay', {}, customerActor);
+const selectionStarted = applyJobTransition(reselectionPaid.data, reselectionPaid.job, 'start', {}, mechanicActor);
 assert.throws(() => applyJobTransition(selectionStarted.data, selectionStarted.job, 'approve', { selectedLineIds: ['d1'] }, customerActor));
 const reopenChanges = applyJobTransition(reselection.data, reselection.job, 'changes', { changeRequest: 'Please clarify labour.' }, customerActor);
 assert.equal(reopenChanges.job.quoteApproved, false);
