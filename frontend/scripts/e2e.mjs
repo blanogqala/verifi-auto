@@ -401,6 +401,31 @@ async function connected(browser) {
   await page.getByText('Workshop notified that there is no earlier history to share.').waitFor();
   await page.goto(appUrl + '/#dashboard/notifications');
   await page.getByText(/No previous vehicle history|Workshop work report updated/).first().waitFor();
+  // My Garage vehicle details: work report is visible under its workshop and
+  // opens an owner-facing VAR popup; booking history links back to the booking.
+  await page.goto(bookingUrl);
+  await page.getByRole('button', { name: /View vehicle/ }).click();
+  await page.locator('.garage-detail-grid').waitFor();
+  await page.getByRole('heading', { name: 'Vehicle Activity Record' }).waitFor();
+  await page.getByRole('button', { name: 'Delete vehicle' }).waitFor();
+  if (await page.getByRole('heading', { name: 'Archive vehicle' }).count()) {
+    throw new Error('Vehicle deletion should be in the header, not its own card.');
+  }
+  const detailsGrid = await page.evaluate(() => {
+    const cards = [...document.querySelectorAll('.garage-detail-grid .detail-card')];
+    if (cards.length !== 2) return false;
+    const left = cards[0].getBoundingClientRect(), right = cards[1].getBoundingClientRect();
+    return Math.abs(left.top - right.top) < 4 && right.left > left.right - 3;
+  });
+  if (!detailsGrid) throw new Error('Vehicle facts and care reminders must be side by side on desktop.');
+  await page.locator('.garage-var-entry').first().click();
+  await page.getByRole('dialog', { name: 'Vehicle work report' }).waitFor();
+  await page.getByText('Replaced the front brake pads and checked the braking system.').waitFor();
+  await page.getByRole('button', { name: 'Close report' }).click();
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.getByRole('heading', { name: 'Booking history' }).waitFor();
+  await page.locator('.garage-booking-entry').first().click();
+  await page.getByText('Brake noise from the front wheels').waitFor();
   await page.goto(appUrl + '/#dashboard/garage');
   // Photos remain usable where no matching, licensed 3D model is available.
   // An unrelated concept car must never be identified as this customer's Polo.

@@ -436,15 +436,17 @@ export function WorkspaceDialog({
       )}
       {dialog.kind === 'archive-vehicle' && (
         <>
-          <h2>{dialog.linked ? 'Archive this vehicle?' : 'Remove this vehicle?'}</h2>
+          <h2>{dialog.linked ? 'Remove vehicle from My Garage?' : 'Delete this vehicle?'}</h2>
           <p>
             {dialog.vehicle.year} {dialog.vehicle.make} {dialog.vehicle.model} ·{' '}
             {dialog.vehicle.registration}
           </p>
           <p className="muted">
             {dialog.linked
-              ? 'Bookings and service records stay in this browser. The vehicle leaves the showroom.'
-              : 'This vehicle has no linked bookings or service records.'}
+              ? (live
+                  ? 'This vehicle has linked bookings or service records. It will be archived and hidden from My Garage, not permanently deleted. Its associated history is retained on your account.'
+                  : 'This vehicle has linked bookings or service records. It will be archived and hidden from My Garage, not permanently deleted. Its associated history stays in this browser.')
+              : 'This vehicle has no linked bookings or service records. It can be permanently removed from your garage.'}
           </p>
           <button
             className="primary full"
@@ -469,7 +471,7 @@ export function WorkspaceDialog({
               });
             }}
           >
-            {dialog.linked ? 'Archive vehicle' : 'Remove vehicle'}
+            {dialog.linked ? 'Remove from garage (archive)' : 'Delete vehicle'}
           </button>
         </>
       )}

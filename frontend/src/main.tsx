@@ -6,6 +6,7 @@ import './styles/cards.css';
 import './styles/customer.css';
 import './styles/booking-polish.css';
 import './styles/var.css';
+import './styles/garage-details.css';
 
 createRoot(document.getElementById('root')!).render(<App />);
 
