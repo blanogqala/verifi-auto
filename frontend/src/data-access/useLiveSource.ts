@@ -119,7 +119,7 @@ export function useLiveSource(enabled: boolean, page: string) {
         readOrEmpty<any>('/professional/me/reviews', null, problems),
       ]);
       mechanicReviews = reviewFeed;
-      if (reviewFeed) next.mechanicReviewSummary = { average: reviewFeed.average, count: reviewFeed.count };
+      if (reviewFeed) (next as any).mechanicReviewSummary = { average: reviewFeed.average, count: reviewFeed.count };
       rawBookings = bookings;
       next.jobs = bookings.map(mapBooking);
       if (me) {
