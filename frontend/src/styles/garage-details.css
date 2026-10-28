@@ -1,0 +1,107 @@
+/* My Garage vehicle detail: clear ownership, compact two-column facts, and a workshop timeline. */
+.vehicle-detail .garage-detail-grid {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:18px;
+  align-items:stretch;
+  margin-bottom:20px;
+}
+.vehicle-detail .garage-detail-grid > .detail-card {min-width:0;height:100%}
+.vehicle-detail .garage-detail-grid .detail-card-head {gap:10px;align-items:center}
+.vehicle-detail .garage-detail-grid .detail-fields {grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 18px}
+.vehicle-detail .garage-detail-grid .reminder-row {align-items:center;padding:15px 0;gap:10px}
+.vehicle-detail .garage-detail-grid .reminder-row:first-child {padding-top:4px}
+.vehicle-detail .garage-detail-grid .reminder-row:last-of-type {padding-bottom:6px}
+.vehicle-detail .garage-detail-grid .detail-card-body {min-width:0}
+.vehicle-detail .garage-detail-grid .detail-card-body > p.muted {margin-top:16px;font-size:12px}
+.vehicle-detail .detail-header-aside {margin-left:auto}
+.vehicle-detail .garage-delete-action {
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid color-mix(in srgb,#ce5369 48%,var(--line));
+  color:color-mix(in srgb,#df596c 72%,var(--ink));
+  background:color-mix(in srgb,#de5265 8%,var(--surface));
+}
+.vehicle-detail .garage-delete-action:hover {
+  background:color-mix(in srgb,#d44d62 17%,var(--surface));
+  border-color:#d44d62;
+}
+.vehicle-detail .garage-delete-action:focus-visible {outline:2px solid #d44d62;outline-offset:3px}
+.vehicle-detail .garage-var-shell,.vehicle-detail .garage-bookings-shell {
+  padding:25px; min-width:0;
+  border-radius:18px;
+  background:radial-gradient(ellipse at 5% 0%,color-mix(in srgb,var(--purple) 10%,transparent),transparent 63%),var(--surface);
+}
+.garage-var-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:22px}
+.garage-eyebrow {display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.12em;color:var(--soft)}
+.garage-var-heading h2 {font-size:clamp(21px,2.2vw,27px);font-weight:650;letter-spacing:-.04em;line-height:1.25;color:var(--soft);margin:9px 0}
+.garage-var-heading h2 span {font-size:.7em;font-weight:550}
+.garage-var-heading p {font-size:13px;line-height:1.6;color:var(--muted);margin:0;max-width:60ch}
+.garage-var-counter {
+  flex:0 0 auto;display:inline-flex;align-items:center;border:1px solid var(--line);
+  padding:8px 11px;border-radius:999px;color:var(--soft);
+  font-size:12px;font-weight:700;background:var(--tint)
+}
+.garage-workshop-groups {display:grid;gap:16px}
+.garage-workshop-group {
+  display:grid;gap:13px;
+  padding:17px;background:var(--surface2);
+  border:1px solid var(--line);border-radius:15px;
+  min-width:0;
+}
+.garage-workshop-head {display:flex;align-items:center;gap:11px;min-width:0}
+.garage-workshop-head > span:last-child {display:grid;gap:5px;min-width:0}
+.garage-workshop-head strong {font-size:14px;font-weight:750;overflow-wrap:anywhere}
+.garage-workshop-head small {font-size:11px;color:var(--muted)}
+.garage-workshop-mark {
+  display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;
+  border-radius:12px;background:var(--tint);
+  color:var(--soft);border:1px solid color-mix(in srgb,var(--purple) 18%,var(--line));
+}
+.garage-var-entries {display:grid;gap:8px;min-width:0}
+.garage-var-entry {
+  width:100%;display:flex;align-items:center;gap:13px;text-align:left;
+  padding:14px;border-radius:12px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);
+  cursor:pointer;transition:background .15s,border-color .15s,transform .15s;
+  min-width:0;min-height:76px;
+}
+.garage-var-entry:hover {
+  background:color-mix(in srgb,var(--purple) 7%,var(--surface));
+  border-color:var(--purple);transform:translateY(-1px);
+}
+.garage-var-entry:focus-visible {outline:2px solid var(--purple);outline-offset:3px}
+.garage-var-entry-icon {display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:var(--tint);color:var(--soft)}
+.garage-var-entry-body {display:grid;gap:5px;min-width:0;flex:1}
+.garage-var-entry-body > strong {font-size:13px;font-weight:750;overflow-wrap:anywhere}
+.garage-var-entry-body > small {display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.garage-var-entry-body > span:last-child {font-size:12px;color:var(--muted);line-height:1.4;overflow-wrap:anywhere}
+.garage-var-entry-status {
+  flex:0 0 auto;padding:7px 9px;border-radius:999px;
+  font-size:10px;font-weight:750;white-space:nowrap;
+  color:var(--soft);background:var(--tint)
+}
+.garage-var-entry-status.final {color:#14794e;background:rgb(58 177 116 / 12%)}
+.garage-booking-status {flex:0 0 auto}
+.garage-entry-arrow {flex:0 0 auto;color:var(--soft)}
+.garage-var-empty {display:flex;align-items:flex-start;gap:15px;padding:26px;border:1px dashed var(--line);border-radius:14px;background:var(--surface2)}
+.garage-var-empty-icon {flex:0 0 46px;display:grid;place-items:center;width:46px;height:46px;border-radius:13px;background:var(--tint);color:var(--soft)}
+.garage-var-empty strong {font-size:14px}
+.garage-var-empty p {margin:7px 0 0;color:var(--muted);font-size:12px;line-height:1.6}
+@media(max-width:1050px) {
+  .vehicle-detail .garage-detail-grid {grid-template-columns:1fr}
+}
+@media(max-width:700px) {
+  .vehicle-detail .garage-var-shell,.vehicle-detail .garage-bookings-shell {padding:16px}
+  .vehicle-detail .garage-detail-grid {gap:12px;margin-bottom:14px}
+  .vehicle-detail .garage-detail-grid .detail-fields {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .vehicle-detail .detail-header-aside {margin-left:0;width:100%;justify-content:flex-start}
+  .vehicle-detail .detail-header-aside > button {flex:1 1 140px;min-height:43px}
+  .garage-var-heading {flex-wrap:wrap;margin-bottom:15px}
+  .garage-workshop-group {padding:12px}
+  .garage-var-entry {padding:11px;gap:9px;flex-wrap:wrap}
+  .garage-var-entry-icon {width:35px;height:35px;flex-basis:35px}
+  .garage-var-entry-body {flex:1 1 calc(100% - 55px)}
+  .garage-var-entry-status,.garage-booking-status {margin-left:45px}
+  .garage-entry-arrow {margin-left:auto}
+}
+@media(prefers-reduced-motion:reduce) {.garage-var-entry {transition:none}.garage-var-entry:hover {transform:none}}
