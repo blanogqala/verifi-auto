@@ -1742,10 +1742,10 @@ const olderLoad = loads.begin();
 const newerLoad = loads.begin();
 assert.equal(loads.isCurrent(olderLoad), false);
 assert.equal(loads.isCurrent(newerLoad), true);
-for (const status of ['Requested', 'Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'In progress', 'Awaiting payment', 'Completed']) {
+for (const status of ['Requested', 'Confirmed', 'Awaiting approval', 'Changes requested', 'Approved', 'Ready to start', 'In progress', 'Awaiting payment', 'Awaiting confirmation', 'Disputed', 'Completed']) {
   const progress = bookingProgress({ status });
-  assert.equal(progress.steps.some((step) => step.state === 'current' || status === 'Completed'), true);
-  if (status !== 'Completed' && status !== 'Rejected' && status !== 'Cancelled') {
+  assert.equal(progress.steps.some((step) => step.state === 'current' || step.state === 'stopped' || status === 'Completed'), true);
+  if (status !== 'Completed' && status !== 'Rejected' && status !== 'Cancelled' && status !== 'Disputed') {
     assert.equal(progress.terminal, '');
   }
 }
@@ -1753,8 +1753,8 @@ assert.equal(bookingProgress({ status: 'Completed' }).steps.every((step) => step
 assert.equal(bookingProgress({ status: 'Rejected', rejectionReason: 'Unavailable' }).terminal, 'rejected');
 assert.equal(bookingProgress({ status: 'Rejected' }).steps.some((step) => step.state === 'complete'), false);
 assert.equal(bookingProgress({ status: 'Cancelled', accepted: true }).steps[1].state, 'stopped');
-assert.equal(bookingProgress({ status: 'Awaiting approval' }).steps[2].state, 'current');
-assert.equal(bookingProgress({ status: 'Changes requested' }).steps[2].state, 'current');
+assert.equal(bookingProgress({ status: 'Awaiting approval' }).steps[1].state, 'current');
+assert.equal(bookingProgress({ status: 'Changes requested' }).steps[1].state, 'current');
 const returns = rememberReturn({}, 'dashboard/garage/v1', 'dashboard/bookings/VA-2026-1042');
 assert.equal(resolveReturn(returns, 'dashboard/garage/v1', 'dashboard/garage'), 'dashboard/bookings/VA-2026-1042');
 assert.equal(resolveReturn({}, 'dashboard/bookings/VA-2026-1042', 'dashboard/bookings'), 'dashboard/bookings');
