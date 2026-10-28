@@ -33,6 +33,7 @@ export const notificationTypeLabel: Record<string, string> = {
   started: 'Work',
   completed: 'Work',
   payment: 'Payments',
+  review: 'Customer reviews',
   message: 'Messages',
   account: 'Account',
   'var-request': 'Vehicle history',
