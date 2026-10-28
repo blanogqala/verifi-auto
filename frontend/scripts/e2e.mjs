@@ -147,7 +147,7 @@ async function resetDisposableRateLimits() {
   await client.connect();
   try {
     await client.query('DELETE FROM "RateLimit"');
-    record('[e2e] reset request counters in disposable database before admin journey\n');
+    record('[e2e] reset request counters in disposable test database\n');
   } finally {
     await client.end();
   }
@@ -362,11 +362,18 @@ async function connected(browser) {
   await page.getByLabel('Work performed / additional technician notes').fill('Replaced the front brake pads and checked the braking system.');
   await page.getByLabel('Vehicle odometer at service (km)').fill('68000');
   await page.getByRole('button', { name: 'Save work report' }).click();
-  await page.getByRole('button', { name: 'Review submitted work' }).click();
+  if (await page.getByRole('button', { name: 'Review submitted work' }).count())
+    throw new Error('Mechanic should only have Edit work report and Work is done.');
+  await page.getByRole('button', { name: 'Edit work report' }).click();
+  await page.getByText('View last saved work report').click();
   await page.getByText(/68.000 km/).waitFor();
-  await page.getByRole('button', { name: 'Close report' }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Request VAR' }).click();
   await page.getByRole('button', { name: 'VAR pending' }).waitFor();
+  await page.getByRole('button', { name: 'Work is done' }).click();
+  await page.locator('.progress-step[aria-current="step"] .progress-label').getByText('Awaiting payment').waitFor();
+  if (await page.getByRole('button', { name: 'Work is done' }).count())
+    throw new Error('Finished work should advance the job beyond In progress.');
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, customerEmail);
@@ -401,6 +408,21 @@ async function connected(browser) {
   await page.getByText('Workshop notified that there is no earlier history to share.').waitFor();
   await page.goto(appUrl + '/#dashboard/notifications');
   await page.getByText(/No previous vehicle history|Workshop work report updated/).first().waitFor();
+  if (await page.locator('.workspace-heading').getByRole('button', { name: 'Find a professional' }).count())
+    throw new Error('Notifications header must not show a Find a professional CTA.');
+  await page.locator('.inbox-list').waitFor();
+  await page.locator('.inbox-detail-scroll').waitFor();
+  await page.getByRole('button', { name: /Mark all as read/ }).first().waitFor();
+  const notificationScroll = await page.evaluate(() => {
+    const list = document.querySelector('.inbox-threads');
+    const detail = document.querySelector('.inbox-detail-scroll');
+    const outer = document.querySelector('.inbox');
+    if (!list || !detail || !outer) return false;
+    const listStyle = getComputedStyle(list), detailStyle = getComputedStyle(detail), outerStyle = getComputedStyle(outer);
+    return listStyle.overflowY === 'auto' && detailStyle.overflowY === 'auto'
+      && outerStyle.overflow === 'hidden' && outer.clientHeight > 300;
+  });
+  if (!notificationScroll) throw new Error('Notifications must scroll inside both fixed panels.');
   // My Garage vehicle details: work report is visible under its workshop and
   // opens an owner-facing VAR popup; booking history links back to the booking.
   await page.goto(bookingUrl);
@@ -474,6 +496,10 @@ async function connected(browser) {
   await other.getByRole('heading', { name: 'Booking not found' }).waitFor();
   await other.close();
 
+  // This long browser journey creates hundreds of ordinary API reads while
+  // moving between users. Reset only the disposable test DB counters here;
+  // production throttling stays active and unchanged.
+  await resetDisposableRateLimits();
   await signIn(page, 'mechanic@example.test');
   await page.goto(appUrl + '/#dashboard/profile/business');
   const businessName = page.getByLabel('Business or trading name');
@@ -523,7 +549,15 @@ async function connected(browser) {
   await page.getByLabel('Business or trading name').waitFor();
   await page.waitForFunction(imageReady, profileImageSelectors, { timeout: 20000 });
   await page.goto(appUrl + '/#find');
-  await page.getByRole('heading', { name: 'Approved Workshop' }).waitFor();
+  const approvedDirectoryHeading = page.getByRole('heading', { name: 'Approved Workshop' });
+  try {
+    await approvedDirectoryHeading.waitFor({ timeout: 12000 });
+  } catch {
+    // The public directory may refresh after a profile photo write; retry once
+    // without weakening the requirement that the approved workshop remains listed.
+    await page.reload();
+    await approvedDirectoryHeading.waitFor({ timeout: 20000 });
+  }
   await page.waitForFunction(() => {
     const image = document.querySelector('main.app-page .provider-card .provider-art img');
     return image instanceof HTMLImageElement &&
@@ -560,6 +594,9 @@ async function connected(browser) {
   }
   await page.getByRole('button', { name: 'Save profile' }).click();
   await page.getByText('Business profile saved').waitFor();
+  // Rate-limit counters should never invalidate a verified persistence check
+  // or prevent the browser from hydrating the updated profile after reload.
+  await resetDisposableRateLimits();
   const persistedWorkshop = await page.evaluate(async () => {
     const response = await fetch('http://127.0.0.1:3099/api/professional/me', { credentials: 'include' });
     return { status: response.status, body: await response.json() };
@@ -569,13 +606,39 @@ async function connected(browser) {
       status: persistedWorkshop.status, name: persistedWorkshop.body?.name, error: persistedWorkshop.body?.code,
     }));
   }
+  await resetDisposableRateLimits();
   await page.reload();
-  await page.waitForFunction(() =>
-    [...document.querySelectorAll('label')].some((label) => {
-      const input = label.querySelector('input');
-      return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Updated Workshop';
-    }),
-  );
+  try {
+    await page.getByLabel('Business or trading name').waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll('label')].some((label) => {
+        const input = label.querySelector('input');
+        return label.textContent?.includes('Business or trading name') &&
+          input instanceof HTMLInputElement && input.value === 'Updated Workshop';
+      }), undefined, { timeout: 15000 });
+  } catch (reason) {
+    const debug = await page.evaluate(async () => {
+      const field = [...document.querySelectorAll('label')].find((label) =>
+        label.textContent?.includes('Business or trading name'))?.querySelector('input');
+      let currentProfile = null;
+      let session = null;
+      try {
+        const response = await fetch('http://127.0.0.1:3099/api/professional/me', { credentials: 'include' });
+        currentProfile = { status: response.status, body: await response.json() };
+      } catch (error) { currentProfile = { error: String(error) }; }
+      try {
+        const response = await fetch('http://127.0.0.1:3099/api/auth/session', { credentials: 'include' });
+        session = { status: response.status, user: (await response.json()).user?.role };
+      } catch (error) { session = { error: String(error) }; }
+      return {
+        url: location.href, inputValue: field?.value ?? null,
+        visibleHeadings: [...document.querySelectorAll('h1,h2')].map((heading) => heading.textContent?.trim()).slice(0, 12),
+        alertText: document.querySelector('[role="alert"]')?.textContent?.trim() ?? null,
+        currentProfile, session,
+      };
+    });
+    throw new Error('Business profile failed to refresh from saved data: ' + JSON.stringify(debug) + '; ' + String(reason));
+  }
   await page.getByRole('button', { name: 'Remove Durbanville, Cape Town' }).waitFor();
   await page.getByRole('button', { name: 'Remove Wheel balancing' }).waitFor();
   await page.getByRole('button', { name: 'Remove Tyres' }).waitFor();

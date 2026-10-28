@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Siren, MapPin, ClipboardList, History } from 'lucide-react';
 import { api } from '../../data-access/api';
-import { WorkReportEditor, WorkReportViewer, VarHistoryViewer } from '../../components/jobs/VehicleActivityRecord';
+import { WorkReportEditor, VarHistoryViewer } from '../../components/jobs/VehicleActivityRecord';
 import { appendNotification, unreadBookingNotices, markNotificationsRead } from '../../features/notifications/inbox';
 import { DetailBack, DetailCard, DetailFields, DetailHeader } from '../../components/ui/DetailChrome';
 import { DetailPanel, DetailTabs } from '../../components/ui/DetailTabs';
@@ -23,7 +23,6 @@ import { unreadMessageCount } from '../../features/messages/conversation';
 export function JobDetailPage({ data, go, job, notify, onAction, panel, route, update, live = false, refresh = () => {} }: any) {
   const [tab, setTab] = useState(panel || 'overview');
   const [editorOpen, setEditorOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
   const [varOpen, setVarOpen] = useState(false);
   const [varRecords, setVarRecords] = useState<any[]>([]);
   const [varBusy, setVarBusy] = useState(false);
@@ -35,7 +34,6 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
   }, [bookingId, panel]);
   useEffect(() => {
     setEditorOpen(false);
-    setReportOpen(false);
     setVarOpen(false);
     setError('');
     setBusy(false);
@@ -217,7 +215,15 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
                   <button className="primary" type="button" onClick={() => setEditorOpen(true)}>
                     {job.workReport ? 'Edit work report' : 'Add completed work'}
                   </button>
-                  {job.workReport && <button className="secondary" type="button" onClick={() => setReportOpen(true)}>Review submitted work</button>}
+                  {job.workReport && (
+                    <button className="secondary var-complete-action" type="button" disabled={busy}
+                      onClick={() => run('complete', {
+                        completionNotes: job.workReport.notes,
+                        mileage: job.workReport.mileage,
+                      })}>
+                      <ClipboardList size={17} aria-hidden="true" /> Work is done
+                    </button>
+                  )}
                 </div>
               ) : null}
               {job.status === 'Awaiting payment' ? (
@@ -292,7 +298,6 @@ export function JobDetailPage({ data, go, job, notify, onAction, panel, route, u
         </DetailCard>
       </DetailPanel>
       {editorOpen && <WorkReportEditor job={job} onSave={saveWorkReport} onClose={() => setEditorOpen(false)} />}
-      {reportOpen && job.workReport && <WorkReportViewer report={job.workReport} workshop={job.provider} onClose={() => setReportOpen(false)} />}
       {varOpen && <VarHistoryViewer records={varRecords} onClose={() => setVarOpen(false)} />}
     </div>
   );

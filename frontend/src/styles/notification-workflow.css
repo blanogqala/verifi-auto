@@ -1,0 +1,144 @@
+/* Notifications workspace: fixed-height panels, independent readable scroll areas. */
+.inbox {
+  align-items: stretch;
+  position: sticky;
+  top: calc(74px + env(safe-area-inset-top));
+  height: clamp(380px, calc(100dvh - 190px - env(safe-area-inset-bottom)), 1100px);
+  min-height: 0;
+  overflow: hidden;
+}
+.inbox > .inbox-list,
+.inbox > .inbox-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 17px;
+}
+.inbox .inbox-list > .panel-title,
+.inbox .inbox-detail > .panel-title,
+.inbox .inbox-list > .search-input,
+.inbox .inbox-list > .inbox-filters {
+  flex-shrink: 0;
+}
+.inbox .inbox-threads,
+.inbox .inbox-detail-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--purple) 60%, var(--line)) transparent;
+  padding-right: 7px;
+}
+.inbox .inbox-threads { margin-top: 5px; }
+.inbox .inbox-detail-scroll { padding-block: 8px 16px; }
+.inbox .inbox-detail-scroll > section { margin-bottom: 14px; }
+.inbox .inbox-detail-scroll > section > h3 {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--soft);
+  margin: 6px 0 10px;
+}
+.inbox .panel-title { gap: 10px; align-items: center; }
+.inbox .panel-title h2 { min-width: 0; overflow-wrap: anywhere; }
+.inbox .inbox-mark-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid var(--purple);
+  border-radius: 11px;
+  background: var(--purple);
+  color: #fff;
+  font-weight: 750;
+  font-size: 12px;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--purple) 17%, transparent);
+}
+.inbox .inbox-mark-all:hover:not(:disabled) { filter: brightness(1.08); }
+.inbox .inbox-mark-all:disabled {
+  opacity: .57;
+  cursor: default;
+  box-shadow: none;
+}
+.inbox .inbox-mark-all:focus-visible { outline: 3px solid var(--soft); outline-offset: 3px; }
+.inbox .inbox-unread-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  padding-inline: 4px;
+  background: #ffffff31;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.inbox .inbox-thread {
+  border-radius: 10px;
+  padding: 12px 9px;
+  border-bottom: 1px solid var(--line);
+  transition: background .15s ease;
+}
+.inbox .inbox-thread:hover { background: color-mix(in srgb, var(--purple) 10%, var(--surface)); }
+.inbox .inbox-thread.selected { border: 1px solid color-mix(in srgb, var(--purple) 55%, var(--line)); }
+.inbox .inbox-item { padding: 13px 6px; }
+.inbox .inbox-item > div { min-width: 0; }
+.inbox .inbox-item p { line-height: 1.65; white-space: pre-wrap; }
+.inbox .inbox-detail > .panel-title {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+.inbox .inbox-empty-message { color: var(--muted); }
+.inbox .detail-back { flex-shrink: 0; }
+.var-editor-content { display: grid; gap: 15px; }
+.var-editor-saved {
+  border: 1px solid color-mix(in srgb, var(--purple) 40%, var(--line));
+  border-radius: 13px;
+  padding: 12px 14px;
+  background: var(--tint);
+}
+.var-editor-saved > summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.var-editor-saved[open] > .var-activity-report { margin-top: 15px; }
+.var-complete-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 43px;
+}
+@media (max-width: 800px) {
+  .inbox {
+    position: relative;
+    top: auto;
+    grid-template-columns: minmax(0, 1fr);
+    height: clamp(340px, calc(100dvh - 178px - env(safe-area-inset-bottom)), 960px);
+  }
+  .inbox.is-reading > .inbox-list,
+  .inbox:not(.is-reading) > .inbox-detail { display: none; }
+  .inbox .inbox-detail-scroll { padding-block: 10px 16px; }
+}
+@media (max-width: 390px) {
+  .inbox .inbox-mark-all { padding: 7px 9px; font-size: 11px; }
+  .inbox .inbox-mark-all svg { width: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inbox .inbox-thread { transition: none; }
+}

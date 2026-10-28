@@ -662,7 +662,7 @@ export function Workspace({
                 <button className="primary" type="button" onClick={() => setDialog({ kind: 'vehicle' })}>
                   Add vehicle <Plus size={17} />
                 </button>
-              ) : role === 'customer' && !hideFindCta ? (
+              ) : role === 'customer' && tab !== 'notifications' && !hideFindCta ? (
                 <button className="primary" onClick={() => go('dashboard/find')}>
                   Find a professional <Plus size={17} />
                 </button>

@@ -57,6 +57,7 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
     () => connected?.notes || notificationsFor(data, role, self),
     [connected?.notes, data, role, self],
   );
+  const unreadCount = notes.filter((note: any) => !note.read).length;
   const [filter, setFilter] = useState('All');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState('');
@@ -147,8 +148,10 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
         <div className="panel-title">
           <h2>Your updates</h2>
           <button
-            className="text-link"
+            className="inbox-mark-all"
             type="button"
+            disabled={unreadCount === 0}
+            title={unreadCount ? `Mark all ${unreadCount} unread notifications as read` : 'All updates are read'}
             onClick={() =>
               connected
                 ? connected.mark(notes.filter((n: any) => !n.read).map((n: any) => n.id))
@@ -161,7 +164,9 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
                   )
             }
           >
-            Mark all as read
+            <Check size={16} aria-hidden="true" />
+            <span>Mark all as read</span>
+            {unreadCount > 0 && <small className="inbox-unread-count" aria-label={`${unreadCount} unread`}>{unreadCount}</small>}
           </button>
         </div>
         <label className="search-input">
@@ -259,6 +264,7 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
                 Mark as read
               </button>
             </div>
+            <div className="inbox-detail-scroll" tabIndex={0} aria-label="Notification message details">
             {groupByDay(active.items).map((group) => (
               <section key={group.label}>
                 <h3>{group.label}</h3>
@@ -311,9 +317,10 @@ export function NotificationsPage({ data, go, notify, role, update, connected }:
                 viewerRole={role}
               />
             ) : null}
+            </div>
           </>
         ) : (
-          <p>Select an update to read it.</p>
+          <div className="inbox-detail-scroll inbox-empty-message"><p>Select an update to read it.</p></div>
         )}
       </Card>
     </div>
