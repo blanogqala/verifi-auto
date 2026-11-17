@@ -22,6 +22,7 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
     "UNAUTHENTICATED",
     "Your session has ended. Please sign in.",
   );
+  requireThat(session.user.verifiedAt, 401, "UNAUTHENTICATED", "Verify your email before signing in.");
   req.auth = {
     userId: session.userId,
     role: session.user.role,

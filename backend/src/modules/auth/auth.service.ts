@@ -26,7 +26,9 @@ export async function queueToken(
   purpose: "verify" | "reset",
 ) {
   const token = randomToken();
-  await tx.accountToken.deleteMany({ where: { userId, purpose } });
+  // Keep earlier verification links valid until verification succeeds or they expire.
+  // An unsolicited resend must not invalidate a link already in the user\x27s inbox.
+  if (purpose === "reset") await tx.accountToken.deleteMany({ where: { userId, purpose } });
   await tx.accountToken.create({
     data: {
       id: digest(token),
@@ -102,6 +104,7 @@ export async function login(email: string, password: string) {
     "INVALID_CREDENTIALS",
     "Email or password is incorrect.",
   );
+  requireThat(user.verifiedAt, 403, "EMAIL_UNVERIFIED", "Verify your email before signing in.");
   const token = randomToken(),
     csrf = digest(`csrf:${token}`);
   const expiresAt = new Date(Date.now() + env.SESSION_HOURS * 3600000);
@@ -145,6 +148,11 @@ export async function consumeToken(
       "This link is invalid or expired. Request a new link.",
     );
     await tx.accountToken.delete({ where: { id: record.id } });
+    if (purpose === "verify") {
+      await tx.accountToken.deleteMany({ where: { userId: record.userId, purpose: "verify" } });
+      // Invalidate any sessions issued by older versions before verification.
+      await tx.session.deleteMany({ where: { userId: record.userId } });
+    }
     await tx.user.update({
       where: { id: record.userId },
       data:

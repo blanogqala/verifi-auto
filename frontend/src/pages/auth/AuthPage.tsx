@@ -1,5 +1,5 @@
 import { Card } from '../../components/ui/Card';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   ArrowRight,
@@ -10,12 +10,16 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { Role, roleLabel } from '../../demo';
-export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected = false }: any) {
+export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected = false, verificationEmail = '' }: any) {
   const [choice, setChoice] = useState<Role>(
     pending ? 'customer' : mode === 'register' ? 'mechanic' : role || 'customer',
   );
   const [reset, setReset] = useState(false);
   const [verifyError, setVerifyError] = useState('');
+  const [requestError, setRequestError] = useState('');
+  const [requestNote, setRequestNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const verifyRequest = useRef<Promise<unknown> | null>(null);
   useEffect(() => {
     if (!connected || mode !== 'verify') return;
     const token = new URLSearchParams(location.hash.split('?')[1] || '').get('token');
@@ -24,7 +28,8 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
       return;
     }
     let active = true;
-    Promise.resolve(onLogin('customer', false, { intent: 'verify', token })).catch((error: any) => {
+    verifyRequest.current ??= Promise.resolve(onLogin('customer', false, { intent: 'verify', token }));
+    verifyRequest.current.catch((error: any) => {
       if (active) setVerifyError(error?.message || 'We could not verify your email. Please try again.');
     });
     return () => {
@@ -96,10 +101,14 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
                 ? 'Let’s get you back in.'
                 : mode === 'verify'
                   ? 'Verify your email.'
+                  : mode === 'check-email'
+                    ? 'Check your email.'
                   : 'Welcome back.'}
           </h2>
           <p>
-            {pending
+            {mode === 'check-email'
+              ? 'Verify your email address before signing in to Verifi Auto.'
+              : pending
               ? 'Sign in as a customer to continue booking ' + pending.name + '.'
               : mode === 'register'
                 ? 'Choose how you’ll use Verifi Auto.'
@@ -115,7 +124,7 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
                         ? 'Sign in with your Verifi Auto account.'
                         : 'Choose a workspace to explore the experience.'}
           </p>
-          {mode !== 'forgot' && mode !== 'reset' && mode !== 'verify' && !(connected && mode === 'login') && (
+          {mode !== 'forgot' && mode !== 'reset' && mode !== 'verify' && mode !== 'check-email' && !(connected && mode === 'login') && (
             <div className="role-picker">
               {(['customer', 'mechanic', ...(mode === 'login' && !connected ? ['admin'] : [])] as Role[]).map(
                 (r) => (
@@ -135,31 +144,47 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
           )}
           {mode === 'register' && choice === 'admin' ? (
             <p>Admin accounts are invitation-only.</p>
+          ) : mode === 'check-email' ? (
+            <form onSubmit={async (event) => {
+              event.preventDefault();
+              const details = Object.fromEntries(new FormData(event.currentTarget));
+              setBusy(true); setRequestError(''); setRequestNote('');
+              try {
+                await onLogin('customer', false, { ...details, intent: 'resend-verification' });
+                setRequestNote('Verification requested. If your account is awaiting verification, check your inbox and spam folder.');
+              } catch (error: any) { setRequestError(error?.message || 'Could not request verification. Please try again.'); }
+              finally { setBusy(false); }
+            }}>
+              <div className="notice" role="status">Open the verification link sent to your email. You can sign in after verification. Check your spam folder if it has not arrived.</div>
+              <label>Email address<input name="email" type="email" required defaultValue={verificationEmail} autoComplete="email" /></label>
+              {requestError && <div className="notice" role="alert">{requestError}</div>}
+              {requestNote && <div className="success-note" role="status">{requestNote}</div>}
+              <button className="primary full" type="submit" disabled={busy}>{busy ? 'Requesting…' : 'Resend verification email'} <ArrowRight size={18} /></button>
+            </form>
           ) : mode === 'verify' ? (
             <div className={verifyError ? 'notice' : 'success-note'} role="status">
               {verifyError || 'Checking your verification link.'}
+              {verifyError && <button type="button" className="text-link" onClick={() => go('check-email')}>Request a new link</button>}
             </div>
           ) : (
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                if (mode === 'forgot') {
-                  const details = Object.fromEntries(new FormData(e.currentTarget));
-                  if (connected) onLogin('customer', false, { ...details, intent: 'forgot' });
-                  setReset(true);
-                  return;
-                }
-                if (mode === 'reset') {
-                  const details = Object.fromEntries(new FormData(e.currentTarget));
-                  const token = new URLSearchParams(location.hash.split('?')[1] || '').get('token');
-                  onLogin('customer', false, { ...details, intent: 'reset', token });
-                  return;
-                }
-                onLogin(
-                  choice,
-                  mode === 'register',
-                  Object.fromEntries(new FormData(e.currentTarget)),
-                );
+                const details = Object.fromEntries(new FormData(e.currentTarget));
+                setBusy(true); setRequestError('');
+                try {
+                  if (mode === 'forgot') {
+                    if (connected) await onLogin('customer', false, { ...details, intent: 'forgot' });
+                    setReset(true);
+                  } else if (mode === 'reset') {
+                    const token = new URLSearchParams(location.hash.split('?')[1] || '').get('token');
+                    await onLogin('customer', false, { ...details, intent: 'reset', token });
+                  } else {
+                    await onLogin(choice, mode === 'register', details);
+                  }
+                } catch (error: any) {
+                  setRequestError(error?.message || 'Could not complete your request. Please try again.');
+                } finally { setBusy(false); }
               }}
             >
               {mode === 'register' && (
@@ -223,6 +248,7 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
                     ? 'Admin preview only. In the live platform, admin access will be invitation-only and checked by the server.'
                     : 'Preview accounts only. No real authentication, account creation, or email delivery is connected. Don’t enter a real password.'}
               </div>
+              {requestError && <div className="notice" role="alert">{requestError}</div>}
               {reset ? (
                 <div className="success-note" role="status">
                   <CheckCircle2 size={18} />{' '}
@@ -231,7 +257,7 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
                     : 'Recovery screen demonstrated. No email was sent.'}
                 </div>
               ) : (
-                <button className="primary full" type="submit">
+                <button className="primary full" type="submit" disabled={busy}>
                   {mode === 'forgot'
                     ? connected
                       ? 'Send reset link'
