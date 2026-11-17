@@ -3099,3 +3099,39 @@ td .text-link {
 @media (max-width: 750px) {
   .admin-professional-metrics { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* Responsive review and booking polish: compact phones, tablets and desktops. */
+.mechanic-review-summary { min-width: 0; max-width: 100%; }
+.mechanic-review-summary strong { overflow-wrap: anywhere; }
+.completed-job-rating { display: inline-flex; flex-wrap: wrap; align-items: center; max-width: 100%; overflow-wrap: anywhere; }
+.admin-review { min-width: 0; overflow-wrap: anywhere; }
+.merchant-summary.mechanic-summary { min-width: 0; }
+.merchant-summary.mechanic-summary > * { min-width: 0; }
+@media (max-width: 900px) {
+  .merchant-summary.mechanic-summary { flex-wrap: wrap; }
+  .mechanic-review-summary { width: 100%; justify-items: stretch !important; }
+  .mechanic-review-summary button { width: 100%; min-height: 44px; }
+}
+@media (max-width: 600px) {
+  .mechanic-profile .profile-tablist { min-width: 0; }
+  .mechanic-profile .profile-tablist button { min-width: 0; overflow-wrap: anywhere; }
+  .mechanic-profile .modal-backdrop > [role="dialog"] {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 28px) !important;
+    padding: 16px !important;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+  .mechanic-profile .modal-backdrop [role="dialog"] select { max-width: 100%; min-width: 0; }
+  .mechanic-profile .modal-backdrop [role="dialog"] label { min-width: 0; flex: 1 1 145px; }
+  .mechanic-profile .modal-backdrop [role="dialog"] article { overflow-wrap: anywhere; }
+  .mechanic-job-card .booking-card-hit, .booking-card .booking-card-hit { min-width: 0; }
+  .booking-card-copy { min-width: 0; overflow-wrap: anywhere; }
+}
+@media (max-width: 360px) {
+  .mechanic-profile .modal-backdrop > [role="dialog"] { width: calc(100vw - 12px) !important; padding: 12px !important; }
+  .mechanic-profile .modal-backdrop [role="dialog"] progress { min-width: 0; }
+}
