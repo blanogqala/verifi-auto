@@ -131,6 +131,13 @@ test(
           password: "StrongExample9!",
         });
         assert.equal(r.status, 202, JSON.stringify(r.body));
+        const blocked = await send("post", "/api/auth/login", { email, password: "StrongExample9!" });
+        assert.equal(blocked.status, 403);
+        assert.equal(blocked.body.error.code, "EMAIL_UNVERIFIED");
+        assert.equal(blocked.headers["set-cookie"], undefined);
+        assert.equal(await db.session.count({ where: { user: { email } } }), 0);
+        const resend = await send("post", "/api/auth/resend-verification", { email });
+        assert.equal(resend.status, 202);
         const mail = await db.mailOutbox.findFirstOrThrow({
           where: { to: email },
         });
