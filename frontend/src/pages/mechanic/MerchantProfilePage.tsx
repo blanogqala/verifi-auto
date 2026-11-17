@@ -135,52 +135,54 @@ export function MerchantProfilePage({
   return (
     <div className="merchant-profile mechanic-profile">
       <Card as="section" className="dash-panel merchant-summary mechanic-summary">
-        <div className="avatar-upload">
-          <button
-            type="button"
-            className="avatar big avatar-picker mechanic-photo-avatar"
-            aria-label={accountPhoto ? 'Replace profile photo' : 'Add profile photo'}
-            onClick={() => photoInput.current?.click()}
-          >
-            {accountPhoto ? <img src={accountPhoto} alt="" /> : initials}
-            <span className="avatar-edit" aria-hidden="true">
-              <Camera size={14} />
-            </span>
-          </button>
-          <input
-            ref={photoInput}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-            hidden
-            onChange={onPhoto}
-          />
-          {accountPhoto ? (
+        <div className="mechanic-summary-identity">
+          <div className="avatar-upload">
             <button
               type="button"
-              className="text-link"
-              onClick={() => {
-                if (connected) void connected.savePhoto('');
-                else setProfile({ ...profile, photo: '' });
-                setPhotoError('');
-              }}
+              className="avatar big avatar-picker mechanic-photo-avatar"
+              aria-label={accountPhoto ? 'Replace profile photo' : 'Add profile photo'}
+              onClick={() => photoInput.current?.click()}
             >
-              Remove photo
+              {accountPhoto ? <img src={accountPhoto} alt="" /> : initials}
+              <span className="avatar-edit" aria-hidden="true">
+                <Camera size={14} />
+              </span>
             </button>
-          ) : null}
-          {photoError ? (
-            <p className="form-error" role="alert">
-              {photoError}
-            </p>
-          ) : null}
-        </div>
-        <div className="mechanic-review-summary" style={{ display: 'grid', gap: 8, alignContent: 'center', justifyItems: 'start' }}>
-          <strong aria-label={averageRating ? `Average customer rating ${averageRating} out of 5` : 'No customer reviews yet'}>
-            <Star size={18} style={{ display: 'inline', verticalAlign: 'middle', color: '#9658e8' }} />
-            {' '}{averageRating ? `${averageRating}/5 · ${overallCount} review${overallCount === 1 ? '' : 's'}` : 'No reviews yet'}
-          </strong>
-          <button type="button" className="secondary" onClick={() => setShowReviews(true)}>
-            View all reviews
-          </button>
+            <input
+              ref={photoInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+              hidden
+              onChange={onPhoto}
+            />
+            {accountPhoto ? (
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => {
+                  if (connected) void connected.savePhoto('');
+                  else setProfile({ ...profile, photo: '' });
+                  setPhotoError('');
+                }}
+              >
+                Remove photo
+              </button>
+            ) : null}
+            {photoError ? (
+              <p className="form-error" role="alert">
+                {photoError}
+              </p>
+            ) : null}
+          </div>
+          <div className="mechanic-review-summary">
+            <strong aria-label={averageRating ? `Average customer rating ${averageRating} out of 5` : 'No customer reviews yet'}>
+              <Star size={18} aria-hidden="true" />
+              {' '}{averageRating ? `${averageRating}/5 · ${overallCount} review${overallCount === 1 ? '' : 's'}` : 'No reviews yet'}
+            </strong>
+            <button type="button" className="secondary" onClick={() => setShowReviews(true)}>
+              View all reviews
+            </button>
+          </div>
         </div>
         <div className="merchant-summary-copy">
           <h2>Mechanic profile</h2>

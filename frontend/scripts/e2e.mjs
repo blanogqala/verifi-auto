@@ -599,6 +599,24 @@ async function connected(browser) {
       return label.textContent?.includes('Business or trading name') && input instanceof HTMLInputElement && input.value === 'Approved Workshop';
     }),
   );
+  // The avatar and review controls must remain one vertical group on every viewport.
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 820, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.waitForFunction((desktop) => {
+      const banner = document.querySelector('.mechanic-summary');
+      const avatar = banner?.querySelector('.avatar-picker')?.getBoundingClientRect();
+      const rating = banner?.querySelector('.mechanic-review-summary strong')?.getBoundingClientRect();
+      const button = banner?.querySelector('.mechanic-review-summary button')?.getBoundingClientRect();
+      const copy = banner?.querySelector('.merchant-summary-copy')?.getBoundingClientRect();
+      if (!avatar || !rating || !button || !copy) return false;
+      const center = (r) => r.left + r.width / 2;
+      return avatar.bottom <= rating.top + 1 && rating.bottom <= button.top + 1 &&
+        Math.abs(center(avatar) - center(rating)) < 3 &&
+        Math.abs(center(avatar) - center(button)) < 3 &&
+        (desktop ? copy.left >= button.right && copy.top <= rating.top : copy.top >= button.bottom);
+    }, viewport.width > 600);
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
   // Photo uploads are stored on User.photo. Ensure the same saved image appears
   // on the business header, profile summary, sidebar and topbar after reload.
   const profilePng = Buffer.from(

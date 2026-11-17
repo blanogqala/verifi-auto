@@ -3102,16 +3102,28 @@ td .text-link {
 
 
 /* Responsive review and booking polish: compact phones, tablets and desktops. */
-.mechanic-review-summary { min-width: 0; max-width: 100%; }
-.mechanic-review-summary strong { overflow-wrap: anywhere; }
+/* Keep the photo, rating and review action together; the copy occupies the second column. */
+.merchant-summary.mechanic-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(20px, 4vw, 48px);
+  min-width: 0;
+}
+.mechanic-summary > * { min-width: 0; }
+.mechanic-summary-identity { display: grid; justify-items: center; gap: 12px; min-width: 0; width: 100%; }
+.mechanic-summary-identity .avatar-upload { justify-items: center; max-width: 100%; }
+.mechanic-summary .mechanic-review-summary { display: grid; justify-items: center; gap: 8px; min-width: 0; max-width: 100%; text-align: center; }
+.mechanic-review-summary strong { display: flex; align-items: center; justify-content: center; gap: 5px; overflow-wrap: anywhere; }
+.mechanic-review-summary strong svg { flex: 0 0 auto; color: #9658e8; }
+.mechanic-review-summary button { max-width: 100%; min-height: 44px; white-space: normal; }
+.mechanic-summary .merchant-summary-copy { display: grid; justify-items: start; align-content: start; gap: 10px; min-width: 0; text-align: left; }
+.mechanic-summary .merchant-summary-copy h2, .mechanic-summary .merchant-summary-copy p { margin: 0; overflow-wrap: anywhere; }
 .completed-job-rating { display: inline-flex; flex-wrap: wrap; align-items: center; max-width: 100%; overflow-wrap: anywhere; }
 .admin-review { min-width: 0; overflow-wrap: anywhere; }
-.merchant-summary.mechanic-summary { min-width: 0; }
-.merchant-summary.mechanic-summary > * { min-width: 0; }
-@media (max-width: 900px) {
-  .merchant-summary.mechanic-summary { flex-wrap: wrap; }
-  .mechanic-review-summary { width: 100%; justify-items: stretch !important; }
-  .mechanic-review-summary button { width: 100%; min-height: 44px; }
+@media (max-width: 600px) {
+  .merchant-summary.mechanic-summary { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .mechanic-summary .merchant-summary-copy { width: 100%; }
 }
 @media (max-width: 600px) {
   .mechanic-profile .profile-tablist { min-width: 0; }
