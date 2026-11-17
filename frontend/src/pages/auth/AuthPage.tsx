@@ -1,4 +1,5 @@
 import { Card } from '../../components/ui/Card';
+import './verification-dialog.css';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
@@ -8,6 +9,8 @@ import {
   Car,
   Calendar,
   CheckCircle2,
+  Mail,
+  ArrowLeft,
 } from 'lucide-react';
 import { Role, roleLabel } from '../../demo';
 export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected = false, verificationEmail = '' }: any) {
@@ -20,6 +23,31 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
   const [requestNote, setRequestNote] = useState('');
   const [busy, setBusy] = useState(false);
   const verifyRequest = useRef<Promise<unknown> | null>(null);
+  const verificationDialog = useRef<HTMLDialogElement>(null);
+  const [blockedEmail, setBlockedEmail] = useState('');
+  const [dialogNote, setDialogNote] = useState('');
+  const [dialogError, setDialogError] = useState('');
+  const [dialogBusy, setDialogBusy] = useState(false);
+  useEffect(() => {
+    if (blockedEmail && verificationDialog.current && !verificationDialog.current.open) {
+      verificationDialog.current.showModal();
+    }
+  }, [blockedEmail]);
+
+  async function resendFromDialog() {
+    if (dialogBusy || !blockedEmail) return;
+    setDialogBusy(true);
+    setDialogError('');
+    setDialogNote('');
+    try {
+      await onLogin('customer', false, { email: blockedEmail, intent: 'resend-verification' });
+      setDialogNote('Verification requested. Check your inbox and spam folder. Delivery can take a moment.');
+    } catch (error: any) {
+      setDialogError(error?.message || 'Could not request a new link. Please try again.');
+    } finally {
+      setDialogBusy(false);
+    }
+  }
   useEffect(() => {
     if (!connected || mode !== 'verify') return;
     const token = new URLSearchParams(location.hash.split('?')[1] || '').get('token');
@@ -183,7 +211,13 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
                     await onLogin(choice, mode === 'register', details);
                   }
                 } catch (error: any) {
-                  setRequestError(error?.message || 'Could not complete your request. Please try again.');
+                  if (mode === 'login' && connected && error?.code === 'EMAIL_UNVERIFIED') {
+                    setDialogNote('');
+                    setDialogError('');
+                    setBlockedEmail(String(details.email));
+                  } else {
+                    setRequestError(error?.message || 'Could not complete your request. Please try again.');
+                  }
                 } finally { setBusy(false); }
               }}
             >
@@ -293,6 +327,27 @@ export function AuthPage({ mode, role, setRole, onLogin, go, pending, connected 
           Back to home <ArrowUpRight size={15} />
         </button>
       </div>
+      {connected && mode === 'login' && (
+        <dialog
+          ref={verificationDialog}
+          className="verification-dialog"
+          aria-labelledby="verification-dialog-title"
+          aria-describedby="verification-dialog-description"
+          onClose={() => { setBlockedEmail(''); setDialogNote(''); setDialogError(''); }}
+          onCancel={(event) => { if (dialogBusy) event.preventDefault(); }}
+        >
+          <div className="verification-dialog-icon"><Mail size={28} aria-hidden="true" /></div>
+          <h2 id="verification-dialog-title">Email verification required</h2>
+          <p id="verification-dialog-description">You cannot sign in until you verify your email address. Open the verification link in your inbox or request a new one.</p>
+          <p className="verification-dialog-address">{blockedEmail}</p>
+          {dialogError && <div className="notice" role="alert">{dialogError}</div>}
+          {dialogNote && <div className="success-note" role="status">{dialogNote}</div>}
+          <div className="verification-dialog-actions">
+            <button type="button" className="primary full" disabled={dialogBusy} onClick={resendFromDialog}>{dialogBusy ? 'Requesting…' : 'Resend verification email'} <ArrowRight size={18} /></button>
+            <button type="button" className="verification-back" disabled={dialogBusy} onClick={() => verificationDialog.current?.close()}><ArrowLeft size={18} /> Back</button>
+          </div>
+        </dialog>
+      )}
     </main>
   );
 }

@@ -197,8 +197,8 @@ export default function App() {
           setCsrf('');
           live.setUser(null);
           setRole(null);
-          go('check-email');
-          return;
+          // Keep the login form visible; its persistent dialog handles this response.
+          throw error;
         }
         setToast(error?.message || 'Could not complete sign-in.');
         throw error;
