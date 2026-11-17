@@ -10,6 +10,9 @@ const schema = z.object({
   COOKIE_SECURE: z.enum(["true", "false"]).default("false"),
   SESSION_HOURS: z.coerce.number().int().min(1).max(168).default(24),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(3).default(0),
+  BREVO_API_KEY: z.string().default(""),
+  BREVO_SENDER_EMAIL: z.union([z.literal(""), z.email()]).default(""),
+  BREVO_SENDER_NAME: z.string().trim().min(1).default("Verifi Auto"),
   SMTP_HOST: z.string().default(""),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().default(""),
@@ -26,10 +29,10 @@ if (
   (env.COOKIE_SECURE !== "true" ||
     !env.WEB_ORIGIN.startsWith("https://") ||
     env.ENABLE_TEST_PAYMENTS === "true" ||
-    !env.SMTP_HOST)
+    !(env.BREVO_API_KEY ? env.BREVO_SENDER_EMAIL : env.SMTP_HOST))
 ) {
   throw Error(
-    "Production requires secure cookies, HTTPS WEB_ORIGIN, SMTP, and disabled test payments.",
+    "Production requires secure cookies, HTTPS WEB_ORIGIN, a Brevo API sender or SMTP, and disabled test payments.",
   );
 }
 export const cookieName =
