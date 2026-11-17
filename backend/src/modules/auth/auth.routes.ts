@@ -73,6 +73,21 @@ authRoutes.post("/reset", limit, async (req, res) => {
     .clearCookie(cookieName, cookieOptions)
     .json({ message: "Password changed. Please sign in again." });
 });
+// Public, rate-limited and enumeration-resistant: no session is issued before verification.
+const resendLimit = rateLimit("resend-verification", 5, 15);
+authRoutes.post("/resend-verification", resendLimit, async (req, res) => {
+  const input = z.object({ email }).strict().parse(req.body);
+  await transaction(async (tx) => {
+    const user = await tx.user.findUnique({ where: { email: input.email } });
+    if (!user || user.disabledAt || user.verifiedAt) return;
+    const recent = await tx.mailOutbox.findFirst({
+      where: { to: user.email, subject: "Verify your Verifi Auto email", createdAt: { gte: new Date(Date.now() - 60000) } },
+      select: { id: true },
+    });
+    if (!recent) await service.queueToken(tx, user.id, user.email, "verify");
+  });
+  res.status(202).json({ message: "If this address has an unverified account, a verification link will be sent. Check your inbox and spam folder." });
+});
 authRoutes.use(authenticate);
 authRoutes.get("/session", async (req, res) => {
   // Deterministic per session so opening another tab does not invalidate existing forms.
@@ -91,16 +106,6 @@ authRoutes.post("/logout", async (req, res) => {
     await audit(tx, actor(req).userId, "SIGNED_OUT", actor(req).userId);
   });
   res.clearCookie(cookieName, cookieOptions).json({ message: "Signed out." });
-});
-authRoutes.post("/resend-verification", limit, async (req, res) => {
-  const user = await db.user.findUniqueOrThrow({
-    where: { id: actor(req).userId },
-  });
-  if (!user.verifiedAt)
-    await transaction((tx) =>
-      service.queueToken(tx, user.id, user.email, "verify"),
-    );
-  res.json({ message: "Verification email requested." });
 });
 authRoutes.patch("/profile", async (req, res) => {
   const input = z
