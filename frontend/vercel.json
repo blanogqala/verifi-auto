@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+      {
+        "source": "/api/:path*",
+        "destination": "https://verifi-auto.onrender.com/api/:path*"
+      }
+    ]
+  }
