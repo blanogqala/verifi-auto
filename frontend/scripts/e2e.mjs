@@ -168,8 +168,19 @@ async function registerAndVerify(page, name, email) {
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
-  await page.getByText('Check your email to verify').waitFor();
+  await page.getByRole('heading', { name: 'Check your email.' }).waitFor();
+  if (!page.url().endsWith('#check-email')) throw new Error('Registration must lead to the check-email page');
+  if (await page.getByRole('button', { name: 'Sign out' }).count()) throw new Error('Registration must not create a dashboard session');
   const token = await verifyLink(email);
+  // Correct credentials must not create a session until the link is verified.
+  await page.getByRole('button', { name: 'Back to sign in' }).click();
+  await page.getByLabel('Email address').fill(email);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page.getByRole('heading', { name: 'Check your email.' }).waitFor();
+  if (await page.getByRole('button', { name: 'Sign out' }).count()) throw new Error('Unverified login must not grant dashboard access');
+  await page.getByRole('button', { name: 'Resend verification email' }).click();
+  await page.getByText('Verification requested.', { exact: false }).waitFor();
   await page.goto(`${appUrl}/#verify?token=${encodeURIComponent(token)}`);
   await page.getByText('Email verified').waitFor();
   await signIn(page, email);
