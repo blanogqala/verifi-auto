@@ -51,7 +51,7 @@ export default function App() {
   const [page, setPage] = useState(() =>
     canonicalPage(storedRole(), location.hash.slice(1) || 'home'),
   );
-  const [role, setRole] = useState<Role | null>(storedRole);
+  const [role, setRole] = useState<Role | null>(() => import.meta.env.VITE_API_URL ? null : storedRole());
   const [demoData, demoUpdate] = useDemoStore();
   const connected = Boolean(import.meta.env.VITE_API_URL);
   const live = useLiveSource(connected, page);
@@ -74,6 +74,7 @@ export default function App() {
   const [description, setDescription] = useState(openingDraft?.description || '');
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
   const [toast, setToast] = useState('');
+  const [verificationEmail, setVerificationEmail] = useState('');
   useEffect(() => {
     if (connected && live.error) setToast(live.error);
   }, [connected, live.error]);
@@ -127,13 +128,14 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: p === 'find' ? 'auto' : 'smooth' });
   }
   useEffect(() => {
+    if (connected && !live.ready) return;
     const change = () => {
       const raw = location.hash.slice(1) || 'home';
       let p = canonicalPage(role, raw);
       if (p.startsWith('dashboard/') && !role) p = 'login';
       else if (p.startsWith('dashboard/') && role && !canVisit(role, p)) p = 'dashboard/overview';
       const base = p.split('?')[0];
-      if (!['home', 'find', 'login', 'register', 'forgot', 'reset', 'verify'].includes(base) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(base))
+      if (!['home', 'find', 'login', 'register', 'forgot', 'reset', 'verify', 'check-email'].includes(base) && !p.startsWith('dashboard/') && !/^professional\/[^/]+$/.test(base))
         p = 'home';
       setPage(p);
       if (!document.querySelector('.modal-backdrop')) document.body.style.overflow = '';
@@ -142,10 +144,14 @@ export default function App() {
     window.addEventListener('hashchange', change);
     change();
     return () => window.removeEventListener('hashchange', change);
-  }, [role]);
+  }, [role, connected, live.ready]);
   async function login(r: Role, register = false, details: any = {}) {
     if (connected) {
       try {
+        if (details.intent === 'resend-verification') {
+          await api('/auth/resend-verification', 'POST', { email: details.email });
+          return;
+        }
         if (details.intent === 'forgot') {
           await api('/auth/forgot', 'POST', { email: details.email });
           return;
@@ -169,8 +175,8 @@ export default function App() {
             password: details.password,
             role: r === 'mechanic' ? 'MECHANIC' : 'CUSTOMER',
           });
-          setToast('Check your email to verify your account before signing in.');
-          go('login');
+          setVerificationEmail(details.email);
+          go('check-email');
           return;
         }
         const result = await api('/auth/login', 'POST', {
@@ -178,6 +184,7 @@ export default function App() {
           password: details.password,
         });
         setCsrf(result.csrf);
+        setRole(result.user.role === 'MECHANIC' ? 'mechanic' : result.user.role === 'ADMIN' ? 'admin' : 'customer');
         live.setUser(result.user);
         live.refresh();
         const next =
@@ -185,6 +192,14 @@ export default function App() {
         setPage(next);
         location.hash = next;
       } catch (error: any) {
+        if (error?.code === 'EMAIL_UNVERIFIED') {
+          setVerificationEmail(details.email);
+          setCsrf('');
+          live.setUser(null);
+          setRole(null);
+          go('check-email');
+          return;
+        }
         setToast(error?.message || 'Could not complete sign-in.');
         throw error;
       }
@@ -435,7 +450,7 @@ export default function App() {
   const customerName =
     role === 'customer' && typeof data.settings?.name === 'string' ? data.settings.name.trim() : '';
   const accountLabel = customerName || 'My account';
-  const showAuth = ['login', 'register', 'forgot', 'reset', 'verify'].includes(page.split('?')[0]);
+  const showAuth = ['login', 'register', 'forgot', 'reset', 'verify', 'check-email'].includes(page.split('?')[0]);
   const showWorkspace = page.startsWith('dashboard/') && role !== null && canVisit(role, page);
   useEffect(() => {
     if (showWorkspace) setMenu(false);
@@ -476,6 +491,7 @@ export default function App() {
           go={go}
           pending={pending}
           connected={connected}
+          verificationEmail={verificationEmail}
         />
       ) : showWorkspace ? (
         <Workspace
